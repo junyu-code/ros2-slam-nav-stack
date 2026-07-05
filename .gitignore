@@ -1,0 +1,12 @@
+build/
+install/
+log/
+.vscode/
+*.pyc
+__pycache__/
+*.bag
+*.db3
+*.mcap
+*.log
+src/FAST_LIO/PCD/
+src/FAST_LIO/Log/*.txt
