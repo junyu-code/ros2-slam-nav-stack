@@ -7,8 +7,7 @@ import yaml
 from ament_index_python.packages import get_package_share_directory, get_package_share_path
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, LogInfo, OpaqueFunction
-from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -50,7 +49,7 @@ def _robot_description_command(context, package_share):
             ' --enable-piper-arm true',
         ])
 
-    return ParameterValue(command, value_type=str)
+    return ParameterValue(Command(command), value_type=str)
 
 
 def _create_nodes(context):
@@ -64,6 +63,7 @@ def _create_nodes(context):
     allow_trajectory_execution = context.perform_substitution(
         LaunchConfiguration('allow_trajectory_execution')
     )
+    joint_states_topic = LaunchConfiguration('joint_states_topic')
 
     robot_description = {'robot_description': _robot_description_command(context, package_share)}
     moveit_params = {
@@ -99,6 +99,11 @@ def _create_nodes(context):
             name='move_group',
             namespace='piper',
             output='screen',
+            remappings=[
+                ('tf', '/tf'),
+                ('tf_static', '/tf_static'),
+                ('joint_states', joint_states_topic),
+            ],
             parameters=[
                 {'use_sim_time': use_sim_time},
                 robot_description,
@@ -115,6 +120,9 @@ def _create_nodes(context):
                     executable='joint_state_publisher',
                     name='piper_joint_state_publisher',
                     namespace='piper',
+                    remappings=[
+                        ('joint_states', joint_states_topic),
+                    ],
                     parameters=[
                         {'use_sim_time': use_sim_time},
                         robot_description,
@@ -128,6 +136,11 @@ def _create_nodes(context):
                 executable='robot_state_publisher',
                 name='piper_robot_state_publisher',
                 namespace='piper',
+                remappings=[
+                    ('tf', '/tf'),
+                    ('tf_static', '/tf_static'),
+                    ('joint_states', joint_states_topic),
+                ],
                 parameters=[
                     {'use_sim_time': use_sim_time},
                     robot_description,
@@ -162,6 +175,11 @@ def generate_launch_description():
             'allow_trajectory_execution',
             default_value='false',
             description='默认只规划不执行；真实/仿真执行后端验证后再显式打开。',
+        ),
+        DeclareLaunchArgument(
+            'joint_states_topic',
+            default_value='/piper/joint_states',
+            description='独立 plan-only 用 /piper/joint_states；和整车仿真共用时可设为 /joint_states。',
         ),
         DeclareLaunchArgument('piper_mount_xyz', default_value='0.16 0.0 0.22'),
         DeclareLaunchArgument('piper_mount_rpy', default_value='0 0 0'),

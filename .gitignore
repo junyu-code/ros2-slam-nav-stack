@@ -9,12 +9,38 @@ __pycache__/
 *.mcap
 *.log
 
-# task 目录里只准备跟踪轻量 Markdown 规划文档，报告源文件、Word/PDF 和数据产物先不进仓库。
+# task 目录只跟踪轻量 Markdown、LaTeX 源文件和图示源文件；Word/PDF/截图/数据产物先不进仓库。
 tasks/*
+!tasks/task0/
+tasks/task0/*
+!tasks/task0/*.md
+!tasks/task1/
+tasks/task1/*
+!tasks/task1/*.md
+!tasks/task1/homework_latex/
+tasks/task1/homework_latex/*
+!tasks/task1/homework_latex/README.md
+!tasks/task1/homework_latex/main.tex
+!tasks/task1/report_latex/
+tasks/task1/report_latex/*
+!tasks/task1/report_latex/README.md
+!tasks/task1/report_latex/main.tex
+!tasks/task1/report_latex/figures/
+tasks/task1/report_latex/figures/*
+!tasks/task1/report_latex/figures/*.dot
+!tasks/task1/report_latex/figures/*.mmd
+!tasks/task1/report_latex/figures/*.png
+!tasks/task1/report_latex/figures/*.svg
+!tasks/task1/report_assets/
+tasks/task1/report_assets/*
+!tasks/task1/report_assets/README.md
+!tasks/task1/report_assets/*.dot
+!tasks/task1/report_assets/*.mmd
+!tasks/task1/report_assets/*.png
+!tasks/task1/report_assets/*.svg
 !tasks/task2/
 tasks/task2/*
-!tasks/task2/FUTURE_ROADMAP.md
-!tasks/task2/PIPER_MOBILE_MANIPULATION.md
+!tasks/task2/*.md
 
 # 外部依赖只提交 .repos/说明文件，不把第三方仓库源码直接并入主仓库。
 external/
