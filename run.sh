@@ -56,6 +56,7 @@ show_help() {
   piper-gazebo-smoke    一键启动 headless Gazebo 并检查官方 Piper 适配链
   piper-task-smoke      一键验证 Piper 假感知、抓取候选和 pick/place action
   piper-mobile-sequence 一键验证移动操作组合入口的假相机、停车、pick/place 顺序
+  piper-mission-demo    一键验证 mission_behavior 只通过 /piper/task/* 调用 Piper
   piper-control-smoke   一键验证 Piper 控制桥 owner/enable/estop 边界
   piper-real-dry-run    一键验证 Piper 实机入口默认安全拒绝真实执行
   piper-learning-smoke  一键验证 Piper 学习层抓取候选排序旁路
@@ -90,6 +91,7 @@ show_help() {
   ./run.sh piper-gazebo-smoke
   ./run.sh piper-task-smoke
   ./run.sh piper-mobile-sequence
+  ./run.sh piper-mission-demo
   ./run.sh piper-control-smoke
   ./run.sh piper-real-dry-run
   ./run.sh piper-learning-smoke
@@ -145,6 +147,7 @@ script_for_command() {
     piper-gazebo-smoke|piper-gazebo) echo "piper_gazebo_smoke.sh" ;;
     piper-task-smoke|piper-task) echo "piper_task_smoke.sh" ;;
     piper-mobile-sequence|piper-mobile-sequence-smoke|piper-mobile-task) echo "piper_mobile_sequence_smoke.sh" ;;
+    piper-mission-demo|piper-mission-smoke|mission-piper-demo) echo "piper_mission_demo_smoke.sh" ;;
     piper-control-smoke|piper-control) echo "piper_control_smoke.sh" ;;
     piper-real-dry-run|piper-real-dry|piper-real-smoke) echo "piper_real_dry_run.sh" ;;
     piper-learning-smoke|piper-learning) echo "piper_learning_smoke.sh" ;;

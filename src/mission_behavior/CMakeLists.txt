@@ -5,6 +5,7 @@ find_package(ament_cmake REQUIRED)
 
 install(PROGRAMS
   scripts/mission_behavior_node.py
+  scripts/mission_piper_pick_place_demo_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

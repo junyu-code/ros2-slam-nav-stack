@@ -66,11 +66,34 @@ ros2 launch mission_behavior mission_behavior.launch.py \
 
 它只在任务层导航失败后短时间接管速度输出，正常跟踪路径时仍由 Nav2 控制。
 
+## Piper 任务 demo
+
+Piper 机械臂扩展保持独立 `/piper` 命名空间。`mission_behavior` 只通过项目侧 action 调用 Piper，不直接依赖 MoveIt2、SDK 或厂家话题：
+
+```bash
+ros2 launch mission_behavior piper_pick_place_demo.launch.py auto_start:=true
+```
+
+该 demo 会顺序调用 `/piper/task/pick_object` 和 `/piper/task/place_object`。它不启动 Nav2、不接真实机械臂，也不会修改 task1 默认入口；需要先单独启动 Piper fake runtime，例如：
+
+```bash
+./run.sh piper-sim
+```
+
+自动验收入口：
+
+```bash
+./run.sh piper-mission-demo
+```
+
 ## 文件说明
 
 ```text
 scripts/mission_behavior_node.py
   可运行的任务行为树节点。
+
+scripts/mission_piper_pick_place_demo_node.py
+  只调用 /piper/task/* action 的 Piper pick/place 调度示例。
 
 behavior_tree/mission_navigation_recovery.xml
   行为树结构示意，后续可迁移为 BehaviorTree.CPP 插件版本。
@@ -80,6 +103,9 @@ config/mission_behavior.yaml
 
 launch/mission_behavior.launch.py
   启动入口。
+
+launch/piper_pick_place_demo.launch.py
+  Piper action 边界 demo 启动入口。
 ```
 
 ## 项目命名建议
