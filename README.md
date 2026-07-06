@@ -34,6 +34,11 @@ tasks/task1/TASK1_FINAL_RUNBOOK.md
 ```
 
 后续跑验收时优先看这份 Runbook，再回到本文档查系统背景。
+实际截图、实验记录和最终严格检查的剩余证据项集中在：
+
+```text
+tasks/task1/TASK1_EVIDENCE_TODO.md
+```
 
 当前最短验收路线是：
 

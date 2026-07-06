@@ -56,18 +56,9 @@ class MissionPiperPickPlaceDemoNode(Node):
             'Mission Piper demo 已就绪；只会调用 /piper/task/* action，'
             f'auto_start={self.auto_start}。'
         )
-        if self.auto_start:
-            self.create_timer(0.1, self._auto_start_once)
-
-    def _auto_start_once(self):
-        if self.finished:
-            return
-        self.finished = True
-        self.exit_code = 0 if self.run_once() else 2
-        if self.shutdown_after_done:
-            rclpy.shutdown()
 
     def run_once(self):
+        self.finished = True
         self.get_logger().info('[Mission Piper] 等待 Piper pick/place action server。')
         if not self.pick_client.wait_for_server(timeout_sec=self.wait_action_timeout_s):
             self.get_logger().error('[Mission Piper] /piper/task/pick_object action server 不可用。')
@@ -159,7 +150,7 @@ def main():
     node = MissionPiperPickPlaceDemoNode()
     try:
         if node.auto_start:
-            rclpy.spin(node)
+            node.exit_code = 0 if node.run_once() else 2
         else:
             node.get_logger().info('设置 auto_start:=true 后会顺序调用 Piper pick/place。')
             rclpy.spin(node)

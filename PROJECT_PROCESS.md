@@ -577,3 +577,5 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：为 Piper pick 任务层增加手眼标定门禁：当 `fake_execution=false` 且声明真实 MoveIt2/SDK 后端接入时，若 `hand_eye_calibrated=false` 或标定结果文件不存在，`/piper/task/pick_object` 必须安全 ABORT；新增 `./run.sh piper-hand-eye-gate` 在独立 ROS domain 下验证该安全拒绝路径，不接入 task1 默认导航链路。
 - 2026-07-07：为 Piper 真实机械臂动作增加底盘停止门禁：当 `fake_execution=false` 且声明真实后端接入时，若未显式确认 `base_stop_confirmed=true` 且任务层也没有 `publish_base_stop=true` 主动停车，pick/place 必须安全 ABORT；新增 `./run.sh piper-base-stop-gate` 验证该拒绝路径，防止后续机械臂真实执行与底盘运动互相干扰。
 - 2026-07-07：新增 `./run.sh task1-package-preview`，用于预览 task1 最终压缩包的包含文件、估算体积和排除规则；默认不创建文件，材料补齐后可用 `--create` 输出到 `dist/3232072072234+佘俊谕.zip`，同时将 `dist/` 和 `*.zip` 加入 `.gitignore`，避免打包产物误提交。
+- 2026-07-07：新增 `tasks/task1/TASK1_EVIDENCE_TODO.md` 剩余证据采集清单，把必需截图、建图/导航运行检查、10 次静态避障实验字段、动态障碍物扩展示范和最终严格打包命令集中到一处；`task1-check` 与 `task1-delivery-check` 已将该清单纳入必备文档检查。
+- 2026-07-07：修正 `mission_behavior` 的 Piper pick/place demo 自动启动逻辑，`auto_start=true` 时直接顺序调用 `run_once()`，避免依赖一次性 timer 与 `rclpy.spin()` 的退出时机；该 demo 仍只通过 `/piper/task/*` action 调用机械臂任务层，不直接接触 MoveIt2 或 SDK。
