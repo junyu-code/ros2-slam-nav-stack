@@ -42,6 +42,7 @@ show_help() {
   piper-moveit-smoke    一键启动 MoveIt2 plan-only 并发送规划冒烟请求
   piper-gazebo-smoke    一键启动 headless Gazebo 并检查官方 Piper 适配链
   piper-task-smoke      一键验证 Piper 假感知、抓取候选和 pick/place action
+  piper-full-smoke      顺序运行 Piper 预检、Gazebo、任务 action 和 MoveIt2 烟测
 
 示例：
   ./run.sh sim-static
@@ -57,6 +58,7 @@ show_help() {
   ./run.sh piper-moveit-smoke
   ./run.sh piper-gazebo-smoke
   ./run.sh piper-task-smoke
+  ./run.sh piper-full-smoke
 EOF
 }
 
@@ -93,6 +95,7 @@ script_for_command() {
     piper-moveit-smoke|piper-smoke) echo "piper_moveit_smoke.sh" ;;
     piper-gazebo-smoke|piper-gazebo) echo "piper_gazebo_smoke.sh" ;;
     piper-task-smoke|piper-task) echo "piper_task_smoke.sh" ;;
+    piper-full-smoke|piper-full|piper-all-smoke) echo "piper_full_smoke.sh" ;;
     help|-h|--help) echo "__help__" ;;
     *) return 1 ;;
   esac
