@@ -1,0 +1,25 @@
+localization_guard_node:
+  ros__parameters:
+    use_sim_time: true
+
+    odom_topic: /Odometry
+    cloud_topic: /cloud_registered
+    scan_topic: /scan
+    health_topic: /localization_health
+    fault_topic: /localization_fault
+    diagnostic_topic: /diagnostics
+    cmd_vel_topic: /cmd_vel
+
+    check_rate_hz: 5.0
+    odom_timeout_sec: 1.0
+    cloud_timeout_sec: 1.0
+    scan_timeout_sec: 1.5
+
+    max_linear_speed: 2.0
+    max_angular_speed: 3.5
+    max_pose_jump_m: 1.0
+    max_yaw_jump_rad: 1.2
+    fault_hold_sec: 2.0
+
+    publish_zero_on_fault: false
+    zero_publish_count: 5

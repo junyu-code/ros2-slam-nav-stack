@@ -1,0 +1,30 @@
+mission_behavior_node:
+  ros__parameters:
+    use_sim_time: true
+    auto_start: false
+    frame_id: map
+    goal_x: 8.0
+    goal_y: 4.0
+    goal_yaw: 0.0
+    max_navigation_retries: 1
+    navigate_timeout_sec: 180.0
+    backup_distance: 0.45
+    backup_speed: 0.12
+    backup_timeout_sec: 8.0
+    replan_wait_sec: 0.5
+    recovery_strategy: free_space
+    local_costmap_topic: /local_costmap/costmap
+    odom_topic: /Odometry
+    cmd_vel_topic: /cmd_vel
+    free_space_distance: 0.45
+    free_space_speed: 0.12
+    free_space_corridor_width: 0.55
+    free_space_sample_step: 0.10
+    occupied_cost_threshold: 65
+    unknown_cost_penalty: 0.25
+    occupied_cost_penalty: 5.0
+    max_occupied_ratio: 0.08
+    navigate_action: /navigate_to_pose
+    backup_action: /backup
+    local_clear_service: /local_costmap/clear_entirely_local_costmap
+    global_clear_service: /global_costmap/clear_entirely_global_costmap

@@ -22,12 +22,18 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     gui = LaunchConfiguration('gui')
     world = LaunchConfiguration('world')
+    enable_nav_rgbd_camera = LaunchConfiguration('enable_nav_rgbd_camera')
     world_file = PythonExpression([
         "'", dynamic_world, "' if '", world, "' == 'dynamic' else '", static_world, "'"
     ])
 
     robot_description = ParameterValue(
-        Command(['xacro ', str(robot_xacro)]),
+        Command([
+            'xacro ',
+            str(robot_xacro),
+            ' enable_nav_rgbd_camera:=',
+            enable_nav_rgbd_camera,
+        ]),
         value_type=str,
     )
 
@@ -48,9 +54,19 @@ def generate_launch_description():
             choices=['static', 'dynamic'],
             description='Choose static or dynamic-obstacle test world.',
         ),
+        DeclareLaunchArgument(
+            'enable_nav_rgbd_camera',
+            default_value='false',
+            description='Attach the optional navigation RGB-D camera to the robot model.',
+        ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(gazebo_ros_dir, 'launch', 'gzserver.launch.py')),
-            launch_arguments={'world': world_file}.items(),
+            launch_arguments={
+                'world': world_file,
+                'init': 'true',
+                'factory': 'true',
+                'force_system': 'true',
+            }.items(),
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(gazebo_ros_dir, 'launch', 'gzclient.launch.py')),
@@ -77,7 +93,7 @@ def generate_launch_description():
             output='screen',
         ),
         TimerAction(
-            period=2.0,
+            period=5.0,
             actions=[
                 Node(
                     package='gazebo_ros',
@@ -89,6 +105,7 @@ def generate_launch_description():
                         '-y', '-4.2',
                         '-z', '0.06',
                         '-Y', '0.0',
+                        '-timeout', '120',
                     ],
                     output='screen',
                 )

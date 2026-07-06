@@ -1,0 +1,9 @@
+piper:
+  piper_control_bridge_node:
+    ros__parameters:
+      # MoveIt2 是默认上层路线；SDK 后端只用于低速冒烟和隔离验证。
+      backend: moveit
+      initial_owner: disabled
+      auto_enable: false
+      state_topic: /piper/control/state
+      owner_request_topic: /piper/control/owner_request

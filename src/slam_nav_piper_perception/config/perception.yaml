@@ -1,0 +1,14 @@
+piper:
+  target_pose_estimator_node:
+    ros__parameters:
+      # 机械臂相机必须保持在 /piper/arm_camera 下，不能 remap 到 /nav_camera。
+      color_image_topic: /piper/arm_camera/color/image_raw
+      depth_image_topic: /piper/arm_camera/depth/image_raw
+      depth_camera_info_topic: /piper/arm_camera/depth/camera_info
+      target_pose_topic: /piper/perception/target_pose
+      detections_2d_topic: /piper/perception/detections_2d
+      detections_3d_topic: /piper/perception/detections_3d
+      target_frame: piper_base_link
+      sample_window_px: 12
+      min_depth_m: 0.15
+      max_depth_m: 2.5

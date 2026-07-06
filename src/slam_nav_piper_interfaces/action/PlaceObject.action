@@ -1,0 +1,11 @@
+string object_id
+geometry_msgs/PoseStamped target_pose
+bool open_gripper
+float32 retreat_distance_m
+---
+bool success
+string message
+geometry_msgs/PoseStamped executed_pose
+---
+string stage
+float32 progress

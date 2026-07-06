@@ -11,7 +11,7 @@
         preprocess:
             lidar_type: 1                # 1 个用于 Livox 系列激光雷达，2 个用于 Velodyne LiDAR，3 个用于 ouster LiDAR，
             scan_line:  64
-            blind: 2.0
+            blind: 0.4
             timestamp_unit: 3
             scan_rate: 10
 

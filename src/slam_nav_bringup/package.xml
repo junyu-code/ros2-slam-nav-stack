@@ -10,12 +10,27 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <exec_depend>fast_lio</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>nav2_bringup</exec_depend>
   <exec_depend>nav2_common</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>localization_guard</exec_depend>
+  <exec_depend>pb_omni_pid_pursuit_controller</exec_depend>
+  <exec_depend>pb_nav2_plugins</exec_depend>
+  <exec_depend>perception_adapter</exec_depend>
   <exec_depend>pointcloud_to_laserscan</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>rgbd_navigation_perception</exec_depend>
+  <exec_depend>rosgraph_msgs</exec_depend>
   <exec_depend>rviz2</exec_depend>
+  <exec_depend>safe_cmd_bridge</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>slam_toolbox</exec_depend>
   <exec_depend>teleop_twist_keyboard</exec_depend>
+  <exec_depend>terrain_analysis</exec_depend>
+  <exec_depend>terrain_analysis_ext</exec_depend>
+  <exec_depend>tf2_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

@@ -1,76 +1,220 @@
 # SLAM 导航系统实现过程记录
 
-本文档用于持续记录工程实现过程、参数调整依据和验收截图清单。平时它是开发笔记；整理报告时，可以直接抽取其中的系统架构、实验步骤、结果分析和创新点说明。
+本文档记录当前工程的真实状态、主流程、创新定位和后续维护要点。它服务于 `tasks/task1` 的结课作业材料整理，也避免后续把建图、导航、长期扩展混在一起。
 
 ## 1. 工程定位
 
-目标是在 Ubuntu 22.04 + ROS2 Humble + Gazebo Classic 中实现一个通用移动机器人 SLAM 导航系统，完成：
+当前工程是一个 ROS2 Humble 移动机器人 SLAM 导航底座，运行环境为 Ubuntu 22.04 + Gazebo Classic。
 
-- 构建仿真环境地图。
-- 指定目标点自主导航。
-- 在不少于 5 个静态障碍物的场地中完成避障。
-- 预留动态避障或实物模型演示等扩展方向。
+当前结课作业目标：
 
-工程从已有机器人比赛开发经验中抽取通用能力，但新工作区不再面向比赛任务，不包含自瞄、裁判系统、串口通信、比赛决策等模块。
+- 成功构建仿真环境地图。
+- 使用已保存地图实现指定目标点自主导航。
+- 在包含不少于 5 个障碍物的场地中完成静态避障。
+- 通过截图和实验记录证明静态避障成功率不低于 80%。
 
-## 2. 抽离原则
+长期扩展目标放在 `tasks/task2`，包括 RGB-D 相机、行为树、语义理解和机械臂。
+
+## 2. 保留与抽离原则
 
 保留内容：
 
-- Gazebo 仿真、移动机器人模型和 LiDAR/IMU 传感器。
-- FAST_LIO，用于 LiDAR-Inertial odometry 和点云建图。
-- pointcloud_to_laserscan，用于把 3D 点云压成 2D `/scan`。
-- slam_toolbox，用于在线构建 2D 栅格地图。
-- Nav2，用于目标点导航和静态避障。
+- Gazebo 仿真场地、机器人模型、LiDAR/IMU 传感器。
+- FAST-LIO2 风格 LiDAR-IMU 定位建图前端。
+- `pointcloud_to_laserscan`，用于把 3D 点云转换为 2D `/scan`。
+- `slam_toolbox`，用于首次在线建图。
+- Nav2，用于加载地图后的目标点导航和静态避障。
 
-移除内容：
+不作为当前主线的内容：
 
-- 比赛专用地图、资源和外层启动入口。
-- 自瞄、串口、裁判系统、比赛行为树和比赛决策。
-- 旧工程中的 `build/`、`install/`、`log/` 等生成产物。
+- 比赛专用模块。
+- 动态障碍物作为主创新。
+- 行为树决策不参与当前建图主流程；已新增 `mission_behavior` 作为后续任务层初版。
+- Fast-LIVO/Fast-LIVO2。
+- 深度相机和机械臂。
 
-## 3. 系统链路
+## 3. 主链路
 
-仿真层：
+### 3.1 建图链路
 
-```text
-Gazebo -> mobile_robot.xacro -> /livox/lidar + /livox/imu + /cmd_vel
-```
-
-定位与建图层：
+建图阶段追求地图完整和稳定，不接入 `perception_adapter`。
 
 ```text
-/livox/lidar + /livox/imu -> FAST_LIO -> /Odometry + /cloud_registered
-/cloud_registered -> pointcloud_to_laserscan -> /scan
-/scan + /Odometry -> slam_toolbox -> /map + map->odom
+Gazebo
+  -> /livox/lidar + /livox/imu
+  -> FAST-LIO2
+  -> /Odometry + /cloud_registered
+  -> pointcloud_to_laserscan
+  -> /scan
+  -> slam_toolbox
+  -> /map
+  -> save_map.sh
 ```
 
-导航层：
+### 3.2 导航链路
+
+导航阶段加载已保存地图，不再运行 slam_toolbox 建图。
 
 ```text
-/map + /scan + /Odometry -> Nav2 -> /cmd_vel -> Gazebo robot
+Gazebo
+  -> FAST-LIO2
+  -> pointcloud_to_laserscan -> /scan
+  -> Nav2 + map_server(nav_test_map.yaml) + AMCL initial pose publisher
+  -> /cmd_vel
+  -> Gazebo robot
 ```
 
-## 4. 仿真场地设计
+当前 `start_navigation.sh` 已调整为启动 FAST-LIO2、`pointcloud_to_laserscan`、Nav2 bringup 和初始位姿发布器，并默认加载 `nav_test_map.yaml`。
 
-场地文件：
+导航鲁棒性排查后，当前默认链路先做“底层稳定性优先”的修复，而不是立即替换整套控制器：
+
+- Livox 仿真点云时间戳统一使用 Gazebo `world->SimTime()`，避免 `/clock`、TF 缓存和点云消息时间不一致。
+- FAST-LIO2 的近距离盲区从 2.0 m 调整为 0.4 m，保留更多近距离障碍点，避免机器人面前障碍物被前端直接滤掉。
+- `pointcloud_to_laserscan` 的 TF 容忍从 0.05 s 调整为 0.20 s，降低 FAST-LIO 和 TF 轻微延迟时 `/scan` 丢帧的概率。
+- Nav2 障碍观测增加短时保留，并提高 DWB 中障碍物 critic 权重，先缓解贴障、局部卡住和障碍闪烁问题。
+
+这一步不改变算法主线，只是先修复会导致“容易飘、局部避障弱、时间戳 drop”的底层问题。后续再逐步迁移更强的三维障碍层、自由空间脱困行为和全向路径跟踪控制器。
+
+
+### 3.3 3D 地形代价地图增强链路
+
+默认导航链路只把 `/cloud_registered` 投影为 `/scan` 后送入 Nav2，优点是稳定、容易验收；缺点是会损失高度、密度和局部三维结构信息。为后续复杂障碍场景和实机部署预留鲁棒性提升空间，当前 3D 增强链路已从“简单高度带点云”升级为“两级地形分析 + intensity 体素代价地图”：
 
 ```text
-src/slam_nav_simulation/world/nav_test_world/nav_test_world.world
+Gazebo / real LiDAR
+  -> FAST-LIO2
+  -> /cloud_registered_body + /Odometry
+  -> terrain_analysis
+  -> /terrain_map
+  -> terrain_analysis_ext
+  -> /terrain_map_ext
+  -> Nav2 IntensityVoxelLayer
+  -> local/global costmap
 ```
 
-场地由 SDF 基础几何体搭建，不依赖大型比赛地图模型。设计元素包括：
+对应入口：
 
-- 外围边界墙。
-- 长走廊。
-- 窄门。
-- 两个柱状障碍。
-- 两个低矮障碍。
-- 一个斜坡平台。
+```bash
+cd ~/slam_nav_ws
+./start_navigation_3d.sh
+```
 
-这样可以覆盖建图、局部避障、全局规划和代价地图膨胀等关键问题，同时保持 Gazebo 加载速度较快。
+对应文件：
 
-## 5. 当前启动步骤
+```text
+src/slam_nav_bringup/config/nav2_params_3d.yaml
+src/slam_nav_bringup/launch/navigation_3d.launch.py
+src/terrain_analysis/
+src/terrain_analysis_ext/
+src/pb_nav2_plugins/
+```
+
+这个链路保留原有 `/scan` 障碍层作为稳定兜底，并额外加入地形分析后的 PointCloud2 观测源。一阶段 `terrain_analysis` 维护近场滚动地形图，估计局部地面高度，把点相对地面的高度差写入 `intensity` 并发布 `/terrain_map`；二阶段 `terrain_analysis_ext` 融合近场地形，维护更大范围滚动地形图并发布 `/terrain_map_ext`。Nav2 中的 `IntensityVoxelLayer` 按高度和 intensity 范围筛选障碍点，避免把地面点、历史点云或完整注册点云整片标成障碍。
+
+`adaptive_cloud_filter` 仍保留为松耦合感知适配和可视化诊断入口，但默认 3D costmap 不再直接订阅 `/cloud_nav_filtered`。当前结构的目标是让系统从“2D 投影避障”逐步升级为“2D 稳定兜底 + 3D 地形代价地图”的感知结构。该链路主要面向导航部署阶段，不参与首次建图主流程。
+
+
+### 3.4 部署阶段速度安全桥链路
+
+速度安全桥不参与首次建图，也不强制参与当前作业的默认仿真导航。它是面向后续实机部署的安全层，用于把导航控制器输出的速度指令整理成更适合真实底盘执行的速度。
+
+```text
+Nav2 / teleop / mission_behavior
+  -> /cmd_vel
+  -> safe_cmd_bridge
+  -> 限速、限加速度、死区过滤、超时停车
+  -> /cmd_vel_safe 或 UDP
+  -> 仿真底盘 / 真实底盘控制进程
+```
+
+当前实现位于：
+
+```text
+src/safe_cmd_bridge/
+start_safe_cmd_bridge.sh
+```
+
+它的价值不是提升建图精度，而是提高部署阶段的可控性：防止异常速度直接打到底盘，避免通信中断后继续执行旧速度，并为后续真实底盘接口预留清晰边界。
+
+
+### 3.5 定位健康监控链路
+
+长期运行和实机部署时，系统需要知道定位输入是否仍然可信。新增 `localization_guard` 作为运行时健康监控层：
+
+```text
+/Odometry
+/cloud_registered
+/scan
+  -> localization_guard
+  -> /localization_health
+  -> /localization_fault
+  -> /diagnostics
+```
+
+它会检测里程计、点云和 LaserScan 是否断流，也会检测明显速度异常和位姿跳变。默认只发布状态，不抢控制；需要实机保守策略时，可以设置 `publish_zero_on_fault:=true`，在故障保持时间内向 `/cmd_vel` 发布零速度。
+
+对应文件：
+
+```text
+src/localization_guard/
+start_localization_guard.sh
+```
+
+这个模块不等同于 ICP/GICP 重定位。它是后续重定位触发、安全停车、任务层恢复的状态入口，先解决“系统什么时候应该怀疑定位不可信”的问题。
+
+
+### 3.6 统一鲁棒导航入口
+
+随着增强模块增多，单独启动 3D 导航、定位健康监控和速度安全桥会让实验流程变散。新增 `robust_navigation.launch.py` 作为统一增强入口：
+
+```text
+robust_navigation.launch.py
+  -> navigation_3d.launch.py
+  -> localization_guard.launch.py
+  -> safe_cmd_bridge.launch.py
+```
+
+对应脚本：
+
+```bash
+cd ~/slam_nav_ws
+./start_robust_navigation.sh
+```
+
+默认配置保持保守：
+
+- 3D costmap 参与 Nav2 感知输入。
+- localization_guard 只发布 `/localization_health`、`/localization_fault` 和 `/diagnostics`。
+- safe_cmd_bridge 订阅 `/localization_fault`，并只输出 `/cmd_vel_safe`，不改变默认 `/cmd_vel -> Gazebo robot` 控制链。
+
+进入真实底盘部署阶段后，可以逐步开启故障停车和 UDP 输出：
+
+```bash
+./start_robust_navigation.sh \
+  publish_zero_on_fault:=true \
+  safe_enable_fault_stop:=true \
+  safe_enable_udp_output:=true \
+  safe_udp_host:=192.168.123.22
+```
+
+这个入口用于后续长期增强测试，不强制替代当前结课作业的默认导航流程。
+
+
+### 3.7 任务层行为树链路
+
+行为树不参与首次建图，当前作为导航启动后的上层任务入口。它适合后续接入语义理解、视觉识别和机械臂控制。
+
+```text
+mission_behavior
+  -> NavigateToPose action
+  -> 若失败，读取 local costmap 和 Odometry
+  -> 选择更空的后退/侧移方向并短距离发布 cmd_vel 脱困
+  -> 若自由空间恢复不可用，则回退到 clear costmap + BackUp action
+  -> 等待并重新发送 NavigateToPose
+```
+
+当前版本是轻量 Python 节点，配套 XML 用于描述树结构。后续如果任务复杂度提高，可以迁移为 BehaviorTree.CPP 插件形式。
+## 4. 启动步骤
 
 构建：
 
@@ -80,90 +224,273 @@ cd ~/slam_nav_ws
 source install/setup.bash
 ```
 
-启动仿真：
+建图：
 
 ```bash
+cd ~/slam_nav_ws
+./clean.sh
 ./start_simulation.sh
 ```
 
-启动建图：
+另开终端：
 
 ```bash
+cd ~/slam_nav_ws
 ./start_mapping.sh
 ```
 
-键盘控制探索：
+另开终端控制探索：
 
 ```bash
+cd ~/slam_nav_ws
 ./teleop.sh
 ```
 
 保存地图：
 
 ```bash
+cd ~/slam_nav_ws
 ./save_map.sh nav_test_map
 ```
 
-启动导航：
+导航：
 
 ```bash
+cd ~/slam_nav_ws
+./clean.sh
+./start_simulation.sh
+```
+
+另开终端：
+
+```bash
+cd ~/slam_nav_ws
 ./start_navigation.sh
 ```
 
-## 6. 验收指标对应关系
+导航启动后建议先做一次统一诊断：
+
+```bash
+cd ~/slam_nav_ws
+./diagnose_runtime.sh --duration 5
+```
+
+该诊断用于确认仿真时间、传感器话题、Nav2 输入输出和 TF 链路是否正常，重点关注 `/clock`、`/livox/lidar`、`/cloud_registered`、`/scan`、`/Odometry`、`/map`、`/cmd_vel`、`map -> odom` 和 `map -> base_footprint`。它主要服务于实验复现和故障定位，不改变建图或导航算法流程。
+
+3D 点云代价地图增强导航可选运行：
+
+```bash
+cd ~/slam_nav_ws
+./start_navigation_3d.sh
+```
+
+第一次测试 3D 增强链路时，建议重点观察：
+
+```bash
+ros2 topic hz /cloud_nav_filtered
+ros2 topic echo /perception_mode
+ros2 topic hz /local_costmap/voxel_grid
+ros2 topic hz /global_costmap/voxel_grid
+```
+
+统一鲁棒导航入口可选运行：
+
+```bash
+cd ~/slam_nav_ws
+./start_robust_navigation.sh
+```
+
+它会同时启动 3D 点云代价地图、定位健康监控和速度安全桥。默认适合观察，不会主动改变 Gazebo 底盘控制链。
+
+
+任务层行为树可选运行：
+
+```bash
+cd ~/slam_nav_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch mission_behavior mission_behavior.launch.py auto_start:=true goal_x:=8.0 goal_y:=4.0 goal_yaw:=0.0
+```
+
+速度安全桥可选运行：
+
+```bash
+cd ~/slam_nav_ws
+./start_safe_cmd_bridge.sh
+```
+
+默认输入 `/cmd_vel`，输出 `/cmd_vel_safe`，用于单独验证限速和超时停车。当前作业演示仍可保持默认 `/cmd_vel -> Gazebo robot` 链路；等进入实机部署阶段，再把 Nav2 输出重映射到安全桥输入。
+
+定位健康监控可选运行：
+
+```bash
+cd ~/slam_nav_ws
+./start_localization_guard.sh
+```
+
+常用检查：
+
+```bash
+ros2 topic echo /localization_health
+ros2 topic echo /localization_fault
+ros2 topic echo /diagnostics
+```
+
+默认只监控不干预；实机保守模式可使用：
+
+```bash
+./start_localization_guard.sh publish_zero_on_fault:=true
+```
+
+当前仿真出生点固定，导航启动文件会运行 `publish_initial_pose.py`，等待 `/map`、`/scan`、`/Odometry` 和 AMCL 订阅者就绪后，向 AMCL 发布默认初始位姿 `(0, 0, 0)`。一般直接使用 `2D Goal Pose` 即可；如果 RViz 中机器人位姿明显不准，再使用 `2D Pose Estimate` 手动校正。
+
+Gazebo Classic 在 WSL 中启动较慢时，`/spawn_entity` 服务可能需要二三十秒才出现。当前仿真启动文件已将机器人生成超时提高到 120 秒，并显式加载 `gazebo_ros_init`、`gazebo_ros_factory` 和 `gazebo_ros_force_system`。因此启动仿真后应先等到终端出现 `SpawnEntity: Successfully spawned entity [mobile_robot]`，再判断传感器和导航是否正常。
+
+Livox Mid-360 传感器已设置为 `always_on`，无 GUI 模式也可以发布 `/livox/lidar`。作业演示和截图仍建议使用默认 GUI 模式启动仿真。
+
+## 5. 验收指标对应关系
 
 成功构建环境地图：
 
 - RViz 中显示 `/map`。
-- `src/slam_nav_bringup/map/nav_test_map.yaml` 和 `.pgm` 保存成功。
+- 成功保存 `nav_test_map.yaml` 和 `nav_test_map.pgm`。
 
 实现指定目标点自主导航：
 
-- RViz 中使用 `2D Goal Pose` 设置目标点。
-- Nav2 输出全局路径和局部控制速度。
-- 机器人到达目标点附近。
+- Nav2 成功加载地图。
+- RViz 中全局路径出现。
+- 机器人发布 `/cmd_vel` 并向目标点移动。
+- 最终到达目标点附近。
 
 静态避障成功率不低于 80%：
 
-- 在 5 个以上不同目标点测试中记录成功/失败。
-- 至少 5 次测试中 4 次成功，或 10 次测试中 8 次成功。
+- 建议至少测试 10 次目标点导航。
+- 记录成功、失败、碰撞或卡住情况。
+- 成功次数不少于 8 次即可满足 80%。
 
 地图障碍物不少于 5 个：
 
-- 当前场地包含长墙、窄门、柱子、低矮障碍、斜坡平台等多类障碍。
-- 报告截图中需要标注至少 5 个障碍物位置。
+- 静态场地中包含外围墙、走廊、窄门、柱状障碍、低矮障碍、斜坡平台等。
+- 报告截图中需要标注至少 5 个障碍物。
 
-创新部分候选：
+## 6. 当前创新点定位
 
-- 在 Gazebo 中添加可移动障碍物，测试局部 costmap 对动态障碍的响应。
-- 调整 inflation radius、controller 参数，比较不同避障效果。
-- 用实物模型搭建简化地图，复用 Nav2 地图与路径规划截图进行对比说明。
+当前不把动态障碍物作为主创新点。更稳的创新定位是：
+
+```text
+设计可扩展的 ROS2 移动机器人 SLAM 导航底座，
+并预留部署阶段的松耦合感知适配接口与 3D 点云避障增强链路。
+```
+
+`src/perception_adapter/` 是这个接口的初步实现：
+
+- 订阅 `/cloud_registered` 和 `/Odometry`。
+- 发布 `/cloud_nav_filtered` 和 `/perception_mode`。
+- 当前不参与首次建图。
+- 后续可接入导航部署阶段，用于速度自适应点云处理、RGB-D 深度相机、语义识别和行为树决策。
+
+报告中应诚实表述为“架构扩展设计与接口预留”，不要写成已经显著提升建图质量。
+
+当前 3D 点云增强链路可表述为“在 2D LaserScan 导航输入基础上，增加 PointCloud2 体素代价地图观测源”。它提升的是避障感知输入的丰富度，不改变 FAST-LIO2 建图算法本身。报告中可以把它放在系统改进或后续扩展章节，并用 RViz 中 voxel grid/costmap 的截图证明链路接入成功。
+
+当前导航部分还加入了“拥挤障碍恢复策略”作为可验证的小创新点。Nav2 默认行为树中保留标准 `BackUp` 作为稳定兜底；任务层 `mission_behavior` 进一步实现了基于 local costmap 的自由空间脱困恢复：
+
+```text
+规划或跟踪失败
+  -> 读取 local costmap
+  -> 对后方、左后、右后、左、右方向进行走廊采样
+  -> 选择占用率更低的方向短距离脱困
+  -> 若采样数据不可用，则回退到清理 costmap + BackUp
+  -> 等待 0.5 s
+  -> 重新规划
+```
+
+对应文件为：
+
+```text
+src/mission_behavior/scripts/mission_behavior_node.py
+src/mission_behavior/config/mission_behavior.yaml
+src/mission_behavior/behavior_tree/mission_navigation_recovery.xml
+src/slam_nav_bringup/behavior_tree/navigate_to_pose_with_backup_recovery.xml
+src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.xml
+```
+
+报告中可以表述为“面向拥挤障碍场景的局部自由空间脱困恢复策略”，不要夸大成全新局部规划算法。它属于任务层恢复行为增强：正常路径跟踪仍由 Nav2 局部控制器完成，只有导航失败后才短时间介入。
+
+部署增强部分新增了“速度安全桥”作为长期扩展创新链路的一部分：
+
+```text
+规划器输出速度
+  -> 安全桥限幅和限加速度
+  -> 指令超时自动降零
+  -> 可选 ROS topic 或 UDP 输出
+```
+
+报告中如果需要写到这一点，应表述为“面向真实底盘部署的速度安全接口设计”。它是工程鲁棒性增强，不是 SLAM 算法本身创新；现阶段更适合放在系统设计或后续扩展章节中。
+
+定位健康监控可以作为另一个工程鲁棒性增强点：
+
+```text
+定位输入断流/跳变/速度异常
+  -> 发布 localization_fault
+  -> safe_cmd_bridge 将安全速度降为零
+  -> 任务层可进一步触发重试或重定位
+```
+
+报告中可表述为“面向长期运行的定位健康监测与安全状态输出”。它不宣称解决重定位问题，而是为后续地图辅助重定位提供触发条件。
 
 ## 7. 截图清单
 
-建议报告至少包含：
+结课报告建议至少收集：
 
-- Gazebo 测试场地总览，标注障碍物。
-- RViz 中 FAST_LIO 点云或 `/cloud_registered`。
-- RViz 中 slam_toolbox 生成的 `/map`。
-- 地图保存后的 `.pgm` 图片。
-- Nav2 全局路径和局部代价地图。
-- 机器人到达目标点前后对比。
-- 避障测试统计表。
+- Gazebo 静态场地总览，标注 5 个以上障碍物。
+- RViz 建图过程，显示 `/map`、TF、点云或 `/scan`。
+- 保存后的地图文件截图或 `.pgm` 地图图像。
+- Nav2 加载地图后的 RViz。
+- 初始位姿发布器日志或 `map -> base_footprint` TF 检查结果。
+- `2D Goal Pose` 后的全局路径。
+- 机器人绕障碍运动过程。
+- 到达目标点后的截图。
+- 静态避障测试记录表。
 
-## 8. 后续维护记录
+## 8. 维护记录
 
-- 2026-07-03：创建独立工作区 `~/slam_nav_ws`，抽取通用 SLAM/导航链路，新增通用仿真包与启动脚本。
-- 2026-07-03：补齐 `livox_ros_driver2` 与 `Livox-SDK2` 依赖，移除会牵引比赛接口的自定义控制器包，改用 Nav2 标准 DWB 控制器；完成全工作区构建验证，`colcon build` 最终显示 8 个包构建成功。
-- 2026-07-03：验证 `mobile_robot.xacro` 可正常生成 URDF，验证 `simulation.launch.py`、`mapping.launch.py`、`navigation.launch.py` 均可被 ROS2 launch 解析。
-- 2026-07-03：处理 slam_toolbox 启动时的 `minimum laser range setting (0.0 m)` 警告。原因是 `/scan` 消息的最近量程约为 0.3-0.35 m，而 slam_toolbox 默认最小量程为 0.0 m；已在建图参数中加入 `min_laser_range: 0.35`，与点云转 LaserScan 的 `range_min` 对齐。这类警告不代表仿真雷达无数据，看到 `Registering sensor: [Custom Described Lidar]` 反而说明 `/scan` 已被 slam_toolbox 识别。
-## 9. 动态障碍物扩展记录
-
-- 场地现在分成两个版本：`nav_test_world.world` 是原始静态场地，`nav_test_world_dynamic.world` 是带动态障碍物的场地。
-- 默认脚本 `./start_simulation.sh` 启动静态场地；`./start_simulation_dynamic.sh` 或 `./start_simulation.sh world:=dynamic` 启动动态场地。
-- 2026-07-03：在 `slam_nav_simulation` 中新增 Gazebo Classic `ModelPlugin`：`dynamic_obstacle_plugin`。
-- 在 `nav_test_world_dynamic.world` 中添加红色圆柱模型 `moving_obstacle`，轨迹为场地中部沿 y 方向往返移动，参数包括起点、终点、速度和停顿时间。
-- `moving_obstacle` 带有 collision，不只是视觉动画，因此可以进入 LiDAR 扫描结果和 Nav2 costmap，可作为动态避障创新点的基础。
-- 验证方式：无 GUI 加载 world 后执行 `gz model -m moving_obstacle -p`，间隔查询显示 y 坐标从约 `-2.49` 变化到约 `-0.88`，说明插件和运动轨迹正常。
-- 2026-07-04：新增第二个速度更快的蓝色圆柱动态障碍物 `fast_moving_obstacle`。它在场地中部通道出口附近沿 x 方向往返移动，速度约 `0.85 m/s`，用于和原来的低速动态障碍物形成对比，便于测试 Nav2 local costmap 对不同速度障碍物的响应。
-- 2026-07-04：将 `fast_moving_obstacle` 从场地上方边界附近移到中部通道出口附近，轨迹调整为 `(-0.8, 0.0)` 到 `(3.6, 0.0)`。这个位置更容易被常用导航路线遇到，同时不会直接贴墙或穿过右侧柱状静态障碍物。
+- 2026-07-03：创建 `~/slam_nav_ws`，抽取通用 SLAM/导航能力，去除比赛专用模块。
+- 2026-07-03：完成基础仿真、建图、导航包整理。
+- 2026-07-03：修正 slam_toolbox 最小激光量程参数，与 `/scan` 的 `range_min` 对齐。
+- 2026-07-04：曾添加动态障碍物场地作为可选扩展，但当前不再作为主创新点。
+- 2026-07-05：整理 FAST-LIO2 与 Point-LIO 学习笔记到 `tasks/task0`。
+- 2026-07-05：创建 `tasks/task1/PROJECT_DELIVERY_GUIDE.md`，用于当前作业交付整理。
+- 2026-07-05：创建 `tasks/task2/FUTURE_ROADMAP.md`，用于长期扩展规划。
+- 2026-07-05：新增 `perception_adapter` 作为部署阶段感知适配接口雏形。
+- 2026-07-05：删除“adapter 参与建图”的入口，明确建图阶段使用原始稳定链路。
+- 2026-07-05：修正 `navigation.launch.py`，使导航流程加载保存地图，并启动 FAST-LIO2 与 `/scan` 输入。
+- 2026-07-05：补全 AMCL 参数，统一 Nav2 机器人基坐标为 `base_footprint`，导航启动时延后 Nav2 以等待 FAST-LIO 初始化。
+- 2026-07-05：为 Livox Mid-360 仿真传感器补充 `always_on`，修复无 GUI 模式下 `/livox/lidar` 可能不发布的问题。
+- 2026-07-05：新增 `publish_initial_pose.py`，在 `/map`、`/scan`、`/Odometry` 和 AMCL 订阅者就绪后发布 `/initialpose`，修复导航启动时 `map` 坐标系无法稳定建立的问题。
+- 2026-07-05：将导航启动拆分为 localization 和 navigation 两阶段，先启动 `map_server`/AMCL 并等待初始位姿发布器确认 `map -> base_footprint` 可用，再启动 planner/controller，避免 `planner_server` 抢先激活导致持续报 `map` frame 不存在。
+- 2026-07-05：将 AMCL 的 `transform_tolerance` 从 1.0 调整为 0.2，减少 `map -> odom` 变换发布时间过于靠未来造成的 costmap 外推等待。
+- 2026-07-05：加固 `slam_nav_simulation` 启动流程，显式启用 Gazebo ROS init/factory 插件，并把 `spawn_entity.py` 超时提高到 120 秒，适配 WSL/Gazebo Classic 慢启动。
+- 2026-07-05：扩展 `clean.sh` 的清理范围，覆盖 Nav2、AMCL、map_server、planner/controller、lifecycle_manager 等残留进程，避免多次测试后的旧节点互相干扰。
+- 2026-07-06：为 `build.sh`、`start_simulation.sh`、`start_mapping.sh`、`start_navigation.sh`、`teleop.sh` 和 `save_map.sh` 增加 ROS2 覆盖层清理，启动前清除当前终端中可能遗留的旧工作区路径，避免 `nav2_planner` 等包从 `/home/junyu/0glut2` 混入当前工程。
+- 2026-07-06：记录 `GridBased failed to generate a valid path` 的排查经验：若目标点在原始地图中为可通行区域，仍需检查机器人起点是否贴近障碍物膨胀区，以及 `ros2 pkg prefix nav2_planner` 是否指向 `/opt/ros/humble`。
+- 2026-07-06：新增显式 Nav2 行为树，调整恢复动作顺序为清理代价地图、后退脱困、等待重规划、旋转恢复，用于改善前方障碍密集时机器人卡在局部膨胀区的问题。
+- 2026-07-06：新增 `mission_behavior` 任务层行为树包，提供导航动作调用、代价地图清理、后退脱困和重试流程，作为后续语义理解、视觉识别和机械臂调度的上层入口。
+- 2026-07-06：明确 Nav2 的全局/局部规划链路。全局规划器由 `NavfnPlanner` 调整为 `SmacPlanner2D`，让路径搜索考虑代价地图代价；局部控制仍使用官方 `DWBLocalPlanner`，但开启 y 方向速度采样与速度平滑器 y 向输出，使仿真中的全向底盘能够横向避障，而不是按差速底盘方式硬转。
+- 2026-07-06：根据鲁棒性复盘完成底层稳定性修复：Livox 仿真点云改用 Gazebo 仿真时间戳，FAST-LIO2 近距离盲区从 2.0 m 降至 0.4 m，`pointcloud_to_laserscan` TF 容忍提高到 0.20 s，Nav2 障碍观测增加短时保留并提高障碍 critic 权重。该修改优先解决时间戳 drop、近距离障碍缺失和局部避障偏弱问题。
+- 2026-07-06：新增 `diagnose_runtime.sh` 和 `diagnose_runtime.py` 运行时诊断工具，用于采样 `/clock`、关键传感器话题、Nav2 输入输出和 TF 链路，辅助定位时间戳错位、话题断流和坐标变换断链问题。
+- 2026-07-06：新增 `tasks/task2/ROBUST_NAVIGATION_UPGRADE_PLAN.md`，把后续鲁棒导航增强拆分为感知分割、时空体素代价地图、全向路径跟踪控制器、插件化脱困、安全底盘适配和点云重定位等可执行阶段。
+- 2026-07-06：扩展 `perception_adapter`，在保留 `/cloud_nav_filtered` 的基础上新增 `/nav_obstacle_cloud` 和 `/nav_ground_cloud` 输出，作为后续导航障碍点云和地面点云分离的可视化验证入口。
+- 2026-07-06：根据 RViz 中机器人周围大面积误判障碍的现象，收敛 `nav2_params_3d.yaml` 默认观测源：VoxelLayer 改为订阅 `/nav_obstacle_cloud`，不再默认订阅完整 `/cloud_nav_filtered` 和 `/visual_obstacles`，避免地面点、历史点云或未验证 RGB-D 点云污染代价地图。
+- 2026-07-06：扩展 `diagnose_runtime.py` 的可选采样范围，加入 `/cloud_nav_filtered`、`/nav_obstacle_cloud`、`/nav_ground_cloud`、`/visual_obstacles` 和导航深度相机话题，方便区分 LiDAR 点云、RGB-D 点云和 Nav2 costmap 输入是否异常。
+- 2026-07-06：继续增强 `diagnose_runtime.py`，新增 costmap 观测源订阅检查；当 local/global costmap 仍订阅完整 `/cloud_nav_filtered` 或未验证的 `/visual_obstacles` 时会给出警告，避免旧参数导致机器人周围被大面积误判为障碍。
+- 2026-07-06：补齐完整 3D 地形导航链路：迁入并泛化 `terrain_analysis` 与 `terrain_analysis_ext` 两级滚动地形分析，默认接 `/cloud_registered_body` 与 `/Odometry`，发布 `/terrain_map` 与 `/terrain_map_ext`。
+- 2026-07-06：迁入 Nav2 强度体素层和自由空间后退行为插件；`nav2_params_3d.yaml` 改为使用 `pb_nav2_costmap_2d::IntensityVoxelLayer`，并将 `backup` 恢复行为替换为 `pb_nav2_behaviors/BackUpFreeSpace`，用于拥挤场景下优先向更空方向脱困。
+- 2026-07-06：`navigation_3d.launch.py` 与 `robust_navigation.launch.py` 默认拉起两级地形分析；`diagnose_runtime.py` 增加 `/terrain_map`、`/terrain_map_ext` 采样和 costmap 订阅检查。
+- 2026-07-06：迁入并泛化全向 PID 路径跟踪控制器 `pb_omni_pid_pursuit_controller`，删除比赛模式、比赛区域坐标和 `rm_decision_interfaces` 依赖；`nav2_params_3d.yaml` 将 `FollowPath` 从 DWB 切换为 `pb_omni_pid_pursuit_controller::OmniPidPursuitController`，保留前瞻点跟踪、接近目标减速、曲率限速和基于里程计的卡住后退脱困逻辑。
+- 2026-07-06：修复 `IntensityVoxelLayer` 导致 `Navigation inactive` 的插件库冲突：自定义 costmap 插件库原名 `liblayers.so` 与 Nav2 官方 `liblayers.so` 重名，导致 local costmap 首次加载时找不到 `nav2_costmap_2d::ObstacleLayer` 符号。现已改名为 `libpb_intensity_voxel_layer.so`，并显式链接官方 Nav2 costmap layers 库。
+- 2026-07-06：修正行为树插件加载方式：`ReactiveSequence` 是 BehaviorTree.CPP 内置控制节点，不是 Humble 中的 Nav2 动态插件，不能写入 `plugin_lib_names`，否则 `bt_navigator` 会因找不到 `libnav2_reactive_sequence_bt_node.so` 而配置失败。当前保留 XML 中的 `ReactiveSequence`，但不再把它作为动态库加载。
+- 2026-07-06：参考既有工程的 Nav2 启动方式，将 `navigation.launch.py`、`navigation_3d.launch.py` 和 `robust_navigation.launch.py` 默认切换为 composition 模式，启动 `component_container_mt` 并把 Nav2 localization/navigation 组件加载到同一个 `nav2_container`。该调整用于降低 WSL 高负载下 lifecycle service 响应超时的概率，避免 `smoother_server/get_state` 偶发超时后导致 `bt_navigator` 停留在 `unconfigured`。
+- 2026-07-06：新增 Piper 移动操作扩展包族 `slam_nav_piper_*`，包括项目侧 action/msg、Piper 占位 TF、独立 `/piper/arm_camera/*` 感知、MoveIt2/SDK 控制边界、pick/place action server 和独立 bringup。该扩展不接入 task1 默认建图/导航脚本，不复用 `/nav_camera/*`，也不默认进入 Nav2 costmap。
+- 2026-07-06：安装 `ros-humble-moveit-ros-planning-interface` 及 MoveIt2 规划相关依赖，确认 `moveit_ros_planning_interface`、`moveit_ros_move_group` 和 `moveit_core` 均来自 `/opt/ros/humble`。当前 Piper 控制层仍保持安全占位后端，后续接真实 MoveIt2 时在 `slam_nav_piper_control` 内部适配。
+- 2026-07-06：为导航启动增加 `localization_mode` 参数，支持 `amcl` 与 `static` 两种定位模式。`amcl` 保留 `/scan` 与静态地图匹配后的重定位能力，但初始位姿不准或场景局部相似时可能把 `map->odom` 拉偏；`static` 模式只启动 `map_server` 并发布固定 `map->odom`，适合同一仿真地图、同一起点的短程导航对齐测试。`start_navigation_3d.sh` 与 `start_robust_navigation.sh` 默认改为 `localization_mode:=static`，用于先排除 AMCL 对地图/点云对齐的干扰。

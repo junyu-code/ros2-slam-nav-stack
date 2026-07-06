@@ -1,0 +1,9 @@
+piper_mobile_manipulation:
+  ros__parameters:
+    # 该文件记录默认边界：Piper 扩展不自动接入 task1 导航主链路。
+    namespace: /piper
+    arm_camera_namespace: /piper/arm_camera
+    navigation_camera_namespace: /nav_camera
+    default_control_backend: moveit
+    real_robot_auto_enable: false
+    publish_base_stop_by_default: false

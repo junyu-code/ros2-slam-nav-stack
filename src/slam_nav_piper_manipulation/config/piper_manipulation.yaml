@@ -1,0 +1,13 @@
+piper:
+  piper_task_server_node:
+    ros__parameters:
+      target_pose_topic: /piper/perception/target_pose
+      grasp_candidates_topic: /piper/grasp_candidates
+      control_state_topic: /piper/control/state
+      owner_request_topic: /piper/control/owner_request
+      base_cmd_vel_topic: /cmd_vel
+      # 默认不主动发布 /cmd_vel，避免影响 task1 主导航链路；实机任务编排时再打开。
+      publish_base_stop: false
+      fake_execution: true
+      default_approach_distance_m: 0.10
+      default_gripper_width_m: 0.06

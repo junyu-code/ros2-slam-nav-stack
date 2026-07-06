@@ -1,0 +1,10 @@
+std_msgs/Header header
+string object_id
+string object_class
+geometry_msgs/PoseStamped grasp_pose
+geometry_msgs/PoseStamped pre_grasp_pose
+float32 score
+float32 gripper_width_m
+float32 approach_distance_m
+string source_frame
+string[] tags

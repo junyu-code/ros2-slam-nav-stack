@@ -1,6 +1,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <gazebo_ros/node.hpp>
 #include <rclcpp/logging.hpp>
+#include <builtin_interfaces/msg/time.hpp>
 
 #include <gazebo/physics/Model.hh>
 #include <gazebo/physics/MultiRayShape.hh>// Store the latest laser scans into laserMsg
@@ -9,6 +10,7 @@
 #include <gazebo/sensors/RaySensor.hh>
 #include <gazebo/transport/Node.hh>
 #include <chrono>
+#include <cstdint>
 #include "ros2_livox/livox_points_plugin.h"
 #include "ros2_livox/csv_reader.hpp"
 #include "ros2_livox/livox_ode_multiray_shape.h"
@@ -136,16 +138,22 @@ namespace gazebo
         msgs::LaserScan *scan = laserMsg.mutable_scan();
         InitializeScan(scan);
 
+        // Gazebo 仿真必须使用 world->SimTime()，否则 ROS 消息时间会和 /clock、TF 缓存错开。
+        const auto sim_time = world->SimTime();
+        builtin_interfaces::msg::Time sim_stamp;
+        sim_stamp.sec = sim_time.sec;
+        sim_stamp.nanosec = static_cast<uint32_t>(sim_time.nsec);
+
         // 创建自定义消息 pp_livox，用于发布 Livox CustomMsg 类型消息
         livox_ros_driver2::msg::CustomMsg pp_livox;
-        pp_livox.header.stamp = node_->get_clock()->now();
+        pp_livox.header.stamp = sim_stamp;
         pp_livox.header.frame_id = raySensor->Name();
         int count = 0;
         boost::chrono::high_resolution_clock::time_point start_time = boost::chrono::high_resolution_clock::now();
 
         // 用于 PointCloud2 类型消息发布
         sensor_msgs::msg::PointCloud cloud;
-        cloud.header.stamp = node_->get_clock()->now();
+        cloud.header.stamp = sim_stamp;
         cloud.header.frame_id = raySensor->Name();
         auto &clouds = cloud.points;
 

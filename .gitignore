@@ -8,5 +8,6 @@ __pycache__/
 *.db3
 *.mcap
 *.log
+tasks/
 src/FAST_LIO/PCD/
 src/FAST_LIO/Log/*.txt

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root main_tree_to_execute="MissionNavigation">
+  <BehaviorTree ID="MissionNavigation">
+    <!-- 高层任务树示意：后续可替换为 BehaviorTree.CPP 插件版本。 -->
+    <Sequence name="MissionNavigation">
+      <WaitForNav2Interfaces/>
+      <Fallback name="NavigateWithRecovery">
+        <NavigateToPose/>
+        <Sequence name="FreeSpaceRecoveryAndRetry">
+          <Fallback name="EscapeRecovery">
+            <FreeSpaceRecovery distance="0.45" speed="0.12"/>
+            <Sequence name="FallbackBackup">
+              <ClearLocalCostmap/>
+              <ClearGlobalCostmap/>
+              <BackUp distance="0.45" speed="0.12"/>
+            </Sequence>
+          </Fallback>
+          <Wait seconds="0.5"/>
+          <NavigateToPose/>
+        </Sequence>
+      </Fallback>
+    </Sequence>
+  </BehaviorTree>
+</root>

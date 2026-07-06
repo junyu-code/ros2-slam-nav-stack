@@ -1,8 +1,22 @@
 <?xml version="1.0"?>
 <robot name="mobile_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="enable_nav_rgbd_camera" default="false"/>
   <xacro:property name="PI" value="3.141592653589793"/>
+  <!-- 底盘几何参数需要与 Nav2 footprint 保持同步，footprint 额外留安全余量。 -->
+  <xacro:property name="chassis_length" value="0.46"/>
+  <xacro:property name="chassis_width" value="0.34"/>
+  <xacro:property name="chassis_height" value="0.12"/>
+  <xacro:property name="chassis_mass" value="8.0"/>
   <xacro:property name="wheel_radius" value="0.06"/>
   <xacro:property name="wheel_length" value="0.05"/>
+  <xacro:property name="wheel_x" value="0.16"/>
+  <xacro:property name="wheel_y" value="0.16"/>
+  <xacro:property name="imu_x" value="0.10"/>
+  <xacro:property name="imu_z" value="0.15"/>
+  <xacro:property name="livox_x" value="0.12"/>
+  <xacro:property name="livox_z" value="0.20"/>
+  <xacro:property name="nav_camera_x" value="0.24"/>
+  <xacro:property name="nav_camera_z" value="0.20"/>
 
   <xacro:macro name="box_inertial" params="mass x y z">
     <inertial>
@@ -42,7 +56,7 @@
     <visual>
       <origin xyz="0 0 0.06" rpy="0 0 0"/>
       <geometry>
-        <box size="0.46 0.34 0.12"/>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
       </geometry>
       <material name="body_blue">
         <color rgba="0.10 0.28 0.55 1"/>
@@ -51,10 +65,10 @@
     <collision>
       <origin xyz="0 0 0.06" rpy="0 0 0"/>
       <geometry>
-        <box size="0.46 0.34 0.12"/>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
       </geometry>
     </collision>
-    <xacro:box_inertial mass="8.0" x="0.46" y="0.34" z="0.12"/>
+    <xacro:box_inertial mass="${chassis_mass}" x="${chassis_length}" y="${chassis_width}" z="${chassis_height}"/>
   </link>
 
   <xacro:macro name="wheel" params="name x y">
@@ -85,10 +99,10 @@
     </joint>
   </xacro:macro>
 
-  <xacro:wheel name="front_left_wheel" x="0.16" y="0.16"/>
-  <xacro:wheel name="rear_left_wheel" x="-0.16" y="0.16"/>
-  <xacro:wheel name="front_right_wheel" x="0.16" y="-0.16"/>
-  <xacro:wheel name="rear_right_wheel" x="-0.16" y="-0.16"/>
+  <xacro:wheel name="front_left_wheel" x="${wheel_x}" y="${wheel_y}"/>
+  <xacro:wheel name="rear_left_wheel" x="${-wheel_x}" y="${wheel_y}"/>
+  <xacro:wheel name="front_right_wheel" x="${wheel_x}" y="${-wheel_y}"/>
+  <xacro:wheel name="rear_right_wheel" x="${-wheel_x}" y="${-wheel_y}"/>
 
   <link name="imu_link">
     <visual>
@@ -111,7 +125,7 @@
   <joint name="imu_joint" type="fixed">
     <parent link="base_link"/>
     <child link="imu_link"/>
-    <origin xyz="0.10 0 0.15" rpy="0 0 0"/>
+    <origin xyz="${imu_x} 0 ${imu_z}" rpy="0 0 0"/>
   </joint>
 
   <gazebo reference="base_link">
@@ -144,8 +158,8 @@
       <rightFrontJoint>front_right_wheel_joint</rightFrontJoint>
       <leftRearJoint>rear_left_wheel_joint</leftRearJoint>
       <rightRearJoint>rear_right_wheel_joint</rightRearJoint>
-      <wheelSeparation>0.32</wheelSeparation>
-      <wheelDiameter>0.12</wheelDiameter>
+      <wheelSeparation>${wheel_y * 2.0}</wheelSeparation>
+      <wheelDiameter>${wheel_radius * 2.0}</wheelDiameter>
     </plugin>
   </gazebo>
 
@@ -168,6 +182,83 @@
 
   <xacro:include filename="$(find ros2_livox_simulation)/urdf/mid360.xacro"/>
   <xacro:mid360 name="livox_frame" parent="base_link" topic="/livox/lidar">
-    <origin xyz="0.12 0.0 0.20" rpy="0 0 0"/>
+    <origin xyz="${livox_x} 0.0 ${livox_z}" rpy="0 0 0"/>
   </xacro:mid360>
+
+  <xacro:if value="$(arg enable_nav_rgbd_camera)">
+    <link name="nav_camera_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.06 0.09 0.035"/>
+        </geometry>
+        <material name="nav_camera_black">
+          <color rgba="0.01 0.01 0.01 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.06 0.09 0.035"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="0.12" x="0.06" y="0.09" z="0.035"/>
+    </link>
+
+    <joint name="nav_camera_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="nav_camera_link"/>
+      <origin xyz="${nav_camera_x} 0.0 ${nav_camera_z}" rpy="0 0 0"/>
+    </joint>
+
+    <link name="nav_camera_optical_frame"/>
+
+    <joint name="nav_camera_optical_joint" type="fixed">
+      <parent link="nav_camera_link"/>
+      <child link="nav_camera_optical_frame"/>
+      <!-- ROS 相机光学坐标系：x 向右，y 向下，z 向前。 -->
+      <origin xyz="0 0 0" rpy="${-PI / 2} 0 ${-PI / 2}"/>
+    </joint>
+
+    <gazebo reference="nav_camera_link">
+      <sensor name="nav_camera" type="depth">
+        <always_on>true</always_on>
+        <update_rate>30</update_rate>
+        <visualize>false</visualize>
+        <camera>
+          <horizontal_fov>1.20</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>B8G8R8</format>
+          </image>
+          <depth_camera>
+          </depth_camera>
+          <clip>
+            <near>0.10</near>
+            <far>8.0</far>
+          </clip>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.004</stddev>
+          </noise>
+        </camera>
+        <plugin name="nav_camera_controller" filename="libgazebo_ros_camera.so">
+          <ros>
+            <namespace>nav_camera</namespace>
+            <remapping>gemini_pro/image_raw:=color/image_raw</remapping>
+            <remapping>gemini_pro/depth/image_raw:=depth/image_raw</remapping>
+            <remapping>gemini_pro/camera_info:=color/camera_info</remapping>
+            <remapping>gemini_pro/depth/camera_info:=depth/camera_info</remapping>
+            <remapping>gemini_pro/points:=depth/points</remapping>
+          </ros>
+          <camera_name>gemini_pro</camera_name>
+          <frame_name>nav_camera_optical_frame</frame_name>
+          <min_depth>0.10</min_depth>
+          <max_depth>8.0</max_depth>
+        </plugin>
+      </sensor>
+    </gazebo>
+  </xacro:if>
 </robot>
