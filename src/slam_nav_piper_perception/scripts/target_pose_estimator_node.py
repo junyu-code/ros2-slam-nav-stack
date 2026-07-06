@@ -7,6 +7,7 @@ import rclpy
 from geometry_msgs.msg import PoseStamped
 from rclpy.duration import Duration
 from rclpy.node import Node
+from rclpy.time import Time
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import CameraInfo, Image
 from tf2_ros import Buffer, TransformException, TransformListener
@@ -135,11 +136,16 @@ class TargetPoseEstimatorNode(Node):
                 )
                 return
             try:
+                # 假相机与 joint_state_publisher 分别取当前时间，时间戳可能相差几毫秒。
+                # 这里使用最新可用 TF，避免低速目标估计被未来外推误差卡住。
+                original_stamp = pose.header.stamp
+                pose.header.stamp = Time().to_msg()
                 pose = self.tf_buffer.transform(
                     pose,
                     self.target_frame,
-                    timeout=Duration(seconds=0.05),
+                    timeout=Duration(seconds=0.20),
                 )
+                pose.header.stamp = original_stamp
             except TransformException as exc:
                 self.get_logger().warn(
                     f'等待 Piper 相机到 {self.target_frame} 的 TF: {exc}',
