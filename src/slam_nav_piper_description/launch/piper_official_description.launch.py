@@ -22,6 +22,7 @@ def _include_official_description(context):
     tcp_parent_frame = LaunchConfiguration('official_tcp_parent_frame').perform(context)
     camera_xyz = _split_xyz(LaunchConfiguration('camera_xyz').perform(context))
     camera_rpy = _split_xyz(LaunchConfiguration('camera_rpy').perform(context))
+    enable_piper_gazebo_camera = LaunchConfiguration('enable_piper_gazebo_camera').perform(context)
 
     if len(mount_xyz) != 3 or len(mount_rpy) != 3 or len(camera_xyz) != 3 or len(camera_rpy) != 3:
         return [
@@ -66,6 +67,7 @@ def _include_official_description(context):
                 'tcp_parent_link': tcp_parent_frame,
                 'camera_xyz': ' '.join(camera_xyz),
                 'camera_rpy': ' '.join(camera_rpy),
+                'enable_piper_gazebo_camera': enable_piper_gazebo_camera,
             }.items(),
         ),
     ]
@@ -81,5 +83,10 @@ def generate_launch_description():
         DeclareLaunchArgument('official_tcp_parent_frame', default_value='piper_link6'),
         DeclareLaunchArgument('camera_xyz', default_value='0.04 0.0 0.04'),
         DeclareLaunchArgument('camera_rpy', default_value='0 0 0'),
+        DeclareLaunchArgument(
+            'enable_piper_gazebo_camera',
+            default_value='false',
+            description='显式打开时为官方 Piper 适配链增加 /piper/arm_camera/* Gazebo RGB-D 插件。',
+        ),
         OpaqueFunction(function=_include_official_description),
     ])

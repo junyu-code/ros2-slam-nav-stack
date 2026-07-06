@@ -31,6 +31,7 @@ def generate_launch_description():
     enable_nav_rgbd_camera = LaunchConfiguration('enable_nav_rgbd_camera')
     enable_piper_arm = LaunchConfiguration('enable_piper_arm')
     piper_arm_model = LaunchConfiguration('piper_arm_model')
+    enable_piper_gazebo_camera = LaunchConfiguration('enable_piper_gazebo_camera')
     piper_mount_xyz = LaunchConfiguration('piper_mount_xyz')
     piper_mount_rpy = LaunchConfiguration('piper_mount_rpy')
     piper_tcp_parent_link = LaunchConfiguration('piper_tcp_parent_link')
@@ -50,6 +51,8 @@ def generate_launch_description():
             enable_piper_arm,
             ' --arm-model ',
             piper_arm_model,
+            ' --enable-piper-gazebo-camera ',
+            enable_piper_gazebo_camera,
             ' --mount-xyz "', piper_mount_xyz, '"',
             ' --mount-rpy "', piper_mount_rpy, '"',
             ' --tcp-parent-link ', piper_tcp_parent_link,
@@ -91,6 +94,11 @@ def generate_launch_description():
             default_value='official',
             choices=['official', 'placeholder'],
             description='Choose AgileX official Piper URDF adapter or placeholder fallback.',
+        ),
+        DeclareLaunchArgument(
+            'enable_piper_gazebo_camera',
+            default_value='false',
+            description='Attach an optional Gazebo RGB-D sensor to Piper wrist camera under /piper/arm_camera.',
         ),
         DeclareLaunchArgument(
             'piper_mount_xyz',

@@ -9,6 +9,8 @@ piper_mobile_manipulation:
     publish_base_stop_by_default: false
     gazebo_enable_piper_arm_arg: enable_piper_arm
     gazebo_enable_piper_arm_default: false
+    gazebo_enable_piper_camera_arg: enable_piper_gazebo_camera
+    gazebo_enable_piper_camera_default: false
     # 移动操作组合入口默认复用已有整车 TF，避免与 Gazebo/实机 robot_state_publisher 重复。
     launch_start_description_default: false
     standalone_publish_joint_states_default: true

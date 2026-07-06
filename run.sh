@@ -154,11 +154,10 @@ script_for_command() {
     setup-piper-moveit|setup-piper-moveit-overlay) echo "setup_piper_moveit_overlay.sh" ;;
     piper-safety-check|piper-safety) echo "piper_safety_check.sh" ;;
     piper-preflight|piper-check) echo "piper_preflight.sh" ;;
-    piper-frame-audit|piper-official-frame-audit|piper-frame) echo "piper_official_frame_audit.sh" ;;
+    piper-frame-audit|piper-frame|piper-official-frame|piper-official-frame-audit) echo "piper_official_frame_audit.sh" ;;
     piper-sim) echo "start_piper_sim.sh" ;;
     piper-viz|piper-visualization|piper-rviz) echo "start_piper_visualization.sh" ;;
     piper-moveit-plan|piper-moveit) echo "start_piper_moveit_plan.sh" ;;
-    piper-official-frame-audit|piper-official-frame|piper-frame-audit) echo "piper_official_frame_audit.sh" ;;
     piper-moveit-config|piper-moveit-config-audit) echo "piper_moveit_config_audit.sh" ;;
     piper-hand-eye-check|piper-hand-eye|piper-calibration-check) echo "piper_hand_eye_check.sh" ;;
     piper-hand-eye-gate|piper-hand-eye-smoke|piper-calibration-gate) echo "piper_hand_eye_gate_smoke.sh" ;;

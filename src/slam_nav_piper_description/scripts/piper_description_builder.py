@@ -28,6 +28,13 @@ def parse_args():
     parser.add_argument('--tcp-rpy', default='0 0 0')
     parser.add_argument('--camera-xyz', default='0.04 0.0 0.04')
     parser.add_argument('--camera-rpy', default='0 0 0')
+    parser.add_argument('--enable-piper-gazebo-camera', default='false')
+    parser.add_argument('--piper-gazebo-camera-width', default='640')
+    parser.add_argument('--piper-gazebo-camera-height', default='480')
+    parser.add_argument('--piper-gazebo-camera-update-rate', default='15')
+    parser.add_argument('--piper-gazebo-camera-fov', default='1.20')
+    parser.add_argument('--piper-gazebo-camera-min-depth', default='0.10')
+    parser.add_argument('--piper-gazebo-camera-max-depth', default='3.00')
     return parser.parse_args()
 
 
@@ -102,6 +109,12 @@ def add_fixed_joint(root, name, parent, child, xyz='0 0 0', rpy='0 0 0'):
     add_origin(joint, xyz, rpy)
 
 
+def add_text(parent, tag, text):
+    element = ET.SubElement(parent, tag)
+    element.text = str(text)
+    return element
+
+
 def add_mount(root, parent_frame, args):
     if root.find("./link[@name='piper_mount_link']") is None:
         add_box_link(root, 'piper_mount_link', '0.20 0.18 0.04', '0.25 0.27 0.30 1.0', mass='0.45')
@@ -151,6 +164,52 @@ def add_tcp_and_camera(root, tcp_parent, args):
             '0 0 0',
             '-1.5707963267948966 0 -1.5707963267948966',
         )
+
+    if to_bool(args.enable_piper_gazebo_camera):
+        add_gazebo_arm_camera(root, args)
+
+
+def add_gazebo_arm_camera(root, args):
+    if root.find("./gazebo[@reference='piper_arm_camera_link']/sensor[@name='piper_arm_camera']") is not None:
+        return
+
+    gazebo = ET.SubElement(root, 'gazebo', {'reference': 'piper_arm_camera_link'})
+    sensor = ET.SubElement(gazebo, 'sensor', {'name': 'piper_arm_camera', 'type': 'depth'})
+    add_text(sensor, 'always_on', 'true')
+    add_text(sensor, 'update_rate', args.piper_gazebo_camera_update_rate)
+    add_text(sensor, 'visualize', 'true')
+
+    camera = ET.SubElement(sensor, 'camera')
+    add_text(camera, 'horizontal_fov', args.piper_gazebo_camera_fov)
+    image = ET.SubElement(camera, 'image')
+    add_text(image, 'width', args.piper_gazebo_camera_width)
+    add_text(image, 'height', args.piper_gazebo_camera_height)
+    add_text(image, 'format', 'B8G8R8')
+    ET.SubElement(camera, 'depth_camera')
+    clip = ET.SubElement(camera, 'clip')
+    add_text(clip, 'near', args.piper_gazebo_camera_min_depth)
+    add_text(clip, 'far', args.piper_gazebo_camera_max_depth)
+    noise = ET.SubElement(camera, 'noise')
+    add_text(noise, 'type', 'gaussian')
+    add_text(noise, 'mean', '0.0')
+    add_text(noise, 'stddev', '0.003')
+
+    plugin = ET.SubElement(sensor, 'plugin', {'name': 'piper_arm_camera_controller', 'filename': 'libgazebo_ros_camera.so'})
+    ros = ET.SubElement(plugin, 'ros')
+    # Gazebo 腕部相机只发布到 /piper/arm_camera/*，不能复用 /nav_camera。
+    add_text(ros, 'namespace', '/piper/arm_camera')
+    for remap in (
+        'wrist_rgbd/image_raw:=color/image_raw',
+        'wrist_rgbd/depth/image_raw:=depth/image_raw',
+        'wrist_rgbd/camera_info:=color/camera_info',
+        'wrist_rgbd/depth/camera_info:=depth/camera_info',
+        'wrist_rgbd/points:=depth/points',
+    ):
+        add_text(ros, 'remapping', remap)
+    add_text(plugin, 'camera_name', 'wrist_rgbd')
+    add_text(plugin, 'frame_name', 'piper_arm_camera_optical_frame')
+    add_text(plugin, 'min_depth', args.piper_gazebo_camera_min_depth)
+    add_text(plugin, 'max_depth', args.piper_gazebo_camera_max_depth)
 
 
 def official_path(package_name, relative_path):

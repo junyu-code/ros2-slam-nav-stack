@@ -214,6 +214,11 @@ def check_config(report, workspace_root, args):
         'Gazebo 默认挂载 Piper，会影响 task1 默认仿真。',
     )
     report.expect(
+        not as_bool(mobile.get('gazebo_enable_piper_camera_default')),
+        'Gazebo 腕部 RGB-D 相机默认关闭，避免和 fake/实机相机抢话题。',
+        'Gazebo 腕部 RGB-D 相机不应默认打开。',
+    )
+    report.expect(
         bool(mobile.get('moveit_config_ready')),
         '项目侧 MoveIt2 plan-only 配置已标记就绪。',
         '项目侧 MoveIt2 配置未标记就绪。',

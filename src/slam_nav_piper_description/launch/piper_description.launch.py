@@ -29,6 +29,7 @@ def generate_launch_description():
     tcp_rpy = LaunchConfiguration('tcp_rpy')
     camera_xyz = LaunchConfiguration('camera_xyz')
     camera_rpy = LaunchConfiguration('camera_rpy')
+    enable_piper_gazebo_camera = LaunchConfiguration('enable_piper_gazebo_camera')
     publish_joint_states = LaunchConfiguration('publish_joint_states')
 
     robot_description = ParameterValue(
@@ -47,6 +48,7 @@ def generate_launch_description():
             ' --tcp-rpy "', tcp_rpy, '"',
             ' --camera-xyz "', camera_xyz, '"',
             ' --camera-rpy "', camera_rpy, '"',
+            ' --enable-piper-gazebo-camera ', enable_piper_gazebo_camera,
         ]),
         value_type=str,
     )
@@ -65,6 +67,11 @@ def generate_launch_description():
         DeclareLaunchArgument('tcp_rpy', default_value='0 0 0'),
         DeclareLaunchArgument('camera_xyz', default_value='0.04 0.0 0.04'),
         DeclareLaunchArgument('camera_rpy', default_value='0 0 0'),
+        DeclareLaunchArgument(
+            'enable_piper_gazebo_camera',
+            default_value='false',
+            description='显式打开时在 piper_arm_camera_link 上挂 Gazebo RGB-D 插件，话题固定为 /piper/arm_camera/*。',
+        ),
         DeclareLaunchArgument('publish_joint_states', default_value='false'),
         Node(
             package='joint_state_publisher',

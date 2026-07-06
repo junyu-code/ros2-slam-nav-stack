@@ -36,6 +36,7 @@ setsid ros2 launch slam_nav_simulation simulation.launch.py \
   world:=static \
   enable_piper_arm:=true \
   piper_arm_model:=official \
+  enable_piper_gazebo_camera:=true \
   "$@" >"${LOG_FILE}" 2>&1 &
 LAUNCH_PID="$!"
 
@@ -69,11 +70,18 @@ def wait_for_official_description(timeout_s=90.0):
         if result.returncode == 0:
             has_official_chain = all(
                 name in result.stdout
-                for name in ('piper_base_link', 'piper_joint1', 'piper_joint8', 'piper_arm_camera_optical_frame')
+                for name in (
+                    'piper_base_link',
+                    'piper_joint1',
+                    'piper_joint8',
+                    'piper_arm_camera_optical_frame',
+                    'piper_arm_camera_controller',
+                    '/piper/arm_camera',
+                )
             )
             has_placeholder_chain = 'piper_joint1_placeholder' in result.stdout
             if has_official_chain and not has_placeholder_chain:
-                print('[Piper Gazebo] robot_description 已加载官方 Piper 适配链。')
+                print('[Piper Gazebo] robot_description 已加载官方 Piper 适配链和 Gazebo 腕部相机插件。')
                 return
         time.sleep(2.0)
     print('[Piper Gazebo] 等待官方 Piper robot_description 超时。最后一次输出：', file=sys.stderr)
@@ -113,9 +121,36 @@ def check_gazebo_entity(timeout_s=180.0):
         rclpy.shutdown()
 
 
+def wait_for_piper_camera_topics(timeout_s=120.0):
+    required_topics = {
+        '/piper/arm_camera/color/image_raw',
+        '/piper/arm_camera/color/camera_info',
+        '/piper/arm_camera/depth/image_raw',
+        '/piper/arm_camera/depth/camera_info',
+    }
+    deadline = time.time() + timeout_s
+    topics = set()
+    while time.time() < deadline:
+        result = command(['ros2', 'topic', 'list'], timeout=8.0)
+        topics = {line.strip() for line in result.stdout.splitlines() if line.strip()}
+        missing = sorted(required_topics.difference(topics))
+        nav_camera_topics = sorted(topic for topic in topics if topic.startswith('/nav_camera'))
+        if not missing and not nav_camera_topics:
+            print('[Piper Gazebo] Gazebo 腕部 RGB-D 相机 topic 已按 /piper/arm_camera/* 发布。')
+            return
+        if nav_camera_topics:
+            print(f'[Piper Gazebo] 不应出现 /nav_camera topic：{nav_camera_topics}', file=sys.stderr)
+            raise SystemExit(2)
+        time.sleep(2.0)
+
+    print(f'[Piper Gazebo] 等待 Piper Gazebo 相机 topic 超时，当前 topic：{sorted(topics)}', file=sys.stderr)
+    raise SystemExit(2)
+
+
 wait_for_official_description()
 check_gazebo_entity()
-print('[Piper Gazebo] headless Gazebo + 官方 Piper 适配链烟测通过。')
+wait_for_piper_camera_topics()
+print('[Piper Gazebo] headless Gazebo + 官方 Piper 适配链 + 腕部相机烟测通过。')
 PY
 SMOKE_STATUS="$?"
 set -e

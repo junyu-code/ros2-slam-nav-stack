@@ -97,6 +97,7 @@ show_args = run(['ros2', 'launch', 'slam_nav_simulation', 'simulation.launch.py'
 launch_default(show_args, 'enable_piper_arm', 'false')
 launch_default(show_args, 'enable_nav_rgbd_camera', 'false')
 launch_default(show_args, 'piper_arm_model', 'official')
+launch_default(show_args, 'enable_piper_gazebo_camera', 'false')
 
 builder = ROOT / 'src/slam_nav_piper_description/scripts/piper_description_builder.py'
 base_xacro = ROOT / 'src/slam_nav_simulation/urdf/mobile_robot.xacro'
@@ -130,6 +131,32 @@ if all(token in official_urdf for token in required_tokens) and 'piper_joint1_pl
     ok('显式 enable_piper_arm=true 时使用官方 Piper piper_* 适配链。')
 else:
     fail('显式 enable_piper_arm=true 时未得到完整官方 Piper 适配链，或仍含占位关节。')
+
+if 'piper_arm_camera_controller' in official_urdf or '/piper/arm_camera' in official_urdf:
+    fail('未显式打开 enable_piper_gazebo_camera 时，不应生成 Gazebo 腕部相机插件。')
+else:
+    ok('默认不生成 Piper Gazebo 腕部相机插件。')
+
+piper_camera_urdf = run([
+    'python3',
+    str(builder),
+    '--base-xacro',
+    str(base_xacro),
+    '--enable-piper-arm',
+    'true',
+    '--arm-model',
+    'official',
+    '--enable-piper-gazebo-camera',
+    'true',
+])
+if (
+    'piper_arm_camera_controller' in piper_camera_urdf
+    and '/piper/arm_camera' in piper_camera_urdf
+    and 'nav_camera_controller' not in piper_camera_urdf
+):
+    ok('显式打开 Gazebo 腕部相机时，插件只发布 /piper/arm_camera/*。')
+else:
+    fail('Gazebo 腕部相机插件未按 /piper/arm_camera/* 边界生成，或误引入 nav_camera。')
 
 assert_no_token(
     [

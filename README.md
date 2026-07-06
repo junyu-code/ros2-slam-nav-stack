@@ -754,13 +754,21 @@ source install/setup.bash
 
 这个开关默认关闭；不传 `enable_piper_arm:=true` 时，现有仿真机器人保持 task1 默认形态。显式打开 Piper 时，默认 `piper_arm_model:=official`，会使用 AgileX 官方 Piper URDF 适配链；缺少官方包、只做接口冒烟时可传 `piper_arm_model:=placeholder` 临时退回占位模型。
 
+如果要让 Gazebo 也发布 Piper 腕部 RGB-D 相机话题，显式打开独立开关：
+
+```bash
+./run.sh sim enable_piper_arm:=true enable_piper_gazebo_camera:=true
+```
+
+该插件只发布 `/piper/arm_camera/color/*`、`/piper/arm_camera/depth/*` 和可选点云，不 remap 到 `/nav_camera/*`，也不会成为 Nav2 默认 costmap 观测源。
+
 不打开 GUI、只做一次自动验证：
 
 ```bash
 ./run.sh piper-gazebo-smoke
 ```
 
-该入口会在独立 `ROS_DOMAIN_ID` 和 `GAZEBO_MASTER_URI` 下 headless 启动静态 Gazebo 场地，检查 `/robot_description` 中是官方 `piper_joint*` 适配链，并确认 Gazebo 中已生成 `mobile_robot` 实体；结束后自动清理本次仿真进程。
+该入口会在独立 `ROS_DOMAIN_ID` 和 `GAZEBO_MASTER_URI` 下 headless 启动静态 Gazebo 场地，显式打开 `enable_piper_gazebo_camera:=true`，检查 `/robot_description` 中是官方 `piper_joint*` 适配链、Gazebo 中已生成 `mobile_robot` 实体，并等待 `/piper/arm_camera/*` 相机 topic 出现且没有 `/nav_camera` 泄漏；结束后自动清理本次仿真进程。
 
 占位 fallback：
 
@@ -901,6 +909,12 @@ ros2 launch slam_nav_piper_bringup piper_mobile_manipulation.launch.py use_sim_t
 ```
 
 这个组合入口默认 `start_description:=false`，会复用已启动的整车仿真/实机 TF，避免重复发布 `robot_state_publisher`。脱离 Gazebo 单独跑时再显式加 `start_description:=true publish_joint_states:=true`。
+
+如果前一个 Gazebo 已经用 `enable_piper_gazebo_camera:=true` 发布了腕部 RGB-D，相机节点可以保持关闭，只运行感知和任务层：
+
+```bash
+ros2 launch slam_nav_piper_bringup piper_mobile_manipulation.launch.py use_sim_time:=true fake_camera:=false fake_execution:=true
+```
 
 外部依赖先只记录在 `piper_external.repos`，不并入主仓库：
 
