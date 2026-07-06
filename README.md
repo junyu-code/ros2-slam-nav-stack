@@ -612,6 +612,14 @@ sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-co
 ./run.sh piper-preflight
 ```
 
+Piper 全链路烟测：
+
+```bash
+./run.sh piper-full-smoke
+```
+
+它会顺序运行依赖预检、官方 frame 审计、headless Gazebo 组合模型、fake 感知 + pick/place action、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
+
 先看 Gazebo 里的底盘 + Piper 臂：
 
 ```bash

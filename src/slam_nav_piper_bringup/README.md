@@ -4,6 +4,14 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 
 ## 仿真/冒烟
 
+全链路烟测：
+
+```bash
+./run.sh piper-full-smoke
+```
+
+该入口会顺序跑 `piper-preflight --require-official`、官方 frame audit、`piper-gazebo-smoke`、`piper-task-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从模型、假感知、任务 action 到 MoveIt2 plan-only 都是通的。
+
 ```bash
 ros2 launch slam_nav_piper_bringup piper_sim.launch.py
 ```
