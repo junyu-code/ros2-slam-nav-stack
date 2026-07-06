@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -16,6 +16,8 @@ do
     source "${piper_moveit_local_setup}"
   fi
 done
+
+set -u
 
 echo "[Piper Full] 1/5 依赖预检和官方包检查..."
 "${SCRIPT_DIR}/piper_preflight.sh" --require-official
