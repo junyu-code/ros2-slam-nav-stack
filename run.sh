@@ -32,6 +32,7 @@ show_help() {
   guard                 定位健康监控
   safe-bridge           速度安全桥
   diagnose              运行时诊断
+  task1-check           task1 交付材料预检（不启动 GUI）
   setup-piper           准备 Piper 外部参考包
   setup-piper-moveit    准备 Piper 本地 MoveIt2 OMPL overlay（无需 sudo）
   piper-preflight       Piper 依赖预检（自动加载本地 MoveIt overlay）
@@ -46,6 +47,7 @@ show_help() {
   ./run.sh auto-mapping
   ./run.sh save-pcd nav_test_static
   ./run.sh nav-full
+  ./run.sh task1-check
   ./run.sh setup-piper-moveit
   ./run.sh piper-preflight
   ./run.sh piper-sim
@@ -79,6 +81,7 @@ script_for_command() {
     guard|localization-guard) echo "start_localization_guard.sh" ;;
     safe-bridge) echo "start_safe_cmd_bridge.sh" ;;
     diagnose) echo "diagnose_runtime.sh" ;;
+    task1-check|task1-preflight|task1) echo "task1_preflight.sh" ;;
     setup-piper) echo "setup_piper_open_class.sh" ;;
     setup-piper-moveit|setup-piper-moveit-overlay) echo "setup_piper_moveit_overlay.sh" ;;
     piper-preflight|piper-check) echo "piper_preflight.sh" ;;
@@ -133,7 +136,8 @@ show_menu() {
  10) nav-3d             3D 地形增强导航
  11) nav-full           完整增强导航
  12) diagnose           运行时诊断
- 13) build              编译工作区
+ 13) task1-check        task1 交付材料预检
+ 14) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 EOF
@@ -166,7 +170,8 @@ case "${choice}" in
   10) run_command nav-3d ;;
   11) run_command nav-full ;;
   12) run_command diagnose ;;
-  13) run_command build ;;
+  13) run_command task1-check ;;
+  14) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

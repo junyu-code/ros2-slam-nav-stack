@@ -17,6 +17,7 @@ cd ~/slam_nav_ws
 ./run.sh auto-mapping
 ./run.sh nav
 ./run.sh diagnose --duration 5
+./run.sh task1-check
 ```
 
 实际脚本统一收纳在 `scripts/` 目录，例如 `scripts/start_navigation.sh`。日常建议优先使用 `./run.sh <命令>`，这样根目录更干净，也不需要记住每个脚本文件名。
@@ -28,6 +29,15 @@ tasks/task1/TASK1_FINAL_RUNBOOK.md
 ```
 
 后续跑验收时优先看这份 Runbook，再回到本文档查系统背景。
+
+跑完截图或准备打包前，可以先执行无 GUI 交付预检：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh task1-check
+```
+
+该命令不会启动 Gazebo、RViz 或 Nav2，只检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位。普通模式下，缺截图和待填实验记录只会显示 warning；最终提交前可用 `./run.sh task1-check --strict` 把 warning 也视为未完成。
 
 这是一个面向 Ubuntu 22.04 + ROS2 Humble + Gazebo Classic 的通用移动机器人 SLAM 与自主导航工作区。当前主目标是稳定完成仿真建图、保存地图、加载地图导航、目标点到达和静态避障验证。
 
