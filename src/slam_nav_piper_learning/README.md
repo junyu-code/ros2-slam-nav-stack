@@ -30,3 +30,11 @@ ros2 launch slam_nav_piper_learning piper_learning.launch.py enable_learning:=tr
 ```
 
 `./run.sh piper-learning-smoke` 会发布 3 个假抓取候选，并确认 ranked 输出按分数从高到低排列。`policy_backend:=rl` 和 `policy_backend:=onnx` 只是未来接口占位；模型权重、训练数据、日志和 checkpoint 不放进主仓库。
+
+后续训练前后建议运行：
+
+```bash
+./run.sh piper-size-check
+```
+
+该检查会拒绝把 `datasets/`、`models/`、`checkpoints/`、`runs/`、`weights/`、ONNX/PT 权重、rosbag 和点云产物提交进 Git。大规模训练数据应放外部数据盘、对象存储或 Git LFS。

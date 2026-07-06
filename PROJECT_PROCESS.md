@@ -581,3 +581,4 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：修正 `mission_behavior` 的 Piper pick/place demo 自动启动逻辑，`auto_start=true` 时直接顺序调用 `run_once()`，避免依赖一次性 timer 与 `rclpy.spin()` 的退出时机；该 demo 仍只通过 `/piper/task/*` action 调用机械臂任务层，不直接接触 MoveIt2 或 SDK。
 - 2026-07-07：优化 task1 LaTeX 结课报告截图接入方式，新增 `\taskfigure{文件名}{图题}{缺图提示}` 自动插图宏；后续只需按证据清单把 Gazebo/RViz 截图放入 `tasks/task1/report_latex/figures/`，重新编译后 PDF 会自动插入真实截图，缺图时仍保留占位框。
 - 2026-07-07：新增 `./run.sh piper-viz` Piper RViz 可视化入口，默认启动 Piper 独立 fake runtime 并打开 `piper_visualization.rviz`，用于观察官方 URDF 适配链、TF、假腕部相机和目标位姿；可选 `start_moveit_plan:=true` 只启动 MoveIt2 plan-only 服务，仍保持不执行轨迹、不连接 SDK、不接入 task1/Nav2。
+- 2026-07-07：新增 `./run.sh task1-build-report` 结课报告编译入口，优先使用 WSL `xelatex`，若不可用则自动调用 Windows TeX Live `xelatex.exe` 通过 UNC 路径编译 `tasks/task1/report_latex/main.tex` 两遍；补完截图后可先生成 `main.pdf`，再执行 strict 交付检查和打包。

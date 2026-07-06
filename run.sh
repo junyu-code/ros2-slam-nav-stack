@@ -37,6 +37,7 @@ show_help() {
   task1-runtime-check   task1 运行时链路检查（不启动 GUI）
   task1-delivery-check  task1 打包交付前自查（不启动 GUI）
   task1-package-preview task1 最终压缩包预览/可选创建
+  task1-build-report    编译 task1 LaTeX 结课报告 PDF
   setup-piper           准备 Piper 外部参考包
   setup-piper-moveit    准备 Piper 本地 MoveIt2 OMPL overlay（无需 sudo）
   piper-safety-check    检查 Piper 实机前安全默认值和边界开关
@@ -61,7 +62,8 @@ show_help() {
   piper-control-smoke   一键验证 Piper 控制桥 owner/enable/estop 边界
   piper-real-dry-run    一键验证 Piper 实机入口默认安全拒绝真实执行
   piper-learning-smoke  一键验证 Piper 学习层抓取候选排序旁路
-  piper-full-smoke      顺序运行 Piper 安全、边界、MoveIt2 配置、手眼、TF、命名空间、控制、Gazebo、任务、学习烟测
+  piper-size-check      检查 Piper 外部依赖/数据/权重没有进入 Git 跟踪
+  piper-full-smoke      顺序运行 Piper 安全、边界、体积、MoveIt2、手眼、TF、命名空间、控制、Gazebo、任务、学习烟测
   piper-boundary-check  检查 Piper 未泄漏进 task1/Nav2 或 /nav_camera
 
 示例：
@@ -73,6 +75,7 @@ show_help() {
   ./run.sh task1-runtime-check nav
   ./run.sh task1-delivery-check
   ./run.sh task1-package-preview
+  ./run.sh task1-build-report
   ./run.sh real-preflight
   ./run.sh piper-safety-check
   ./run.sh piper-frame-audit
@@ -97,6 +100,7 @@ show_help() {
   ./run.sh piper-control-smoke
   ./run.sh piper-real-dry-run
   ./run.sh piper-learning-smoke
+  ./run.sh piper-size-check
   ./run.sh piper-full-smoke
   ./run.sh piper-boundary-check
 EOF
@@ -130,6 +134,7 @@ script_for_command() {
     task1-runtime-check|task1-runtime|runtime-check) echo "task1_runtime_check.sh" ;;
     task1-delivery-check|task1-delivery|delivery-check) echo "task1_delivery_check.sh" ;;
     task1-package-preview|task1-package|package-preview) echo "task1_package_preview.sh" ;;
+    task1-build-report|task1-report|build-report|report-build) echo "build_task1_report.sh" ;;
     setup-piper) echo "setup_piper_open_class.sh" ;;
     setup-piper-moveit|setup-piper-moveit-overlay) echo "setup_piper_moveit_overlay.sh" ;;
     piper-safety-check|piper-safety) echo "piper_safety_check.sh" ;;
@@ -154,6 +159,7 @@ script_for_command() {
     piper-control-smoke|piper-control) echo "piper_control_smoke.sh" ;;
     piper-real-dry-run|piper-real-dry|piper-real-smoke) echo "piper_real_dry_run.sh" ;;
     piper-learning-smoke|piper-learning) echo "piper_learning_smoke.sh" ;;
+    piper-size-check|piper-size|piper-repo-size) echo "piper_repo_size_check.sh" ;;
     piper-full-smoke|piper-full|piper-all-smoke) echo "piper_full_smoke.sh" ;;
     piper-boundary-check|piper-boundary) echo "piper_boundary_check.sh" ;;
     help|-h|--help) echo "__help__" ;;
@@ -210,8 +216,9 @@ show_menu() {
  18) task1-check        task1 交付材料预检
  19) task1-delivery     task1 打包交付前自查
  20) package-preview    task1 压缩包预览
- 21) real-preflight     实机部署前预检
- 22) build              编译工作区
+ 21) build-report       编译 task1 结课报告 PDF
+ 22) real-preflight     实机部署前预检
+ 23) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 
@@ -254,8 +261,9 @@ case "${choice}" in
   18) run_command task1-check ;;
   19) run_command task1-delivery-check ;;
   20) run_command task1-package-preview ;;
-  21) run_command real-preflight ;;
-  22) run_command build ;;
+  21) run_command task1-build-report ;;
+  22) run_command real-preflight ;;
+  23) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

@@ -10,7 +10,7 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 ./run.sh piper-full-smoke
 ```
 
-该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-hand-eye-gate`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-mobile-sequence`、`piper-mission-demo`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、真实 pick 标定门禁、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、移动操作组合入口、mission 行为层 action 边界、学习排序到 MoveIt2 plan-only 都是通的。
+该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-size-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-hand-eye-gate`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-mobile-sequence`、`piper-mission-demo`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、仓库体积边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、真实 pick 标定门禁、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、移动操作组合入口、mission 行为层 action 边界、学习排序到 MoveIt2 plan-only 都是通的。
 
 只检查安全默认值，不启动 ROS 节点：
 
@@ -168,6 +168,14 @@ sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-co
 ```
 
 该入口只启动学习排序旁路，发布假抓取候选并检查 ranked 输出顺序。任务层默认仍不消费 `/piper/learning/grasp_candidates_ranked`。
+
+仓库体积边界检查：
+
+```bash
+./run.sh piper-size-check
+```
+
+该入口确认 Piper 外部依赖、训练数据、模型权重、checkpoint、rosbag 和点云产物没有进入 Git 跟踪；已有非 Piper 历史大文件只提示 warning。
 
 ## 预检
 

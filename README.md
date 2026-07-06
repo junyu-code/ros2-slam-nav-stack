@@ -22,6 +22,7 @@ cd ~/slam_nav_ws
 ./run.sh task1-runtime-check nav
 ./run.sh task1-delivery-check
 ./run.sh task1-package-preview
+./run.sh task1-build-report
 ./run.sh real-preflight
 ```
 
@@ -88,6 +89,7 @@ cd ~/slam_nav_ws
 材料全部补齐后，可用下面命令创建压缩包到 `dist/`；`dist/` 和 `*.zip` 已加入 `.gitignore`，不会误提交：
 
 ```bash
+./run.sh task1-build-report
 ./run.sh task1-package-preview --create
 ```
 
@@ -949,6 +951,14 @@ ros2 launch slam_nav_piper_learning piper_learning.launch.py enable_learning:=tr
 ```
 
 `piper-learning-smoke` 会发布 3 个假抓取候选，确认 `/piper/learning/grasp_candidates_ranked` 按分数排序并带上学习后端标签。默认任务层不会消费 ranked 输出，训练数据、模型权重、checkpoint 和 rosbag 也都被 `.gitignore` 排除，避免把 GitHub 仓库撑大。
+
+担心后续 Piper、相机数据或强化学习产物把仓库撑大时，运行：
+
+```bash
+./run.sh piper-size-check
+```
+
+该检查会确认 `external/`、`datasets/`、`models/`、`checkpoints/`、`runs/`、`weights/`、rosbag、点云、ONNX/PT 等权重文件没有进入 Git 跟踪；当前历史里已有的非 Piper 大文件只作为 warning 提示。
 
 实机入口默认不会假装执行真实机械臂：`piper_real.launch.py` 里 `real_backend_connected=false`，可先用 `./run.sh piper-real-dry-run` 验证默认拒绝路径；只有 MoveIt2/SDK 后端完成隔离验证后才显式打开。
 
