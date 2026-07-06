@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}/.."
@@ -16,4 +16,5 @@ do
   fi
 done
 
+set -u
 exec ros2 launch slam_nav_piper_bringup piper_visualization.launch.py "$@"
