@@ -51,7 +51,7 @@ adaptive_cloud_filter
 
 ```bash
 cd ~/slam_nav_ws
-./start_mapping.sh
+./run.sh mapping
 ```
 
 `perception_adapter` 的定位是部署/导航阶段的松耦合感知接口。地图构建完成后，它可以接在 FAST-LIO2 与 Nav2 感知输入之间，用于根据机器人速度和任务状态调整导航点云处理策略，并为后续 RGB-D 深度相机、语义识别和行为树决策预留接口。
@@ -60,10 +60,10 @@ cd ~/slam_nav_ws
 
 ```bash
 cd ~/slam_nav_ws
-./start_navigation_3d.sh
+./run.sh nav-3d
 ```
 
-该入口默认把 `/nav_obstacle_cloud` 接入 Nav2 local/global costmap 的 `VoxelLayer`，同时保留原有 `/scan` 障碍层作为稳定兜底。`/cloud_nav_filtered` 保留为完整过滤点云，主要用于 RViz 可视化和诊断，不再默认直接作为 costmap 障碍源。
+该入口会同时拉起 LiDAR 地形分析、强度体素代价地图和 `/scan` 兜底链路。`/nav_obstacle_cloud`、`/nav_ground_cloud` 和 `/cloud_nav_filtered` 主要用于 RViz 可视化、诊断和后续 costmap 输入评估；默认导航不再把完整 `/cloud_nav_filtered` 直接作为障碍源，避免地面点或历史点云污染局部代价地图。
 
 当前可以单独启动节点做话题验证：
 
@@ -88,7 +88,7 @@ ros2 topic hz /scan
 
 ```bash
 cd ~/slam_nav_ws
-./diagnose_runtime.sh --duration 5
+./run.sh diagnose --duration 5
 ```
 
 ## 后续扩展接口

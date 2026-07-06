@@ -1,6 +1,6 @@
 # slam_nav_piper_bringup
 
-Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `start_mapping.sh`、`start_navigation.sh` 或 `start_navigation_3d.sh` 默认调用。
+Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./run.sh mapping`、`./run.sh nav` 或 `./run.sh nav-3d` 默认调用。
 
 ## 仿真/冒烟
 
@@ -151,6 +151,14 @@ ros2 launch slam_nav_piper_bringup piper_official_gazebo_demo.launch.py start_mo
 ```
 
 `enable_piper_arm` 默认仍是 `false`，因此 task1 默认仿真不变。只有显式打开 Piper 时，默认才使用官方适配链；需要占位模型时可传 `piper_arm_model:=placeholder`。
+
+headless 自动烟测：
+
+```bash
+./run.sh piper-gazebo-smoke
+```
+
+该入口会在独立 `ROS_DOMAIN_ID` 和 `GAZEBO_MASTER_URI` 下启动静态场地、官方 Piper 适配链和 Gazebo server，确认 `/robot_description` 没有落回占位关节，并检查 `mobile_robot` 已经 spawn。它不启动 Nav2、MoveIt2 执行或厂家 SDK。
 
 ## 学习层预留
 

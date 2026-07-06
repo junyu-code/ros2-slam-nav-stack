@@ -24,9 +24,9 @@
 
 ```bash
 cd ~/slam_nav_ws
-./clean.sh
-./start_simulation.sh
-./start_navigation.sh
+./run.sh clean
+./run.sh sim-static
+./run.sh nav
 ```
 
 确认 Nav2 active 后，另开终端运行任务行为树：

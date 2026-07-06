@@ -39,6 +39,7 @@ show_help() {
   piper-moveit-plan     启动 Piper 项目侧 MoveIt2 plan-only 配置
   piper-plan-test       向 MoveIt2 发送一次 Piper plan-only 规划请求
   piper-moveit-smoke    一键启动 MoveIt2 plan-only 并发送规划冒烟请求
+  piper-gazebo-smoke    一键启动 headless Gazebo 并检查官方 Piper 适配链
 
 示例：
   ./run.sh sim-static
@@ -51,6 +52,7 @@ show_help() {
   ./run.sh piper-moveit-plan
   ./run.sh piper-plan-test
   ./run.sh piper-moveit-smoke
+  ./run.sh piper-gazebo-smoke
 EOF
 }
 
@@ -84,6 +86,7 @@ script_for_command() {
     piper-moveit-plan|piper-moveit) echo "start_piper_moveit_plan.sh" ;;
     piper-plan-test|piper-plan-smoke) echo "piper_plan_smoke_test.sh" ;;
     piper-moveit-smoke|piper-smoke) echo "piper_moveit_smoke.sh" ;;
+    piper-gazebo-smoke|piper-gazebo) echo "piper_gazebo_smoke.sh" ;;
     help|-h|--help) echo "__help__" ;;
     *) return 1 ;;
   esac

@@ -161,7 +161,7 @@ cd ~/slam_nav_ws
 ./run.sh nav
 ```
 
-当前 `start_navigation.sh` 会启动：
+当前 `./run.sh nav` 会调用 `scripts/start_navigation.sh` 并启动：
 
 ```text
 FAST-LIO2
@@ -612,6 +612,14 @@ source install/setup.bash
 ```
 
 这个开关默认关闭；不传 `enable_piper_arm:=true` 时，现有仿真机器人保持 task1 默认形态。显式打开 Piper 时，默认 `piper_arm_model:=official`，会使用 AgileX 官方 Piper URDF 适配链；缺少官方包、只做接口冒烟时可传 `piper_arm_model:=placeholder` 临时退回占位模型。
+
+不打开 GUI、只做一次自动验证：
+
+```bash
+./run.sh piper-gazebo-smoke
+```
+
+该入口会在独立 `ROS_DOMAIN_ID` 和 `GAZEBO_MASTER_URI` 下 headless 启动静态 Gazebo 场地，检查 `/robot_description` 中是官方 `piper_joint*` 适配链，并确认 Gazebo 中已生成 `mobile_robot` 实体；结束后自动清理本次仿真进程。
 
 占位 fallback：
 

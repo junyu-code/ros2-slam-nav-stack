@@ -65,7 +65,7 @@ max_result_yaw_jump           # 单次重定位允许的最大 yaw 跳变
 
 ```bash
 cd ~/slam_nav_ws
-./start_relocalization.sh \
+./run.sh relocalization \
   map_pcd_path:=/home/junyu/slam_nav_ws/src/FAST_LIO/PCD/scan.pcd \
   input_cloud_topic:=/cloud_registered \
   publish_tf:=false
@@ -75,7 +75,7 @@ GICP：
 
 ```bash
 cd ~/slam_nav_ws
-./start_relocalization_gicp.sh \
+./run.sh relocalization-gicp \
   map_pcd_path:=/home/junyu/slam_nav_ws/src/FAST_LIO/PCD/scan.pcd \
   input_cloud_topic:=/cloud_registered
 ```
@@ -84,7 +84,7 @@ NDT：
 
 ```bash
 cd ~/slam_nav_ws
-./start_relocalization.sh \
+./run.sh relocalization \
   registration_method:=ndt \
   ndt_resolution:=1.0 \
   ndt_step_size:=0.1 \

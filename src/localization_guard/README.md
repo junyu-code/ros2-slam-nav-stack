@@ -24,7 +24,7 @@
 
 ```bash
 cd ~/slam_nav_ws
-./start_localization_guard.sh
+./run.sh guard
 ```
 
 默认不发零速度，只监控：
