@@ -177,6 +177,23 @@ sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-co
 
 该入口确认 Piper 外部依赖、训练数据、模型权重、checkpoint、rosbag 和点云产物没有进入 Git 跟踪；已有非 Piper 历史大文件只提示 warning。
 
+轻量静态配置验收：
+
+```bash
+./run.sh piper-static-check
+```
+
+该入口串联安全默认值、task1/Nav2 隔离、体积边界、依赖预检、官方 frame audit、MoveIt2 配置映射、手眼标定边界、实机接入前状态报告和 launch 参数展开检查。它不启动 Gazebo、Nav2、MoveIt2 `move_group` 或真实硬件，适合每次修改 Piper 配置后先跑。
+
+实机接入前状态报告：
+
+```bash
+./run.sh piper-real-readiness
+./run.sh piper-real-readiness --require-ready
+```
+
+默认模式会把当前未接入项列为 `WAIT` 并返回成功，适合查看还差什么；`--require-ready` 会把这些 `WAIT` 作为失败，用于真正准备打开真实后端前的门禁。
+
 ## 预检
 
 ```bash
@@ -315,3 +332,14 @@ ros2 launch slam_nav_piper_learning piper_learning.launch.py enable_learning:=tr
 ```
 
 任务层默认不消费 `/piper/learning/grasp_candidates_ranked`。
+
+## 实机前状态报告
+
+Piper 上实机前先使用无 GUI、无真实运动的静态检查：
+
+```bash
+./run.sh piper-static-check
+./run.sh piper-real-readiness
+```
+
+`piper-static-check` 会顺序检查安全默认值、task1/Nav2 隔离边界、仓库体积边界、官方包依赖、URDF frame 映射、MoveIt2 配置、手眼标定边界、实机 readiness 报告和 launch 参数展开。`piper-real-readiness` 会单独输出 OK/WAIT/FAIL 三类状态；默认 WAIT 不算失败，用来确认当前仍处于“配置安全、真实执行未接入/未验收”的阶段。真正上机前再使用 `./run.sh piper-real-readiness --require-ready`，把 WAIT 也视为失败。

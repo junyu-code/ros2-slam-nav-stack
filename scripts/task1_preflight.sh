@@ -75,7 +75,7 @@ for script in \
   start_mapping.sh start_auto_mapping.sh teleop.sh save_map.sh save_pcd_map.sh \
   start_navigation.sh start_navigation_3d.sh start_navigation_rgbd.sh \
   start_navigation_full.sh start_robust_navigation.sh \
-  diagnose_runtime.sh task1_runtime_check.sh task1_delivery_check.sh \
+  diagnose_runtime.sh task1_status.sh task1_runtime_check.sh task1_delivery_check.sh \
   task1_package_preview.sh build_task1_report.sh; do
   check_executable "scripts/${script}" "脚本"
 done
@@ -85,7 +85,7 @@ for command_name in \
   clean build sim sim-static sim-dynamic sim-dynamic-rgbd \
   mapping auto-mapping teleop save-map save-pcd \
   nav nav-3d nav-rgbd nav-full robust-nav \
-  diagnose task1-check task1-runtime-check task1-delivery-check \
+  diagnose task1-status task1-check task1-runtime-check task1-delivery-check \
   task1-package-preview task1-build-report; do
   if grep -q "${command_name}" <<<"${help_text}"; then
     ok "run.sh help 包含命令: ${command_name}"

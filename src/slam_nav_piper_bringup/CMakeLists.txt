@@ -6,6 +6,7 @@ find_package(ament_cmake REQUIRED)
 install(PROGRAMS
   scripts/piper_official_frame_audit.py
   scripts/piper_preflight_check.py
+  scripts/piper_real_readiness_report.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

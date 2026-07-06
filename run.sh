@@ -33,6 +33,7 @@ show_help() {
   safe-bridge           速度安全桥
   real-preflight        实机部署前无 GUI/无硬件预检
   diagnose              运行时诊断
+  task1-status          task1 当前剩余证据/下一步（不启动 GUI）
   task1-check           task1 交付材料预检（不启动 GUI）
   task1-runtime-check   task1 运行时链路检查（不启动 GUI）
   task1-delivery-check  task1 打包交付前自查（不启动 GUI）
@@ -60,9 +61,11 @@ show_help() {
   piper-mobile-sequence 一键验证移动操作组合入口的假相机、停车、pick/place 顺序
   piper-mission-demo    一键验证 mission_behavior 只通过 /piper/task/* 调用 Piper
   piper-control-smoke   一键验证 Piper 控制桥 owner/enable/estop 边界
+  piper-real-readiness  Piper 实机接入前状态报告（默认不要求 ready）
   piper-real-dry-run    一键验证 Piper 实机入口默认安全拒绝真实执行
   piper-learning-smoke  一键验证 Piper 学习层抓取候选排序旁路
   piper-size-check      检查 Piper 外部依赖/数据/权重没有进入 Git 跟踪
+  piper-static-check    Piper 静态配置验收（不启动 Gazebo/MoveIt2/真实硬件）
   piper-full-smoke      顺序运行 Piper 安全、边界、体积、MoveIt2、手眼、TF、命名空间、控制、Gazebo、任务、学习烟测
   piper-boundary-check  检查 Piper 未泄漏进 task1/Nav2 或 /nav_camera
 
@@ -71,6 +74,7 @@ show_help() {
   ./run.sh auto-mapping
   ./run.sh save-pcd nav_test_static
   ./run.sh nav-full
+  ./run.sh task1-status
   ./run.sh task1-check
   ./run.sh task1-runtime-check nav
   ./run.sh task1-delivery-check
@@ -98,9 +102,11 @@ show_help() {
   ./run.sh piper-mobile-sequence
   ./run.sh piper-mission-demo
   ./run.sh piper-control-smoke
+  ./run.sh piper-real-readiness
   ./run.sh piper-real-dry-run
   ./run.sh piper-learning-smoke
   ./run.sh piper-size-check
+  ./run.sh piper-static-check
   ./run.sh piper-full-smoke
   ./run.sh piper-boundary-check
 EOF
@@ -130,6 +136,7 @@ script_for_command() {
     safe-bridge) echo "start_safe_cmd_bridge.sh" ;;
     real-preflight|real-check|deploy-check) echo "real_preflight.sh" ;;
     diagnose) echo "diagnose_runtime.sh" ;;
+    task1-status|task1-next|task1-todo|status-task1) echo "task1_status.sh" ;;
     task1-check|task1-preflight|task1) echo "task1_preflight.sh" ;;
     task1-runtime-check|task1-runtime|runtime-check) echo "task1_runtime_check.sh" ;;
     task1-delivery-check|task1-delivery|delivery-check) echo "task1_delivery_check.sh" ;;
@@ -157,9 +164,11 @@ script_for_command() {
     piper-mobile-sequence|piper-mobile-sequence-smoke|piper-mobile-task) echo "piper_mobile_sequence_smoke.sh" ;;
     piper-mission-demo|piper-mission-smoke|mission-piper-demo) echo "piper_mission_demo_smoke.sh" ;;
     piper-control-smoke|piper-control) echo "piper_control_smoke.sh" ;;
+    piper-real-readiness|piper-real-ready|piper-readiness) echo "piper_real_readiness.sh" ;;
     piper-real-dry-run|piper-real-dry|piper-real-smoke) echo "piper_real_dry_run.sh" ;;
     piper-learning-smoke|piper-learning) echo "piper_learning_smoke.sh" ;;
     piper-size-check|piper-size|piper-repo-size) echo "piper_repo_size_check.sh" ;;
+    piper-static-check|piper-static|piper-config-check|piper-acceptance) echo "piper_static_acceptance.sh" ;;
     piper-full-smoke|piper-full|piper-all-smoke) echo "piper_full_smoke.sh" ;;
     piper-boundary-check|piper-boundary) echo "piper_boundary_check.sh" ;;
     help|-h|--help) echo "__help__" ;;
@@ -213,12 +222,13 @@ show_menu() {
  15) runtime mapping    检查建图运行时链路
  16) runtime nav        检查导航运行时链路
  17) diagnose           运行时诊断
- 18) task1-check        task1 交付材料预检
- 19) task1-delivery     task1 打包交付前自查
- 20) package-preview    task1 压缩包预览
- 21) build-report       编译 task1 结课报告 PDF
- 22) real-preflight     实机部署前预检
- 23) build              编译工作区
+ 18) task1-status       查看 task1 剩余证据和下一步
+ 19) task1-check        task1 交付材料预检
+ 20) task1-delivery     task1 打包交付前自查
+ 21) package-preview    task1 压缩包预览
+ 22) build-report       编译 task1 结课报告 PDF
+ 23) real-preflight     实机部署前预检
+ 24) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 
@@ -258,12 +268,13 @@ case "${choice}" in
   15) run_command task1-runtime-check mapping ;;
   16) run_command task1-runtime-check nav ;;
   17) run_command diagnose ;;
-  18) run_command task1-check ;;
-  19) run_command task1-delivery-check ;;
-  20) run_command task1-package-preview ;;
-  21) run_command task1-build-report ;;
-  22) run_command real-preflight ;;
-  23) run_command build ;;
+  18) run_command task1-status ;;
+  19) run_command task1-check ;;
+  20) run_command task1-delivery-check ;;
+  21) run_command task1-package-preview ;;
+  22) run_command task1-build-report ;;
+  23) run_command real-preflight ;;
+  24) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

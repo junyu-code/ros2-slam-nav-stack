@@ -18,6 +18,7 @@ cd ~/slam_nav_ws
 ./run.sh auto-mapping
 ./run.sh nav
 ./run.sh diagnose --duration 5
+./run.sh task1-status
 ./run.sh task1-check
 ./run.sh task1-runtime-check nav
 ./run.sh task1-delivery-check
@@ -46,6 +47,7 @@ tasks/task1/TASK1_EVIDENCE_TODO.md
 ```bash
 cd ~/slam_nav_ws
 ./run.sh task1-check
+./run.sh task1-status
 ./run.sh clean --dry-run
 ./run.sh clean
 ./run.sh sim-static
@@ -66,11 +68,12 @@ cd ~/slam_nav_ws
 
 ```bash
 cd ~/slam_nav_ws
+./run.sh task1-status
 ./run.sh task1-check
 ./run.sh task1-delivery-check
 ```
 
-这两个命令都不会启动 Gazebo、RViz 或 Nav2。`task1-check` 主要检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位；普通模式下，缺截图和待填实验记录只会显示 warning。
+这些命令都不会启动 Gazebo、RViz 或 Nav2。`task1-status` 是最短状态页，会告诉你当前还缺哪些截图、实验记录、报告 PDF 或 Git 提交；`task1-check` 主要检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位；普通模式下，缺截图和待填实验记录只会显示 warning。
 
 `task1-delivery-check` 更偏向打包视角：它会列出建议压缩包名、必须包含的源码/文档/报告材料、仍缺的截图、实验记录待填字段，以及 Git 中是否误跟踪了 `build/`、`install/`、`log/`、rosbag、点云或模型权重等重型产物。最终打包前建议执行：
 
@@ -959,6 +962,22 @@ ros2 launch slam_nav_piper_learning piper_learning.launch.py enable_learning:=tr
 ```
 
 该检查会确认 `external/`、`datasets/`、`models/`、`checkpoints/`、`runs/`、`weights/`、rosbag、点云、ONNX/PT 等权重文件没有进入 Git 跟踪；当前历史里已有的非 Piper 大文件只作为 warning 提示。
+
+日常改 Piper 配置后，先跑轻量静态验收：
+
+```bash
+./run.sh piper-static-check
+```
+
+它不会启动 Gazebo、Nav2、MoveIt2 `move_group` 或真实硬件，只检查安全默认值、task1 隔离、仓库体积边界、官方 URDF/MoveIt2 映射、手眼标定边界，以及 `piper-viz`、`piper-real` launch 参数能正常展开。
+
+查看实机接入前还差哪些条件：
+
+```bash
+./run.sh piper-real-readiness
+```
+
+该报告默认只汇总状态，不要求真实执行 ready；当前阶段会把 `real_backend_connected=false`、手眼标定结果缺失、底盘停止确认未满足等列为 WAIT。真正准备接实机前可用 `./run.sh piper-real-readiness --require-ready` 让这些 WAIT 变成失败门禁。
 
 实机入口默认不会假装执行真实机械臂：`piper_real.launch.py` 里 `real_backend_connected=false`，可先用 `./run.sh piper-real-dry-run` 验证默认拒绝路径；只有 MoveIt2/SDK 后端完成隔离验证后才显式打开。
 
