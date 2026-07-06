@@ -10,7 +10,7 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 ./run.sh piper-full-smoke
 ```
 
-该入口会顺序跑 `piper-boundary-check`、`piper-preflight --require-official`、官方 frame audit、`piper-tf-smoke`、`piper-control-smoke`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从 task1 隔离边界、运行时 TF、控制安全、模型、假感知、任务 action、学习排序到 MoveIt2 plan-only 都是通的。
+该入口会顺序跑 `piper-boundary-check`、`piper-preflight --require-official`、官方 frame audit、`piper-tf-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从 task1 隔离边界、运行时 TF、控制安全、实机默认拒绝、模型、假感知、任务 action、学习排序到 MoveIt2 plan-only 都是通的。
 
 只检查边界，不启动 Gazebo/MoveIt2：
 
@@ -55,6 +55,14 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=placeholder
 ```
 
 该入口验证 `/piper/control/*` 服务、`moveit/disabled` owner、急停后拒绝 owner 切换和急停中拒绝 enable。它只检查边界状态机，不接真实执行后端。
+
+实机入口 dry-run：
+
+```bash
+./run.sh piper-real-dry-run
+```
+
+该入口启动 `piper_real.launch.py`，保持 `real_backend_connected=false`，确认默认禁用状态下 `home` 失败，pick/place action 返回安全拒绝。它不连接 CAN、SDK 或真实 MoveIt2 执行器。
 
 项目侧 MoveIt2 plan-only 单独启动：
 
@@ -149,6 +157,12 @@ ros2 launch slam_nav_piper_bringup piper_real.launch.py backend:=moveit
 ```
 
 实机默认 `auto_enable=false` 且 `real_backend_connected=false`。启动后需要先验证 CAN/SDK、急停、失能、home 和限速，再把 `real_backend_connected:=true` 作为显式接入声明，逐步执行 MoveIt2 plan-only、低速预抓取、完整 pick/place。
+
+默认拒绝路径可先自动验证：
+
+```bash
+./run.sh piper-real-dry-run
+```
 
 后续接真实 MoveIt2 时，需要确认使用哪套 frame 名：官方 demo 原生使用 `base_link/link1.../joint1...`，移动底盘组合模型使用项目侧 `piper_base_link/piper_link1.../piper_joint1...`。当前已提供项目侧 `slam_nav_piper_moveit_config` 做 plan-only；真实执行后端仍需在 `slam_nav_piper_control` 内部适配。`slam_nav_piper_bringup` 只负责组合这些入口，不应把 Piper 相机或抓取结果接入 Nav2 默认 costmap。
 

@@ -56,6 +56,14 @@ ros2 topic pub --once /piper/control/owner_request std_msgs/msg/String "{data: m
 
 该脚本会在独立 `ROS_DOMAIN_ID` 下启动控制桥，检查服务发现、enable、owner 切换、estop、clear_estop 和 disable。它不连接 SDK、不执行 MoveIt2 轨迹。
 
+实机入口默认拒绝验收：
+
+```bash
+./run.sh piper-real-dry-run
+```
+
+该脚本从 `piper_real.launch.py` 启动完整边界，保持 `real_backend_connected=false`，确认 `home`、pick/place 不会绕过控制桥和真实后端声明。
+
 ## 已预留参数
 
 `config/piper_control.yaml` 已预留：

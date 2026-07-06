@@ -635,7 +635,7 @@ Piper 全链路烟测：
 ./run.sh piper-full-smoke
 ```
 
-它会顺序运行边界检查、依赖预检、官方 frame 审计、运行时 TF 链、控制桥安全边界、headless Gazebo 组合模型、fake 感知 + pick/place action、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
+它会顺序运行边界检查、依赖预检、官方 frame 审计、运行时 TF 链、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
 
 只检查 Piper 是否保持在独立边界内：
 
@@ -706,6 +706,14 @@ source install/setup.bash
 ```
 
 该入口会在独立 `ROS_DOMAIN_ID` 下启动控制桥，验证 `/piper/control/enable`、`disable`、`estop`、`clear_estop`、`home` 服务发现，以及 `moveit/disabled` owner 状态切换。它不连接 MoveIt2 执行器、SDK 或真实机械臂。
+
+一键验证实机入口默认安全拒绝：
+
+```bash
+./run.sh piper-real-dry-run
+```
+
+该入口会启动 `piper_real.launch.py` 的默认安全配置，确认 `auto_enable=false`、`real_backend_connected=false` 时，`home` 服务失败，`/piper/task/pick_object` 和 `/piper/task/place_object` 都返回安全拒绝，不会假装真实执行成功。
 
 项目侧 MoveIt2 plan-only 配置已经独立放在 `slam_nav_piper_moveit_config`，默认不接入 task1、不执行轨迹、不连接 SDK：
 
@@ -809,7 +817,7 @@ ros2 launch slam_nav_piper_learning piper_learning.launch.py enable_learning:=tr
 
 `piper-learning-smoke` 会发布 3 个假抓取候选，确认 `/piper/learning/grasp_candidates_ranked` 按分数排序并带上学习后端标签。默认任务层不会消费 ranked 输出，训练数据、模型权重、checkpoint 和 rosbag 也都被 `.gitignore` 排除，避免把 GitHub 仓库撑大。
 
-实机入口默认不会假装执行真实机械臂：`piper_real.launch.py` 里 `real_backend_connected=false`，只有 MoveIt2/SDK 后端完成隔离验证后才显式打开。
+实机入口默认不会假装执行真实机械臂：`piper_real.launch.py` 里 `real_backend_connected=false`，可先用 `./run.sh piper-real-dry-run` 验证默认拒绝路径；只有 MoveIt2/SDK 后端完成隔离验证后才显式打开。
 
 
 ## 常见问题：FastDDS 共享内存端口锁

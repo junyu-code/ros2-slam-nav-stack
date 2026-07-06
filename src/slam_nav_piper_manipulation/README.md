@@ -21,6 +21,14 @@ Piper 抓取/放置任务层。它暴露项目侧 action，不直接暴露 MoveI
 
 该脚本会启动 Piper fake 感知链路，等待目标位姿与抓取候选，再向 pick/place action 各发送一次 goal。它只验证任务接口和状态机，不接真实 MoveIt2 执行后端或厂家 SDK。当前已验证 fake pick/place 均返回成功。
 
+实机入口默认安全拒绝烟测：
+
+```bash
+./run.sh piper-real-dry-run
+```
+
+该脚本会启动 `piper_real.launch.py` 的默认配置，向 pick/place action 发送目标位姿，并确认 action 以 “真实 MoveIt2/SDK 后端尚未接入” 安全拒绝。它用于防止实机入口在真实后端未接入时误报成功。
+
 ## 学习层边界
 
 配置里已预留 `use_ranked_grasp_candidates` 和 `/piper/learning/grasp_candidates_ranked`，但默认关闭。后续只有在离线评估和仿真冒烟通过后，任务层才应显式消费学习排序结果。
