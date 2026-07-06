@@ -12,6 +12,7 @@ cd ~/slam_nav_ws
 也可以直接带命令运行：
 
 ```bash
+./run.sh clean --dry-run
 ./run.sh sim-static
 ./run.sh mapping
 ./run.sh auto-mapping
@@ -37,12 +38,14 @@ tasks/task1/TASK1_FINAL_RUNBOOK.md
 ```bash
 cd ~/slam_nav_ws
 ./run.sh task1-check
+./run.sh clean --dry-run
 ./run.sh clean
 ./run.sh sim-static
 # 另开终端：./run.sh mapping
 # 另开终端：./run.sh teleop
 # 建图确认：./run.sh task1-runtime-check mapping
 ./run.sh save-map nav_test_map
+./run.sh clean --dry-run
 ./run.sh clean
 ./run.sh sim-static
 # 另开终端：./run.sh nav

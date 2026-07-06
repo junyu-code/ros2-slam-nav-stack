@@ -92,6 +92,12 @@ for command_name in \
   fi
 done
 
+if clean_preview="$(./run.sh clean --dry-run 2>&1)" && grep -q "dry-run" <<<"${clean_preview}"; then
+  ok "clean --dry-run 可用，预检不会终止正在运行的仿真/导航进程"
+else
+  fail "clean --dry-run 入口不可用或输出异常"
+fi
+
 # 核心代码和地图文件。
 for package_dir in \
   src/slam_nav_simulation \

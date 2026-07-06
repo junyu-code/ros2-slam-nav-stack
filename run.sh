@@ -160,23 +160,30 @@ run_command() {
 show_menu() {
   cat <<'EOF'
 请选择要运行的流程：
-  1) clean              清理残留
-  2) sim                启动默认仿真（当前默认动态场地）
+  1) clean --dry-run    预览将清理的进程/共享内存
+  2) clean              清理残留
   3) sim-static         启动静态验收场地
-  4) mapping            手动建图
-  5) auto-mapping       自动探索建图
-  6) teleop             键盘控制
-  7) save-map           保存 2D 栅格地图
-  8) save-pcd           保存 PCD 地图
-  9) nav                默认导航
- 10) nav-3d             3D 地形增强导航
- 11) nav-full           完整增强导航
- 12) diagnose           运行时诊断
- 13) task1-check        task1 交付材料预检
- 14) real-preflight     实机部署前预检
- 15) build              编译工作区
+  4) sim-dynamic        启动动态障碍场地
+  5) sim-dynamic-rgbd   启动动态障碍 + RGB-D 场地
+  6) mapping            手动建图
+  7) auto-mapping       自动探索建图
+  8) teleop             键盘控制
+  9) save-map           保存 2D 栅格地图
+ 10) save-pcd           保存 PCD 地图
+ 11) nav                默认导航
+ 12) nav-3d             3D 地形增强导航
+ 13) nav-rgbd           RGB-D 松耦合导航
+ 14) nav-full           动态障碍 + RGB-D + 3D 完整导航
+ 15) runtime mapping    检查建图运行时链路
+ 16) runtime nav        检查导航运行时链路
+ 17) diagnose           运行时诊断
+ 18) task1-check        task1 交付材料预检
+ 19) real-preflight     实机部署前预检
+ 20) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
+
+也可以直接输入 help 中的任意命令，例如 nav-full、task1-runtime-check nav 或 piper-safety-check。
 EOF
   printf "输入编号或命令："
 }
@@ -189,27 +196,32 @@ show_menu
 read -r choice
 
 case "${choice}" in
-  1) run_command clean ;;
-  2) run_command sim ;;
+  1) run_command clean --dry-run ;;
+  2) run_command clean ;;
   3) run_command sim-static ;;
-  4) run_command mapping ;;
-  5) run_command auto-mapping ;;
-  6) run_command teleop ;;
-  7)
+  4) run_command sim-dynamic ;;
+  5) run_command sim-dynamic-rgbd ;;
+  6) run_command mapping ;;
+  7) run_command auto-mapping ;;
+  8) run_command teleop ;;
+  9)
     read -r -p "地图名 [nav_test_map]：" map_name
     run_command save-map "${map_name:-nav_test_map}"
     ;;
-  8)
+  10)
     read -r -p "PCD 名 [nav_test_static]：" pcd_name
     run_command save-pcd "${pcd_name:-nav_test_static}"
     ;;
-  9) run_command nav ;;
-  10) run_command nav-3d ;;
-  11) run_command nav-full ;;
-  12) run_command diagnose ;;
-  13) run_command task1-check ;;
-  14) run_command real-preflight ;;
-  15) run_command build ;;
+  11) run_command nav ;;
+  12) run_command nav-3d ;;
+  13) run_command nav-rgbd ;;
+  14) run_command nav-full ;;
+  15) run_command task1-runtime-check mapping ;;
+  16) run_command task1-runtime-check nav ;;
+  17) run_command diagnose ;;
+  18) run_command task1-check ;;
+  19) run_command real-preflight ;;
+  20) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;
