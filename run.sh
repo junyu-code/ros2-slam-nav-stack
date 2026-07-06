@@ -31,8 +31,10 @@ show_help() {
   relocalization-gicp   GICP 重定位快捷入口
   guard                 定位健康监控
   safe-bridge           速度安全桥
+  real-preflight        实机部署前无 GUI/无硬件预检
   diagnose              运行时诊断
   task1-check           task1 交付材料预检（不启动 GUI）
+  task1-runtime-check   task1 运行时链路检查（不启动 GUI）
   setup-piper           准备 Piper 外部参考包
   setup-piper-moveit    准备 Piper 本地 MoveIt2 OMPL overlay（无需 sudo）
   piper-preflight       Piper 依赖预检（自动加载本地 MoveIt overlay）
@@ -40,9 +42,14 @@ show_help() {
   piper-moveit-plan     启动 Piper 项目侧 MoveIt2 plan-only 配置
   piper-plan-test       向 MoveIt2 发送一次 Piper plan-only 规划请求
   piper-moveit-smoke    一键启动 MoveIt2 plan-only 并发送规划冒烟请求
+  piper-tf-smoke        一键验证 Piper 运行时 TF 链和 task1 TF 隔离边界
   piper-gazebo-smoke    一键启动 headless Gazebo 并检查官方 Piper 适配链
   piper-task-smoke      一键验证 Piper 假感知、抓取候选和 pick/place action
-  piper-full-smoke      顺序运行 Piper 预检、Gazebo、任务 action 和 MoveIt2 烟测
+  piper-control-smoke   一键验证 Piper 控制桥 owner/enable/estop 边界
+  piper-real-dry-run    一键验证 Piper 实机入口默认安全拒绝真实执行
+  piper-learning-smoke  一键验证 Piper 学习层抓取候选排序旁路
+  piper-full-smoke      顺序运行 Piper 边界、TF、控制、实机 dry-run、Gazebo、任务、学习和 MoveIt2 烟测
+  piper-boundary-check  检查 Piper 未泄漏进 task1/Nav2 或 /nav_camera
 
 示例：
   ./run.sh sim-static
@@ -50,15 +57,22 @@ show_help() {
   ./run.sh save-pcd nav_test_static
   ./run.sh nav-full
   ./run.sh task1-check
+  ./run.sh task1-runtime-check nav
+  ./run.sh real-preflight
   ./run.sh setup-piper-moveit
   ./run.sh piper-preflight
   ./run.sh piper-sim
   ./run.sh piper-moveit-plan
   ./run.sh piper-plan-test
   ./run.sh piper-moveit-smoke
+  ./run.sh piper-tf-smoke
   ./run.sh piper-gazebo-smoke
   ./run.sh piper-task-smoke
+  ./run.sh piper-control-smoke
+  ./run.sh piper-real-dry-run
+  ./run.sh piper-learning-smoke
   ./run.sh piper-full-smoke
+  ./run.sh piper-boundary-check
 EOF
 }
 
@@ -84,8 +98,10 @@ script_for_command() {
     relocalization-gicp|gicp) echo "start_relocalization_gicp.sh" ;;
     guard|localization-guard) echo "start_localization_guard.sh" ;;
     safe-bridge) echo "start_safe_cmd_bridge.sh" ;;
+    real-preflight|real-check|deploy-check) echo "real_preflight.sh" ;;
     diagnose) echo "diagnose_runtime.sh" ;;
     task1-check|task1-preflight|task1) echo "task1_preflight.sh" ;;
+    task1-runtime-check|task1-runtime|runtime-check) echo "task1_runtime_check.sh" ;;
     setup-piper) echo "setup_piper_open_class.sh" ;;
     setup-piper-moveit|setup-piper-moveit-overlay) echo "setup_piper_moveit_overlay.sh" ;;
     piper-preflight|piper-check) echo "piper_preflight.sh" ;;
@@ -93,9 +109,14 @@ script_for_command() {
     piper-moveit-plan|piper-moveit) echo "start_piper_moveit_plan.sh" ;;
     piper-plan-test|piper-plan-smoke) echo "piper_plan_smoke_test.sh" ;;
     piper-moveit-smoke|piper-smoke) echo "piper_moveit_smoke.sh" ;;
+    piper-tf-smoke|piper-tf) echo "piper_tf_smoke.sh" ;;
     piper-gazebo-smoke|piper-gazebo) echo "piper_gazebo_smoke.sh" ;;
     piper-task-smoke|piper-task) echo "piper_task_smoke.sh" ;;
+    piper-control-smoke|piper-control) echo "piper_control_smoke.sh" ;;
+    piper-real-dry-run|piper-real-dry|piper-real-smoke) echo "piper_real_dry_run.sh" ;;
+    piper-learning-smoke|piper-learning) echo "piper_learning_smoke.sh" ;;
     piper-full-smoke|piper-full|piper-all-smoke) echo "piper_full_smoke.sh" ;;
+    piper-boundary-check|piper-boundary) echo "piper_boundary_check.sh" ;;
     help|-h|--help) echo "__help__" ;;
     *) return 1 ;;
   esac
@@ -143,7 +164,8 @@ show_menu() {
  11) nav-full           完整增强导航
  12) diagnose           运行时诊断
  13) task1-check        task1 交付材料预检
- 14) build              编译工作区
+ 14) real-preflight     实机部署前预检
+ 15) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 EOF
@@ -177,7 +199,8 @@ case "${choice}" in
   11) run_command nav-full ;;
   12) run_command diagnose ;;
   13) run_command task1-check ;;
-  14) run_command build ;;
+  14) run_command real-preflight ;;
+  15) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

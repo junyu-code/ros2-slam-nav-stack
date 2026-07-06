@@ -25,7 +25,8 @@ ros2 launch slam_nav_piper_learning piper_learning.launch.py
 仅做启发式排序冒烟：
 
 ```bash
+./run.sh piper-learning-smoke
 ros2 launch slam_nav_piper_learning piper_learning.launch.py enable_learning:=true policy_backend:=heuristic
 ```
 
-`policy_backend:=rl` 和 `policy_backend:=onnx` 只是未来接口占位；模型权重、训练数据、日志和 checkpoint 不放进主仓库。
+`./run.sh piper-learning-smoke` 会发布 3 个假抓取候选，并确认 ranked 输出按分数从高到低排列。`policy_backend:=rl` 和 `policy_backend:=onnx` 只是未来接口占位；模型权重、训练数据、日志和 checkpoint 不放进主仓库。

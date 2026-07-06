@@ -48,6 +48,14 @@ ros2 topic pub --once /piper/control/owner_request std_msgs/msg/String "{data: m
 
 当前节点是后端边界占位实现，不直接控制真实机械臂。接入 AgileX `agx_arm_ros` 或 MoveIt2 后，应在本包内部适配，保持 `/piper/task/*` 上层接口不变。
 
+控制边界烟测：
+
+```bash
+./run.sh piper-control-smoke
+```
+
+该脚本会在独立 `ROS_DOMAIN_ID` 下启动控制桥，检查服务发现、enable、owner 切换、estop、clear_estop 和 disable。它不连接 SDK、不执行 MoveIt2 轨迹。
+
 ## 已预留参数
 
 `config/piper_control.yaml` 已预留：

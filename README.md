@@ -18,6 +18,8 @@ cd ~/slam_nav_ws
 ./run.sh nav
 ./run.sh diagnose --duration 5
 ./run.sh task1-check
+./run.sh task1-runtime-check nav
+./run.sh real-preflight
 ```
 
 实际脚本统一收纳在 `scripts/` 目录，例如 `scripts/start_navigation.sh`。日常建议优先使用 `./run.sh <命令>`，这样根目录更干净，也不需要记住每个脚本文件名。
@@ -62,7 +64,7 @@ slam_nav_ws/
     pb_omni_pid_pursuit_controller/ # 全向底盘 PID 路径跟踪控制器
     mission_behavior/          # 任务层行为树入口，用于导航失败恢复和后续语义/机械臂调度
     slam_nav_piper_interfaces/  # Piper 移动操作项目侧 msg/action 接口
-    slam_nav_piper_description/ # Piper 底盘挂载、腕部相机和占位 TF 描述
+    slam_nav_piper_description/ # Piper 官方 URDF 适配链、底盘挂载和腕部相机 TF
     slam_nav_piper_perception/  # Piper 独立 RGB-D 感知，使用 /piper/arm_camera/*
     slam_nav_piper_control/     # Piper MoveIt2/SDK 控制边界和安全 owner 管理
     slam_nav_piper_manipulation/# Piper pick/place 任务 action server
@@ -368,6 +370,21 @@ safe_cmd_bridge.launch.py
 
 当前作业演示仍建议优先使用 `./run.sh nav` 或 `./run.sh nav-3d`，`./run.sh robust-nav` 更适合后续实机级鲁棒性测试。
 
+进入实机联调前，先做一次无 GUI、无硬件预检：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh real-preflight
+```
+
+该入口不会启动 Gazebo、RViz、Nav2，也不会连接底盘或机械臂。它会检查 `safe_cmd_bridge` 默认是否关闭 UDP 输出、是否开启定位故障停车、速度限幅和超时参数是否合理；检查 `localization_guard`、`cloud_relocalization`、RGB-D 松耦合链路、Piper/task1 隔离边界和网络信息。真正上车前可使用严格模式：
+
+```bash
+./run.sh real-preflight --strict
+```
+
+严格模式会把 warning 也视为未通过，适合在打开 UDP 输出或真实控制后端前做最后确认。
+
 
 ## 可选流程：任务层行为树
 
@@ -618,7 +635,23 @@ Piper 全链路烟测：
 ./run.sh piper-full-smoke
 ```
 
-它会顺序运行依赖预检、官方 frame 审计、headless Gazebo 组合模型、fake 感知 + pick/place action、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
+它会顺序运行边界检查、依赖预检、官方 frame 审计、运行时 TF 链、控制桥安全边界、headless Gazebo 组合模型、fake 感知 + pick/place action、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
+
+只检查 Piper 是否保持在独立边界内：
+
+```bash
+./run.sh piper-boundary-check
+```
+
+该检查会确认 `enable_piper_arm` 与 `enable_nav_rgbd_camera` 默认关闭、默认 robot description 不含 Piper、显式打开 Piper 时使用官方 `piper_joint1...piper_joint8` 适配链且不含占位关节，并确认 task1/Nav2 默认入口没有引用 `/piper`。
+
+只检查 Piper 运行时 TF：
+
+```bash
+./run.sh piper-tf-smoke
+```
+
+该入口会实际查询 `base_link -> piper_base_link`、`piper_base_link -> piper_tcp`、`piper_tcp -> piper_arm_camera_optical_frame`，并确认独立 Piper TF 图没有发布 `map -> odom`、`odom -> base_footprint` 或 `nav_camera` frame。
 
 先看 Gazebo 里的底盘 + Piper 臂：
 
@@ -665,6 +698,14 @@ source install/setup.bash
 ```
 
 该入口会在独立 `ROS_DOMAIN_ID` 下启动 `piper_sim`，等待 `/piper/arm_camera/*`、`/piper/perception/target_pose`、`/piper/grasp_candidates`，然后向 `/piper/task/pick_object` 和 `/piper/task/place_object` 各发送一次 fake goal。它已经完成无 GUI 冒烟验证，只检查项目侧任务边界，不启动 Nav2、不连接真实 SDK。
+
+一键验证控制桥安全服务和 owner 边界：
+
+```bash
+./run.sh piper-control-smoke
+```
+
+该入口会在独立 `ROS_DOMAIN_ID` 下启动控制桥，验证 `/piper/control/enable`、`disable`、`estop`、`clear_estop`、`home` 服务发现，以及 `moveit/disabled` owner 状态切换。它不连接 MoveIt2 执行器、SDK 或真实机械臂。
 
 项目侧 MoveIt2 plan-only 配置已经独立放在 `slam_nav_piper_moveit_config`，默认不接入 task1、不执行轨迹、不连接 SDK：
 
@@ -762,10 +803,11 @@ ros2 launch slam_nav_piper_description piper_official_description.launch.py
 后续可能使用强化学习时，先单独启动学习层做抓取候选排序冒烟：
 
 ```bash
+./run.sh piper-learning-smoke
 ros2 launch slam_nav_piper_learning piper_learning.launch.py enable_learning:=true policy_backend:=heuristic
 ```
 
-默认任务层不会消费 `/piper/learning/grasp_candidates_ranked`，训练数据、模型权重、checkpoint 和 rosbag 也都被 `.gitignore` 排除，避免把 GitHub 仓库撑大。
+`piper-learning-smoke` 会发布 3 个假抓取候选，确认 `/piper/learning/grasp_candidates_ranked` 按分数排序并带上学习后端标签。默认任务层不会消费 ranked 输出，训练数据、模型权重、checkpoint 和 rosbag 也都被 `.gitignore` 排除，避免把 GitHub 仓库撑大。
 
 实机入口默认不会假装执行真实机械臂：`piper_real.launch.py` 里 `real_backend_connected=false`，只有 MoveIt2/SDK 后端完成隔离验证后才显式打开。
 

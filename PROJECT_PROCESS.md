@@ -568,3 +568,5 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：统一 task1 创新与扩展示范截图口径：静态 80% 成功率只使用静态场地 10 次目标点测试，动态障碍物写作扩展验证；RGB-D `/visual_obstacles` 和 `perception_adapter` 截图作为可选扩展材料。同步更新 Markdown 报告、LaTeX 报告、实验记录和交付清单。
 - 2026-07-07：校准 task2 鲁棒导航路线图状态，将已接入的 `IntensityVoxelLayer`、`BackUpFreeSpace`、全向 PID 控制器、`cloud_relocalization` 和 `safe_cmd_bridge` 从“待设计/待实现”更新为“已有初版、待实测调参或闭环验证”。
 - 2026-07-07：新增 `./run.sh task1-check` 无 GUI 交付预检入口，检查根目录统一入口、脚本可执行性、默认地图、task1 文档、报告源文件、截图文件、实验记录占位和无关比赛业务字段；普通模式把截图/实验未完成作为 warning，`--strict` 用于最终打包前确认无 warning。
+- 2026-07-07：新增 `./run.sh task1-runtime-check [mapping|nav|dynamic]` 运行时链路检查入口，用短超时采样当前 ROS 图中的 `/clock`、Livox 点云/IMU、`/Odometry`、`/scan`、`/map`、TF、`/cmd_vel`、Nav2 lifecycle 和 `/navigate_to_pose` action；它不启动 Gazebo/RViz/Nav2，只用于你已经跑起仿真、建图或导航后快速判断能否继续保存地图、发目标点或截图。
+- 2026-07-07：新增 `./run.sh real-preflight` 无 GUI/无硬件实机部署前预检入口，检查 `safe_cmd_bridge` 默认关闭 UDP 输出、保留定位故障停车和速度超时，检查 `localization_guard`、`cloud_relocalization`、RGB-D 松耦合链路、Piper/task1 隔离边界和网络信息；`--strict` 用于上车前把 warning 也视为未通过。

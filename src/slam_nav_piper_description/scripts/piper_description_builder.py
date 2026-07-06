@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument('--placeholder-xacro', default='', help='项目侧占位 Piper xacro。')
     parser.add_argument('--enable-nav-rgbd-camera', default='false')
     parser.add_argument('--enable-piper-arm', default='true')
-    parser.add_argument('--arm-model', choices=['placeholder', 'official'], default='placeholder')
+    parser.add_argument('--arm-model', choices=['placeholder', 'official'], default='official')
     parser.add_argument('--official-description-package', default='piper_description')
     parser.add_argument('--official-description-xacro', default='urdf/piper_description.xacro')
     parser.add_argument('--mount-xyz', default='0.16 0.0 0.22')

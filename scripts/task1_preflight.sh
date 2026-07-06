@@ -73,12 +73,12 @@ for script in \
   build.sh clean.sh start_simulation_static.sh start_simulation_dynamic.sh \
   start_mapping.sh start_auto_mapping.sh teleop.sh save_map.sh \
   start_navigation.sh start_navigation_3d.sh start_navigation_full.sh \
-  diagnose_runtime.sh; do
+  diagnose_runtime.sh task1_runtime_check.sh; do
   check_executable "scripts/${script}" "脚本"
 done
 
 help_text="$(./run.sh help || true)"
-for command_name in sim-static sim-dynamic mapping auto-mapping teleop save-map nav nav-3d nav-full diagnose task1-check; do
+for command_name in sim-static sim-dynamic mapping auto-mapping teleop save-map nav nav-3d nav-full diagnose task1-check task1-runtime-check; do
   if grep -q "${command_name}" <<<"${help_text}"; then
     ok "run.sh help 包含命令: ${command_name}"
   else

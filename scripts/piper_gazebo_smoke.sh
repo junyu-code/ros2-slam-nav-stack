@@ -81,7 +81,7 @@ def wait_for_official_description(timeout_s=90.0):
     raise SystemExit(2)
 
 
-def check_gazebo_entity(timeout_s=90.0):
+def check_gazebo_entity(timeout_s=180.0):
     rclpy.init()
     node = rclpy.create_node('piper_gazebo_smoke_client')
     client = node.create_client(GetModelList, '/get_model_list')
@@ -90,20 +90,24 @@ def check_gazebo_entity(timeout_s=90.0):
             print('[Piper Gazebo] 等待 /get_model_list 超时。', file=sys.stderr)
             raise SystemExit(2)
 
-        request = GetModelList.Request()
-        future = client.call_async(request)
-        rclpy.spin_until_future_complete(node, future, timeout_sec=timeout_s)
-        if not future.done():
-            print('[Piper Gazebo] 查询 Gazebo 模型列表超时。', file=sys.stderr)
-            raise SystemExit(2)
+        deadline = time.time() + timeout_s
+        model_names = []
+        while time.time() < deadline:
+            request = GetModelList.Request()
+            future = client.call_async(request)
+            rclpy.spin_until_future_complete(node, future, timeout_sec=5.0)
+            if future.done():
+                response = future.result()
+                if response is not None and response.success:
+                    model_names = list(response.model_names)
+                    if 'mobile_robot' in model_names:
+                        print('[Piper Gazebo] Gazebo 已生成 mobile_robot 实体。')
+                        return
+            time.sleep(2.0)
 
-        response = future.result()
-        if response is None or not response.success or 'mobile_robot' not in response.model_names:
-            model_names = [] if response is None else list(response.model_names)
+        if 'mobile_robot' not in model_names:
             print(f'[Piper Gazebo] Gazebo 中未找到 mobile_robot，当前模型：{model_names}', file=sys.stderr)
             raise SystemExit(2)
-
-        print('[Piper Gazebo] Gazebo 已生成 mobile_robot 实体。')
     finally:
         node.destroy_node()
         rclpy.shutdown()
