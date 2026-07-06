@@ -19,7 +19,7 @@ usage() {
 
 说明：
   task1 最终交付编排入口，不启动 Gazebo、RViz 或 Nav2。
-  默认流程：查看 task1 状态 -> 刷新状态快照 -> 检查静态避障实验记录 -> 编译结课报告 PDF -> 报告审计 -> strict 预检 -> strict 交付检查 -> 预览压缩包。
+  默认流程：查看 task1 状态 -> 刷新状态快照 -> 同步实验表到报告 -> 检查静态避障实验记录 -> 编译结课报告 PDF -> 报告审计 -> strict 预检 -> strict 交付检查 -> 预览压缩包。
   加 --create 后才会真正创建 zip。
 
 可选参数：
@@ -76,22 +76,25 @@ run_check() {
   "${SCRIPT_DIR}/${script}" "$@"
 }
 
-step "1/8 查看当前 task1 状态"
+step "1/9 查看当前 task1 状态"
 run_check task1_status.sh
 
-step "2/8 刷新 task1 状态快照"
+step "2/9 刷新 task1 状态快照"
 run_check task1_snapshot.sh
+
+step "3/9 同步静态避障实验表到报告片段"
+run_check task1_sync_report.sh
 
 experiment_args=()
 if [[ "${ALLOW_WARNINGS}" != "true" ]]; then
   experiment_args+=(--strict)
 fi
 
-step "3/8 检查静态避障实验记录和成功率"
+step "4/9 检查静态避障实验记录和成功率"
 run_check task1_experiment_check.sh "${experiment_args[@]}"
 
 if [[ "${SKIP_REPORT_BUILD}" == "true" ]]; then
-  step "4/8 跳过报告 PDF 编译"
+  step "5/9 跳过报告 PDF 编译"
 else
   report_args=()
   if [[ "${REPORT_ONCE}" == "true" ]]; then
@@ -100,7 +103,7 @@ else
   if [[ "${KEEP_GOING}" == "true" ]]; then
     report_args+=(--keep-going)
   fi
-  step "4/8 编译 task1 结课报告 PDF"
+  step "5/9 编译 task1 结课报告 PDF"
   run_check build_task1_report.sh "${report_args[@]}"
 fi
 
@@ -113,13 +116,13 @@ if [[ "${ALLOW_WARNINGS}" != "true" ]]; then
   report_audit_args+=(--strict)
 fi
 
-step "5/8 审计 task1 结课报告源文件、截图和 PDF"
+step "6/9 审计 task1 结课报告源文件、截图和 PDF"
 run_check task1_report_audit.sh "${report_audit_args[@]}"
 
-step "6/8 运行 task1 结构预检"
+step "7/9 运行 task1 结构预检"
 run_check task1_preflight.sh "${preflight_args[@]}"
 
-step "7/8 运行 task1 交付检查"
+step "8/9 运行 task1 交付检查"
 run_check task1_delivery_check.sh "${delivery_args[@]}"
 
 package_args=()
@@ -133,7 +136,7 @@ if [[ "${ALLOW_WARNINGS}" == "true" ]]; then
   package_args+=(--allow-warnings)
 fi
 
-step "8/8 预览或创建最终压缩包"
+step "9/9 预览或创建最终压缩包"
 run_check task1_package_preview.sh "${package_args[@]}"
 
 echo

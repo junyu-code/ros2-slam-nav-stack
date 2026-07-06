@@ -76,6 +76,8 @@ check_file "tasks/task1/RUN_AND_SCREENSHOT_STEPS.md" "运行与截图步骤"
 check_file "tasks/task1/EXPERIMENT_RECORD.md" "实验记录表"
 check_file "tasks/task1/SLAM_FINAL_REPORT_DRAFT.md" "Markdown 报告草稿"
 check_file "tasks/task1/report_latex/main.tex" "LaTeX 结课报告源文件"
+check_file "tasks/task1/report_latex/generated_static_trials.tex" "LaTeX 静态避障实验表生成片段"
+check_file "tasks/task1/STATIC_TRIALS_TABLE.md" "Markdown 静态避障实验表生成片段"
 check_file "tasks/task1/homework_latex/main.tex" "LaTeX 平时作业源文件"
 
 check_optional_file "tasks/task1/report_latex/main.pdf" "结课报告 PDF"
@@ -122,7 +124,9 @@ done
 todo_count="$(grep -RInE '待填|待补|待替换|【待插图|placeholderfigure' \
   tasks/task1/EXPERIMENT_RECORD.md \
   tasks/task1/SLAM_FINAL_REPORT_DRAFT.md \
-  tasks/task1/report_latex/main.tex 2>/dev/null | wc -l | tr -d ' ')"
+  tasks/task1/STATIC_TRIALS_TABLE.md \
+  tasks/task1/report_latex/main.tex \
+  tasks/task1/report_latex/generated_static_trials.tex 2>/dev/null | wc -l | tr -d ' ')"
 if [[ "${todo_count}" == "0" ]]; then
   ok "实验记录和报告没有待填/待替换占位"
 else

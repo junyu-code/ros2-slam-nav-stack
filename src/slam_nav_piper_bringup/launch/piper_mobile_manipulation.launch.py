@@ -29,6 +29,11 @@ def generate_launch_description():
     real_backend_connected = LaunchConfiguration('real_backend_connected')
     publish_base_stop = LaunchConfiguration('publish_base_stop')
     use_ranked_grasp_candidates = LaunchConfiguration('use_ranked_grasp_candidates')
+    require_moveit_plan_before_fake_execution = LaunchConfiguration(
+        'require_moveit_plan_before_fake_execution'
+    )
+    moveit_plan_service = LaunchConfiguration('moveit_plan_service')
+    moveit_plan_service_timeout_s = LaunchConfiguration('moveit_plan_service_timeout_s')
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
@@ -48,6 +53,9 @@ def generate_launch_description():
         DeclareLaunchArgument('real_backend_connected', default_value='false'),
         DeclareLaunchArgument('publish_base_stop', default_value='false'),
         DeclareLaunchArgument('use_ranked_grasp_candidates', default_value='false'),
+        DeclareLaunchArgument('require_moveit_plan_before_fake_execution', default_value='false'),
+        DeclareLaunchArgument('moveit_plan_service', default_value='/piper/plan_kinematic_path'),
+        DeclareLaunchArgument('moveit_plan_service_timeout_s', default_value='10.0'),
         include(
             'slam_nav_piper_description',
             'launch/piper_description.launch.py',
@@ -82,6 +90,9 @@ def generate_launch_description():
                 'real_backend_connected': real_backend_connected,
                 'publish_base_stop': publish_base_stop,
                 'use_ranked_grasp_candidates': use_ranked_grasp_candidates,
+                'require_moveit_plan_before_fake_execution': require_moveit_plan_before_fake_execution,
+                'moveit_plan_service': moveit_plan_service,
+                'moveit_plan_service_timeout_s': moveit_plan_service_timeout_s,
             },
         ),
     ])

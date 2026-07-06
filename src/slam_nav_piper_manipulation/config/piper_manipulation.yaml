@@ -22,6 +22,23 @@ piper:
       hand_eye_calibrated: false
       hand_eye_result_must_exist: true
       hand_eye_result_path: datasets/piper_hand_eye/piper_eye_in_hand.yaml
+      # 默认不让任务层等待 MoveIt2；专门 smoke/plan-only 验收时再显式打开。
+      require_moveit_plan_before_fake_execution: false
+      moveit_plan_service: /piper/plan_kinematic_path
+      moveit_planning_group: piper_arm
+      moveit_planner_id: RRTConnect
+      moveit_plan_joint_names:
+        - piper_joint1
+        - piper_joint2
+        - piper_joint3
+        - piper_joint4
+        - piper_joint5
+        - piper_joint6
+      moveit_plan_target_positions: [0.0, 0.4164, -0.5409, 0.0, 0.0, 0.0]
+      moveit_plan_joint_tolerance: 0.02
+      moveit_plan_allowed_time_s: 5.0
+      moveit_plan_attempts: 5
+      moveit_plan_service_timeout_s: 10.0
       default_approach_distance_m: 0.10
       default_gripper_width_m: 0.06
       # 强化学习/学习排序结果默认不接入，后续充分验证后再改为 true。

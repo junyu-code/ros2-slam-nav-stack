@@ -21,6 +21,11 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     arm_model = LaunchConfiguration('arm_model')
     publish_joint_states = LaunchConfiguration('publish_joint_states')
+    require_moveit_plan_before_fake_execution = LaunchConfiguration(
+        'require_moveit_plan_before_fake_execution'
+    )
+    moveit_plan_service = LaunchConfiguration('moveit_plan_service')
+    moveit_plan_service_timeout_s = LaunchConfiguration('moveit_plan_service_timeout_s')
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
@@ -30,6 +35,9 @@ def generate_launch_description():
             default_value='true',
             description='Piper 独立仿真默认发布假关节状态，保证腕部相机 TF 可用。',
         ),
+        DeclareLaunchArgument('require_moveit_plan_before_fake_execution', default_value='false'),
+        DeclareLaunchArgument('moveit_plan_service', default_value='/piper/plan_kinematic_path'),
+        DeclareLaunchArgument('moveit_plan_service_timeout_s', default_value='10.0'),
         include(
             'slam_nav_piper_description',
             'launch/piper_description.launch.py',
@@ -61,6 +69,9 @@ def generate_launch_description():
                 'use_sim_time': use_sim_time,
                 'fake_execution': 'true',
                 'publish_base_stop': 'false',
+                'require_moveit_plan_before_fake_execution': require_moveit_plan_before_fake_execution,
+                'moveit_plan_service': moveit_plan_service,
+                'moveit_plan_service_timeout_s': moveit_plan_service_timeout_s,
             },
         ),
     ])

@@ -136,6 +136,11 @@ run_windows_xelatex() {
 echo "[task1-report] 工作区: ${WORKSPACE_DIR}"
 echo "[task1-report] 报告源文件: ${REPORT_DIR}/${TEX_FILE}"
 
+if [[ -x "${SCRIPT_DIR}/task1_sync_report.sh" ]]; then
+  echo "[task1-report] 同步静态避障实验表..."
+  "${SCRIPT_DIR}/task1_sync_report.sh" --quiet
+fi
+
 if command -v xelatex >/dev/null 2>&1; then
   run_linux_xelatex "$(command -v xelatex)"
 elif windows_xelatex="$(find_windows_xelatex)"; then

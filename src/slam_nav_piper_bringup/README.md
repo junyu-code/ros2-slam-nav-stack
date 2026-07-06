@@ -10,7 +10,7 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 ./run.sh piper-full-smoke
 ```
 
-该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-size-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-hand-eye-gate`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-mobile-sequence`、`piper-mission-demo`、`piper-learning-smoke`、`piper-ranked-gate` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、仓库体积边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、真实 pick 标定门禁、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、移动操作组合入口、mission 行为层 action 边界、学习排序、任务层 ranked 候选显式消费到 MoveIt2 plan-only 都是通的。
+该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-size-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-hand-eye-gate`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-viz-smoke`、`piper-mobile-sequence`、`piper-mission-demo`、`piper-learning-smoke`、`piper-ranked-gate`、`piper-task-moveit-gate-fail`、`piper-task-moveit-gate` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、仓库体积边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、真实 pick 标定门禁、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、可视化入口、移动操作组合入口、mission 行为层 action 边界、学习排序、任务层 ranked 候选显式消费、任务层 MoveIt2 plan-only 正反门禁到 MoveIt2 plan-only 都是通的。
 
 只检查安全默认值，不启动 ROS 节点：
 
@@ -52,13 +52,21 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py
 ./run.sh piper-viz
 ```
 
-该入口默认启动 `piper_sim.launch.py` 并打开 `config/piper_visualization.rviz`，可查看官方 Piper 适配链 RobotModel、TF、假腕部 RGB 图、带检测框的 `/piper/perception/debug_image`、`/piper/perception/target_pose` 和 `/piper/visualization/grasp_candidates` 抓取候选 marker。它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹。需要同时看 MoveIt2 plan-only 服务时可显式加：
+该入口默认启动 `piper_sim.launch.py` 并打开 `config/piper_visualization.rviz`，可查看官方 Piper 适配链 RobotModel、TF、假腕部 RGB 图、带检测框的 `/piper/perception/debug_image`、`/piper/perception/target_pose` 和 `/piper/visualization/grasp_candidates` 抓取候选 marker。它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹，RViz 配置不提供 `/initialpose` 或 `/goal_pose` 这类 Nav2 交互工具。需要同时看 MoveIt2 plan-only 服务时可显式加：
 
 ```bash
 ./run.sh piper-viz start_moveit_plan:=true
 ```
 
 此时仍保持 `allow_trajectory_execution=false`，只用于观察规划服务和 RViz 模型。
+
+不打开 GUI、只检查可视化配置：
+
+```bash
+./run.sh piper-viz-smoke
+```
+
+该入口会检查 `piper_visualization.launch.py --show-args`、`rviz2` 可执行文件、RobotModel/TF/Image/Pose/MarkerArray 显示项，以及 RViz 配置是否只引用 `/piper/*` 可视化话题。
 
 缺少官方包、只想先检查 `/piper` 话题/action 边界时，可以显式退回占位 TF：
 
@@ -160,6 +168,22 @@ sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-co
 ```
 
 该测试只验证 `/piper/plan_kinematic_path`、`piper_arm` planning group 和 OMPL 规划链路能返回非空轨迹，不执行轨迹、不连接 SDK。
+
+任务层 MoveIt2 plan-only 门禁：
+
+```bash
+./run.sh piper-task-moveit-gate
+```
+
+该入口显式打开 `require_moveit_plan_before_fake_execution:=true`，让 `/piper/task/pick_object` 和 `/piper/task/place_object` 在 fake 成功前先请求 `/piper/plan_kinematic_path`。默认 launch 仍保持关闭；这个检查只证明任务 action 到 MoveIt2 plan-only 的边界可用，不执行机械臂轨迹。
+
+反向门禁：
+
+```bash
+./run.sh piper-task-moveit-gate-fail
+```
+
+该入口不启动 MoveIt2，确认打开 plan-only 门禁后任务 action 会因为规划服务缺失而失败，不会继续 fake 成功。
 
 学习层候选排序烟测：
 

@@ -23,6 +23,11 @@ def generate_launch_description():
     hand_eye_result_must_exist = LaunchConfiguration('hand_eye_result_must_exist')
     hand_eye_result_path = LaunchConfiguration('hand_eye_result_path')
     use_ranked_grasp_candidates = LaunchConfiguration('use_ranked_grasp_candidates')
+    require_moveit_plan_before_fake_execution = LaunchConfiguration(
+        'require_moveit_plan_before_fake_execution'
+    )
+    moveit_plan_service = LaunchConfiguration('moveit_plan_service')
+    moveit_plan_service_timeout_s = LaunchConfiguration('moveit_plan_service_timeout_s')
     config_file = LaunchConfiguration('config_file')
 
     return LaunchDescription([
@@ -34,6 +39,9 @@ def generate_launch_description():
         DeclareLaunchArgument('hand_eye_calibrated', default_value='false'),
         DeclareLaunchArgument('hand_eye_result_must_exist', default_value='true'),
         DeclareLaunchArgument('use_ranked_grasp_candidates', default_value='false'),
+        DeclareLaunchArgument('require_moveit_plan_before_fake_execution', default_value='false'),
+        DeclareLaunchArgument('moveit_plan_service', default_value='/piper/plan_kinematic_path'),
+        DeclareLaunchArgument('moveit_plan_service_timeout_s', default_value='10.0'),
         DeclareLaunchArgument(
             'hand_eye_result_path',
             default_value='datasets/piper_hand_eye/piper_eye_in_hand.yaml',
@@ -56,6 +64,15 @@ def generate_launch_description():
                     'hand_eye_result_must_exist': ParameterValue(hand_eye_result_must_exist, value_type=bool),
                     'hand_eye_result_path': hand_eye_result_path,
                     'use_ranked_grasp_candidates': ParameterValue(use_ranked_grasp_candidates, value_type=bool),
+                    'require_moveit_plan_before_fake_execution': ParameterValue(
+                        require_moveit_plan_before_fake_execution,
+                        value_type=bool,
+                    ),
+                    'moveit_plan_service': moveit_plan_service,
+                    'moveit_plan_service_timeout_s': ParameterValue(
+                        moveit_plan_service_timeout_s,
+                        value_type=float,
+                    ),
                 },
             ],
             output='screen',

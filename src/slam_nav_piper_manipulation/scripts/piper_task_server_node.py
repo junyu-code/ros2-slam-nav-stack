@@ -5,7 +5,11 @@ from pathlib import Path
 
 import rclpy
 from geometry_msgs.msg import Point, PoseStamped, Twist
+from moveit_msgs.msg import Constraints, JointConstraint, MoveItErrorCodes
+from moveit_msgs.srv import GetMotionPlan
 from rclpy.action import ActionServer
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from slam_nav_piper_interfaces.action import PickObject, PlaceObject
 from slam_nav_piper_interfaces.msg import GraspCandidate, GraspCandidateArray
@@ -40,11 +44,29 @@ class PiperTaskServerNode(Node):
         self.declare_parameter('hand_eye_calibrated', False)
         self.declare_parameter('hand_eye_result_must_exist', True)
         self.declare_parameter('hand_eye_result_path', 'datasets/piper_hand_eye/piper_eye_in_hand.yaml')
+        self.declare_parameter('require_moveit_plan_before_fake_execution', False)
+        self.declare_parameter('moveit_plan_service', '/piper/plan_kinematic_path')
+        self.declare_parameter('moveit_planning_group', 'piper_arm')
+        self.declare_parameter('moveit_planner_id', 'RRTConnect')
+        self.declare_parameter('moveit_plan_joint_names', [
+            'piper_joint1',
+            'piper_joint2',
+            'piper_joint3',
+            'piper_joint4',
+            'piper_joint5',
+            'piper_joint6',
+        ])
+        self.declare_parameter('moveit_plan_target_positions', [0.0, 0.4164, -0.5409, 0.0, 0.0, 0.0])
+        self.declare_parameter('moveit_plan_joint_tolerance', 0.02)
+        self.declare_parameter('moveit_plan_allowed_time_s', 5.0)
+        self.declare_parameter('moveit_plan_attempts', 5)
+        self.declare_parameter('moveit_plan_service_timeout_s', 10.0)
 
         self.latest_target_pose = None
         self.latest_detection_3d = None
         self.latest_ranked_candidates = None
         self.control_state = ''
+        self.last_plan_only_gate_summary = ''
         self.fake_execution = bool(self.get_parameter('fake_execution').value)
         self.real_backend_connected = bool(self.get_parameter('real_backend_connected').value)
         self.control_ready_timeout_s = float(self.get_parameter('control_ready_timeout_s').value)
@@ -65,6 +87,17 @@ class PiperTaskServerNode(Node):
         self.default_gripper_width_m = float(self.get_parameter('default_gripper_width_m').value)
         self.use_ranked_grasp_candidates = bool(
             self.get_parameter('use_ranked_grasp_candidates').value
+        )
+        self.require_moveit_plan_before_fake_execution = bool(
+            self.get_parameter('require_moveit_plan_before_fake_execution').value
+        )
+        self.moveit_plan_service = str(self.get_parameter('moveit_plan_service').value)
+        self.moveit_plan_timeout_s = float(self.get_parameter('moveit_plan_service_timeout_s').value)
+        self.callback_group = ReentrantCallbackGroup()
+        self.moveit_plan_client = self.create_client(
+            GetMotionPlan,
+            self.moveit_plan_service,
+            callback_group=self.callback_group,
         )
 
         self.create_subscription(
@@ -118,12 +151,14 @@ class PiperTaskServerNode(Node):
             PickObject,
             '/piper/task/pick_object',
             self.execute_pick,
+            callback_group=self.callback_group,
         )
         self.place_server = ActionServer(
             self,
             PlaceObject,
             '/piper/task/place_object',
             self.execute_place,
+            callback_group=self.callback_group,
         )
         self.candidate_timer = self.create_timer(0.5, self.publish_grasp_candidate)
 
@@ -138,6 +173,10 @@ class PiperTaskServerNode(Node):
             self.get_logger().info('Piper 任务层未接入学习排序结果，继续使用原始 grasp candidates。')
         if not self.fake_execution and not self.real_backend_connected:
             self.get_logger().warn('Piper fake_execution=false，但真实后端未声明接入；任务会安全拒绝执行。')
+        if self.require_moveit_plan_before_fake_execution:
+            self.get_logger().warn(
+                'Piper 已打开 MoveIt2 plan-only 门禁：fake pick/place 会先请求规划，但仍不执行轨迹。'
+            )
         if self.require_hand_eye_calibration_before_pick and not self.hand_eye_calibrated:
             self.get_logger().info('Piper 真实 pick 前要求手眼标定验收；当前 hand_eye_calibrated=false。')
         if self.require_base_stop_before_motion and not (self.base_stop_confirmed or self.publish_base_stop):
@@ -345,6 +384,8 @@ class PiperTaskServerNode(Node):
             )
 
         self.publish_feedback(goal_handle, feedback, '规划到预抓取位姿', 0.55)
+        if not self.ensure_plan_only_gate(goal_handle, result, 'pick'):
+            return result
         self.sleep_step(0.4)
         self.publish_feedback(goal_handle, feedback, '执行抓取闭合', 0.80)
         self.sleep_step(0.4)
@@ -352,11 +393,7 @@ class PiperTaskServerNode(Node):
 
         goal_handle.succeed()
         result.success = True
-        result.message = (
-            'Piper pick 占位流程完成；真实执行需接入 MoveIt2 或厂家 SDK 后端。'
-            if self.fake_execution else
-            'Piper pick 请求已转交真实后端。'
-        )
+        result.message = self.success_message('pick')
         result.executed_pose = pre_grasp
         return result
 
@@ -372,6 +409,8 @@ class PiperTaskServerNode(Node):
         if not self.check_execution_allowed(goal_handle, result, operation='place'):
             return result
         self.publish_feedback(goal_handle, feedback, '规划到放置位姿', 0.55)
+        if not self.ensure_plan_only_gate(goal_handle, result, 'place'):
+            return result
         self.sleep_step(0.4)
         if goal.open_gripper:
             self.publish_feedback(goal_handle, feedback, '打开夹爪', 0.80)
@@ -380,13 +419,100 @@ class PiperTaskServerNode(Node):
 
         goal_handle.succeed()
         result.success = True
-        result.message = (
-            'Piper place 占位流程完成；真实执行需接入 MoveIt2 或厂家 SDK 后端。'
-            if self.fake_execution else
-            'Piper place 请求已转交真实后端。'
-        )
+        result.message = self.success_message('place')
         result.executed_pose = goal.target_pose
         return result
+
+    def ensure_plan_only_gate(self, goal_handle, result, operation):
+        if not self.require_moveit_plan_before_fake_execution:
+            return True
+
+        success, message = self.request_plan_only()
+        if not success:
+            goal_handle.abort()
+            result.success = False
+            result.message = f'Piper {operation} MoveIt2 plan-only 门禁失败：{message}'
+            return False
+        self.last_plan_only_gate_summary = message
+        self.get_logger().info(f'Piper {operation} MoveIt2 plan-only 门禁通过：{message}')
+        return True
+
+    def success_message(self, operation):
+        if self.fake_execution:
+            message = f'Piper {operation} 占位流程完成；真实执行需接入 MoveIt2 或厂家 SDK 后端。'
+        else:
+            message = f'Piper {operation} 请求已转交真实后端。'
+        if self.require_moveit_plan_before_fake_execution:
+            message += f' MoveIt2 plan-only 门禁已通过：{self.last_plan_only_gate_summary}'
+        return message
+
+    def request_plan_only(self):
+        if not self.moveit_plan_client.wait_for_service(timeout_sec=self.moveit_plan_timeout_s):
+            return False, f'等待规划服务超时: {self.moveit_plan_service}'
+
+        try:
+            request = self.build_moveit_plan_request()
+        except Exception as exc:
+            return False, f'构造规划请求失败: {exc}'
+
+        future = self.moveit_plan_client.call_async(request)
+        deadline = time.monotonic() + self.moveit_plan_timeout_s
+        while rclpy.ok() and time.monotonic() < deadline:
+            if future.done():
+                break
+            time.sleep(0.02)
+
+        if not future.done():
+            return False, '规划服务响应超时。'
+        response = future.result()
+        if response is None:
+            return False, '规划服务没有返回结果。'
+
+        motion_response = response.motion_plan_response
+        error_code = motion_response.error_code.val
+        point_count = len(motion_response.trajectory.joint_trajectory.points)
+        if error_code != MoveItErrorCodes.SUCCESS:
+            return False, f'MoveIt error_code={error_code}'
+        if point_count == 0:
+            return False, '规划成功但轨迹点为空。'
+        return True, f'轨迹点数={point_count}, planning_time={motion_response.planning_time:.3f}s'
+
+    def build_moveit_plan_request(self):
+        joint_names = [str(item) for item in self.get_parameter('moveit_plan_joint_names').value]
+        target_positions = [
+            float(item)
+            for item in self.get_parameter('moveit_plan_target_positions').value
+        ]
+        if len(joint_names) != len(target_positions):
+            raise RuntimeError('moveit_plan_joint_names 与 moveit_plan_target_positions 长度必须一致。')
+
+        request = GetMotionPlan.Request()
+        motion_request = request.motion_plan_request
+        motion_request.group_name = str(self.get_parameter('moveit_planning_group').value)
+        motion_request.pipeline_id = 'ompl'
+        motion_request.planner_id = str(self.get_parameter('moveit_planner_id').value)
+        motion_request.num_planning_attempts = int(self.get_parameter('moveit_plan_attempts').value)
+        motion_request.allowed_planning_time = float(self.get_parameter('moveit_plan_allowed_time_s').value)
+        motion_request.max_velocity_scaling_factor = 0.1
+        motion_request.max_acceleration_scaling_factor = 0.1
+        # 只做 plan-only：起点来自 MoveIt2 当前状态，返回轨迹不会被执行。
+        motion_request.start_state.is_diff = True
+        motion_request.goal_constraints = [self.build_moveit_goal_constraints(joint_names, target_positions)]
+        return request
+
+    def build_moveit_goal_constraints(self, joint_names, target_positions):
+        tolerance = float(self.get_parameter('moveit_plan_joint_tolerance').value)
+        constraints = Constraints()
+        constraints.name = 'piper_task_plan_only_gate'
+        for joint_name, target_position in zip(joint_names, target_positions):
+            joint_constraint = JointConstraint()
+            joint_constraint.joint_name = joint_name
+            joint_constraint.position = target_position
+            joint_constraint.tolerance_above = tolerance
+            joint_constraint.tolerance_below = tolerance
+            joint_constraint.weight = 1.0
+            constraints.joint_constraints.append(joint_constraint)
+        return constraints
 
     def request_owner(self, owner):
         msg = String()
@@ -520,9 +646,12 @@ class PiperTaskServerNode(Node):
 def main():
     rclpy.init()
     node = PiperTaskServerNode()
+    executor = MultiThreadedExecutor(num_threads=4)
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     finally:
+        executor.remove_node(node)
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

@@ -11,6 +11,9 @@ REPORT_PDF="tasks/task1/report_latex/main.pdf"
 EXPERIMENT_RECORD="tasks/task1/EXPERIMENT_RECORD.md"
 REPORT_DRAFT="tasks/task1/SLAM_FINAL_REPORT_DRAFT.md"
 RUNTIME_SNAPSHOT="tasks/task1/TASK1_RUNTIME_LAST.md"
+RUNTIME_HISTORY_DIR="tasks/task1/runtime_checks"
+GENERATED_TRIALS_MD="tasks/task1/STATIC_TRIALS_TABLE.md"
+GENERATED_TRIALS_TEX="tasks/task1/report_latex/generated_static_trials.tex"
 
 required_figs=(
   "fig_6_1_gazebo_world.png|图 6-1 Gazebo 静态场地总览|./run.sh clean && ./run.sh sim-static"
@@ -102,6 +105,18 @@ else
   warn "运行时检查快照尚未生成；启动建图或导航后可运行 ./run.sh task1-runtime-check mapping --save 或 ./run.sh task1-runtime-check nav --save"
 fi
 
+if [[ -d "${RUNTIME_HISTORY_DIR}" ]]; then
+  runtime_history_count="$(find "${RUNTIME_HISTORY_DIR}" -maxdepth 1 -type f -name '*.md' | wc -l | tr -d ' ')"
+  latest_runtime_history="$(find "${RUNTIME_HISTORY_DIR}" -maxdepth 1 -type f -name '*.md' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n 1 | cut -d' ' -f2-)"
+  if [[ "${runtime_history_count}" != "0" ]]; then
+    pass "运行时检查历史快照 ${runtime_history_count} 份，最新: ${latest_runtime_history}"
+  else
+    warn "运行时检查历史目录存在但还没有快照: ${RUNTIME_HISTORY_DIR}"
+  fi
+else
+  warn "运行时检查历史目录尚未生成；使用 --save 后会自动创建 ${RUNTIME_HISTORY_DIR}"
+fi
+
 echo
 echo "2. 必需截图"
 missing_figs=()
@@ -130,7 +145,10 @@ done
 
 echo
 echo "4. 实验记录与报告占位"
-todo_total="$(count_matches '待填|待补|待替换|【待插图|placeholderfigure' "${EXPERIMENT_RECORD}" "${REPORT_DRAFT}" "${REPORT_TEX}")"
+todo_sources=("${EXPERIMENT_RECORD}" "${REPORT_DRAFT}" "${REPORT_TEX}")
+[[ -f "${GENERATED_TRIALS_MD}" ]] && todo_sources+=("${GENERATED_TRIALS_MD}")
+[[ -f "${GENERATED_TRIALS_TEX}" ]] && todo_sources+=("${GENERATED_TRIALS_TEX}")
+todo_total="$(count_matches '待填|待补|待替换|【待插图|placeholderfigure' "${todo_sources[@]}")"
 experiment_pending="$(grep -o '待填' "${EXPERIMENT_RECORD}" 2>/dev/null | wc -l | tr -d ' ')"
 if [[ "${todo_total}" == "0" ]]; then
   pass "实验记录和报告正文没有待填/待替换占位"
@@ -183,6 +201,10 @@ elif [[ ! -f "${REPORT_PDF}" ]]; then
 else
   echo "- 下一步运行最终严格检查: ./run.sh task1-check --strict && ./run.sh task1-delivery-check --strict"
   echo "- 严格检查通过后创建压缩包: ./run.sh task1-package-preview --create"
+fi
+
+if (( ${#missing_figs[@]} > 0 )); then
+  echo "- 截图保存到临时目录后，可用 ./run.sh task1-figures 查看标准文件名，并用 ./run.sh task1-figures import <图号> <源 PNG> 导入。"
 fi
 
 echo

@@ -19,6 +19,8 @@ Piper 抓取/放置任务层。它暴露项目侧 action，不直接暴露 MoveI
 
 真实 pick 路径默认还要求手眼标定已经人工验收：`require_hand_eye_calibration_before_pick=true`、`hand_eye_calibrated=false`、`hand_eye_result_must_exist=true`。fake 冒烟不受这个门禁影响；当 `fake_execution=false` 且 `real_backend_connected=true` 时，未标定的 pick action 会安全拒绝。
 
+任务层还提供默认关闭的 MoveIt2 plan-only 门禁：`require_moveit_plan_before_fake_execution=false`。显式打开后，fake pick/place 成功前会先请求 `/piper/plan_kinematic_path`，确认 `piper_arm` 能返回非空规划轨迹；返回轨迹只用于验收，不会执行，也不会连接 SDK。
+
 一键任务层烟测：
 
 ```bash
@@ -26,6 +28,22 @@ Piper 抓取/放置任务层。它暴露项目侧 action，不直接暴露 MoveI
 ```
 
 该脚本会启动 Piper fake 感知链路，等待 2D/3D 检测、debug image、目标位姿、带 `detection_3d` 元数据的抓取候选和抓取候选 MarkerArray，再向 pick/place action 各发送一次 goal。它只验证任务接口和状态机，不接真实 MoveIt2 执行后端或厂家 SDK。当前已验证 fake pick/place 均返回成功。
+
+任务层 MoveIt2 plan-only 门禁烟测：
+
+```bash
+./run.sh piper-task-moveit-gate
+```
+
+该脚本会启动项目侧 MoveIt2 plan-only 和 Piper fake 任务链，显式打开 `require_moveit_plan_before_fake_execution:=true`，确认 pick/place action 返回成功前已经通过 MoveIt2 规划服务。它不执行轨迹、不连接真实机械臂。
+
+反向门禁烟测：
+
+```bash
+./run.sh piper-task-moveit-gate-fail
+```
+
+该脚本不启动 MoveIt2，只启动任务层并打开同一个 plan-only 门禁。pick/place 必须失败，拒绝原因包含等待规划服务超时，避免 MoveIt2 未启动时任务层仍然 fake 成功。
 
 实机入口默认安全拒绝烟测：
 

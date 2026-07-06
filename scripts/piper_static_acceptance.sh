@@ -53,8 +53,8 @@ echo "[Piper Static] 8/10 实机接入前状态报告..."
 "${SCRIPT_DIR}/piper_real_readiness.sh"
 
 echo
-echo "[Piper Static] 9/10 可视化 launch 参数展开检查..."
-ros2 launch slam_nav_piper_bringup piper_visualization.launch.py --show-args >/dev/null
+echo "[Piper Static] 9/10 Piper RViz 可视化配置烟测..."
+"${SCRIPT_DIR}/piper_visualization_smoke.sh"
 
 echo
 echo "[Piper Static] 10/10 实机 dry-run launch 参数展开检查..."

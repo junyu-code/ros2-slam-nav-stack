@@ -11,6 +11,10 @@ REPORT_PDF="tasks/task1/report_latex/main.pdf"
 EXPERIMENT_RECORD="tasks/task1/EXPERIMENT_RECORD.md"
 REPORT_DRAFT="tasks/task1/SLAM_FINAL_REPORT_DRAFT.md"
 SNAPSHOT_PATH="tasks/task1/TASK1_STATUS_SNAPSHOT.md"
+RUNTIME_SNAPSHOT="tasks/task1/TASK1_RUNTIME_LAST.md"
+RUNTIME_HISTORY_DIR="tasks/task1/runtime_checks"
+GENERATED_TRIALS_MD="tasks/task1/STATIC_TRIALS_TABLE.md"
+GENERATED_TRIALS_TEX="tasks/task1/report_latex/generated_static_trials.tex"
 WRITE_FILE=true
 
 usage() {
@@ -97,8 +101,19 @@ for item in "${required_figs[@]}"; do
   fi
 done
 
-todo_total="$(count_matches '待填|待补|待替换|【待插图|placeholderfigure' "${EXPERIMENT_RECORD}" "${REPORT_DRAFT}" "${REPORT_TEX}")"
+todo_sources=("${EXPERIMENT_RECORD}" "${REPORT_DRAFT}" "${REPORT_TEX}")
+[[ -f "${GENERATED_TRIALS_MD}" ]] && todo_sources+=("${GENERATED_TRIALS_MD}")
+[[ -f "${GENERATED_TRIALS_TEX}" ]] && todo_sources+=("${GENERATED_TRIALS_TEX}")
+todo_total="$(count_matches '待填|待补|待替换|【待插图|placeholderfigure' "${todo_sources[@]}")"
 experiment_pending="$(grep -o '待填' "${EXPERIMENT_RECORD}" 2>/dev/null | wc -l | tr -d ' ')"
+
+runtime_history_count=0
+runtime_history_latest="缺失"
+if [[ -d "${RUNTIME_HISTORY_DIR}" ]]; then
+  runtime_history_count="$(find "${RUNTIME_HISTORY_DIR}" -maxdepth 1 -type f -name '*.md' | wc -l | tr -d ' ')"
+  runtime_history_latest="$(find "${RUNTIME_HISTORY_DIR}" -maxdepth 1 -type f -name '*.md' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n 1 | cut -d' ' -f2-)"
+  [[ -z "${runtime_history_latest}" ]] && runtime_history_latest="暂无"
+fi
 
 task1_check_status="未运行"
 if "${SCRIPT_DIR}/task1_preflight.sh" >/tmp/task1_snapshot_check.log 2>&1; then
@@ -176,6 +191,8 @@ render_snapshot() {
 | 默认地图 yaml | $(file_status "src/slam_nav_bringup/map/nav_test_map.yaml") |
 | 默认地图 pgm | $(file_status "src/slam_nav_bringup/map/nav_test_map.pgm") |
 | 结课报告 PDF | $(file_status "${REPORT_PDF}") |
+| 运行时 latest 快照 | $(file_status "${RUNTIME_SNAPSHOT}") |
+| 运行时历史快照 | ${runtime_history_count} 份，最新：${runtime_history_latest} |
 | task1 普通预检 | ${task1_check_status} |
 | 静态避障实验检查 | ${experiment_check_status} |
 | 结课报告审计 | ${report_audit_status} |
@@ -196,6 +213,16 @@ EOF
   done
 
   cat <<EOF
+
+补图辅助：
+
+~~~bash
+./run.sh task1-figures
+./run.sh task1-figures path 6-1
+./run.sh task1-figures import 6-1 <源 PNG>
+~~~
+
+\`task1-figures\` 只复制你已经截好的 PNG，不生成或伪造实验截图。
 
 ## 3. 可选扩展截图
 

@@ -10,6 +10,9 @@ REPORT_TEX="tasks/task1/report_latex/main.tex"
 REPORT_PDF="tasks/task1/report_latex/main.pdf"
 REPORT_DRAFT="tasks/task1/SLAM_FINAL_REPORT_DRAFT.md"
 FIG_DIR="tasks/task1/report_latex/figures"
+EXPERIMENT_RECORD="tasks/task1/EXPERIMENT_RECORD.md"
+GENERATED_TRIALS_MD="tasks/task1/STATIC_TRIALS_TABLE.md"
+GENERATED_TRIALS_TEX="tasks/task1/report_latex/generated_static_trials.tex"
 
 usage() {
   cat <<'EOF'
@@ -109,6 +112,8 @@ echo "[task1-report] 工作区: ${WORKSPACE_DIR}"
 
 check_file "${REPORT_TEX}" "LaTeX 结课报告源文件"
 check_file "${REPORT_DRAFT}" "Markdown 结课报告草稿"
+check_file "${GENERATED_TRIALS_TEX}" "LaTeX 静态避障实验表生成片段"
+check_file "${GENERATED_TRIALS_MD}" "Markdown 静态避障实验表生成片段"
 
 if [[ -f "${REPORT_TEX}" ]]; then
   for item in \
@@ -175,7 +180,7 @@ for item in "${optional_figs[@]}"; do
   fi
 done
 
-placeholder_count="$(count_matches '待填|待补|待替换|【待插图|placeholderfigure' "${REPORT_TEX}" "${REPORT_DRAFT}")"
+placeholder_count="$(count_matches '待填|待补|待替换|【待插图|placeholderfigure' "${REPORT_TEX}" "${REPORT_DRAFT}" "${GENERATED_TRIALS_TEX}" "${GENERATED_TRIALS_MD}")"
 if [[ "${placeholder_count}" == "0" ]]; then
   ok "报告源文件和 Markdown 草稿中未发现待填/待替换占位"
 else
@@ -195,6 +200,9 @@ if [[ -f "${REPORT_PDF}" ]]; then
   if [[ "${REPORT_TEX}" -nt "${REPORT_PDF}" ]]; then
     warn "LaTeX 源文件比 PDF 新，建议重新运行 ./run.sh task1-build-report"
   fi
+  if [[ -f "${GENERATED_TRIALS_TEX}" && "${GENERATED_TRIALS_TEX}" -nt "${REPORT_PDF}" ]]; then
+    warn "静态避障实验表生成片段比 PDF 新，建议重新运行 ./run.sh task1-build-report"
+  fi
   if [[ -d "${FIG_DIR}" ]]; then
     newest_fig="$(find "${FIG_DIR}" -type f -name '*.png' -newer "${REPORT_PDF}" -print -quit 2>/dev/null || true)"
     if [[ -n "${newest_fig}" ]]; then
@@ -203,6 +211,10 @@ if [[ -f "${REPORT_PDF}" ]]; then
   fi
 else
   warn "结课报告 PDF 不存在，补齐材料后运行 ./run.sh task1-build-report"
+fi
+
+if [[ -f "${EXPERIMENT_RECORD}" && -f "${GENERATED_TRIALS_TEX}" && "${EXPERIMENT_RECORD}" -nt "${GENERATED_TRIALS_TEX}" ]]; then
+  warn "实验记录比生成表格新，建议运行 ./run.sh task1-sync-report"
 fi
 
 echo "[task1-report] 缺失必需截图: ${missing_figs}/9"

@@ -38,6 +38,8 @@ show_help() {
   task1-check           task1 交付材料预检（不启动 GUI）
   task1-runtime-check   task1 运行时链路检查（不启动 GUI）
   task1-experiment-check task1 静态避障实验表/成功率检查（不启动 GUI）
+  task1-figures         task1 报告截图清单/路径/导入辅助（不启动 GUI）
+  task1-sync-report     从实验记录同步生成报告表格片段（不启动 GUI）
   task1-delivery-check  task1 打包交付前自查（不启动 GUI）
   task1-package-preview task1 最终压缩包预览/可选创建
   task1-report-audit   task1 结课报告源文件/截图/PDF 审计（不启动 GUI）
@@ -50,6 +52,7 @@ show_help() {
   piper-frame-audit     检查 Piper 官方 URDF 到项目 piper_* frame 映射
   piper-sim             单独启动 Piper 假感知/假执行冒烟链路
   piper-viz             启动 Piper RViz 可视化（官方 URDF + 假腕部相机）
+  piper-viz-smoke       无 GUI 检查 Piper RViz 配置和可视化边界
   piper-moveit-plan     启动 Piper 项目侧 MoveIt2 plan-only 配置
   piper-official-frame-audit 审计 AgileX 官方 URDF 到项目侧 piper_* frame 的适配
   piper-moveit-config   审计 Piper 项目侧 MoveIt2 配置和官方 AgileX 映射
@@ -65,13 +68,15 @@ show_help() {
   piper-mobile-sequence 一键验证移动操作组合入口的假相机、停车、pick/place 顺序
   piper-mission-demo    一键验证 mission_behavior 只通过 /piper/task/* 调用 Piper
   piper-control-smoke   一键验证 Piper 控制桥 owner/enable/estop 边界
+  piper-task-moveit-gate 验证 /piper/task/* 显式通过 MoveIt2 plan-only 门禁
+  piper-task-moveit-gate-fail 验证 MoveIt2 plan-only 缺失时任务 action 安全拒绝
   piper-real-readiness  Piper 实机接入前状态报告（默认不要求 ready）
   piper-real-dry-run    一键验证 Piper 实机入口默认安全拒绝真实执行
   piper-learning-smoke  一键验证 Piper 学习层抓取候选排序旁路
   piper-ranked-gate     验证任务层显式打开后才消费 ranked 抓取候选
   piper-size-check      检查 Piper 外部依赖/数据/权重没有进入 Git 跟踪
   piper-static-check    Piper 静态配置验收（不启动 Gazebo/MoveIt2/真实硬件）
-  piper-full-smoke      顺序运行 Piper 安全、边界、体积、手眼、TF、Gazebo、任务、学习、ranked、MoveIt2 烟测
+  piper-full-smoke      顺序运行 Piper 安全、边界、体积、手眼、TF、Gazebo、任务、可视化、学习、ranked、MoveIt2 门禁烟测
   piper-boundary-check  检查 Piper 未泄漏进 task1/Nav2 或 /nav_camera
 
 示例：
@@ -84,6 +89,8 @@ show_help() {
   ./run.sh task1-check
   ./run.sh task1-runtime-check nav
   ./run.sh task1-experiment-check
+  ./run.sh task1-figures
+  ./run.sh task1-sync-report
   ./run.sh task1-delivery-check
   ./run.sh task1-package-preview
   ./run.sh task1-report-audit
@@ -96,6 +103,7 @@ show_help() {
   ./run.sh piper-preflight
   ./run.sh piper-sim
   ./run.sh piper-viz
+  ./run.sh piper-viz-smoke
   ./run.sh piper-moveit-plan
   ./run.sh piper-official-frame-audit
   ./run.sh piper-moveit-config
@@ -111,6 +119,8 @@ show_help() {
   ./run.sh piper-mobile-sequence
   ./run.sh piper-mission-demo
   ./run.sh piper-control-smoke
+  ./run.sh piper-task-moveit-gate
+  ./run.sh piper-task-moveit-gate-fail
   ./run.sh piper-real-readiness
   ./run.sh piper-real-dry-run
   ./run.sh piper-learning-smoke
@@ -151,6 +161,8 @@ script_for_command() {
     task1-check|task1-preflight|task1) echo "task1_preflight.sh" ;;
     task1-runtime-check|task1-runtime|runtime-check) echo "task1_runtime_check.sh" ;;
     task1-experiment-check|task1-experiment|experiment-check|experiment) echo "task1_experiment_check.sh" ;;
+    task1-figures|task1-figure|task1-screenshots|task1-screenshot|figures) echo "task1_figures.sh" ;;
+    task1-sync-report|task1-sync|sync-report|sync-task1-report) echo "task1_sync_report.sh" ;;
     task1-delivery-check|task1-delivery|delivery-check) echo "task1_delivery_check.sh" ;;
     task1-package-preview|task1-package|package-preview) echo "task1_package_preview.sh" ;;
     task1-report-audit|task1-report-check|report-audit) echo "task1_report_audit.sh" ;;
@@ -163,6 +175,7 @@ script_for_command() {
     piper-frame-audit|piper-frame|piper-official-frame|piper-official-frame-audit) echo "piper_official_frame_audit.sh" ;;
     piper-sim) echo "start_piper_sim.sh" ;;
     piper-viz|piper-visualization|piper-rviz) echo "start_piper_visualization.sh" ;;
+    piper-viz-smoke|piper-visualization-smoke|piper-rviz-smoke) echo "piper_visualization_smoke.sh" ;;
     piper-moveit-plan|piper-moveit) echo "start_piper_moveit_plan.sh" ;;
     piper-moveit-config|piper-moveit-config-audit) echo "piper_moveit_config_audit.sh" ;;
     piper-hand-eye-check|piper-hand-eye|piper-calibration-check) echo "piper_hand_eye_check.sh" ;;
@@ -177,6 +190,8 @@ script_for_command() {
     piper-mobile-sequence|piper-mobile-sequence-smoke|piper-mobile-task) echo "piper_mobile_sequence_smoke.sh" ;;
     piper-mission-demo|piper-mission-smoke|mission-piper-demo) echo "piper_mission_demo_smoke.sh" ;;
     piper-control-smoke|piper-control) echo "piper_control_smoke.sh" ;;
+    piper-task-moveit-gate|piper-task-moveit|piper-moveit-gate) echo "piper_task_moveit_plan_gate_smoke.sh" ;;
+    piper-task-moveit-gate-fail|piper-task-moveit-fail|piper-moveit-gate-fail) echo "piper_task_moveit_plan_gate_fail_smoke.sh" ;;
     piper-real-readiness|piper-real-ready|piper-readiness) echo "piper_real_readiness.sh" ;;
     piper-real-dry-run|piper-real-dry|piper-real-smoke) echo "piper_real_dry_run.sh" ;;
     piper-learning-smoke|piper-learning) echo "piper_learning_smoke.sh" ;;
@@ -240,13 +255,15 @@ show_menu() {
  19) task1-snapshot     生成 task1 当前证据状态快照 md
  20) task1-check        task1 交付材料预检
  21) experiment-check   task1 静态避障实验表检查
- 22) task1-delivery     task1 打包交付前自查
- 23) package-preview    task1 压缩包预览
- 24) report-audit       task1 结课报告源文件/截图/PDF 审计
- 25) build-report       编译 task1 结课报告 PDF
- 26) task1-finalize     task1 最终交付编排
- 27) real-preflight     实机部署前预检
- 28) build              编译工作区
+ 22) task1-figures      task1 报告截图清单/导入辅助
+ 23) task1-sync-report  从实验记录同步生成报告表格
+ 24) task1-delivery     task1 打包交付前自查
+ 25) package-preview    task1 压缩包预览
+ 26) report-audit       task1 结课报告源文件/截图/PDF 审计
+ 27) build-report       编译 task1 结课报告 PDF
+ 28) task1-finalize     task1 最终交付编排
+ 29) real-preflight     实机部署前预检
+ 30) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 
@@ -290,13 +307,15 @@ case "${choice}" in
   19) run_command task1-snapshot ;;
   20) run_command task1-check ;;
   21) run_command task1-experiment-check ;;
-  22) run_command task1-delivery-check ;;
-  23) run_command task1-package-preview ;;
-  24) run_command task1-report-audit ;;
-  25) run_command task1-build-report ;;
-  26) run_command task1-finalize ;;
-  27) run_command real-preflight ;;
-  28) run_command build ;;
+  22) run_command task1-figures ;;
+  23) run_command task1-sync-report ;;
+  24) run_command task1-delivery-check ;;
+  25) run_command task1-package-preview ;;
+  26) run_command task1-report-audit ;;
+  27) run_command task1-build-report ;;
+  28) run_command task1-finalize ;;
+  29) run_command real-preflight ;;
+  30) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

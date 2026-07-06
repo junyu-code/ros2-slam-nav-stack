@@ -23,6 +23,8 @@ cd ~/slam_nav_ws
 ./run.sh task1-check
 ./run.sh task1-runtime-check nav
 ./run.sh task1-experiment-check
+./run.sh task1-figures
+./run.sh task1-sync-report
 ./run.sh task1-delivery-check
 ./run.sh task1-package-preview
 ./run.sh task1-report-audit
@@ -76,6 +78,14 @@ cd ~/slam_nav_ws
 
 随后在 RViz 中完成 10 次静态目标点导航测试，把结果写入 `tasks/task1/EXPERIMENT_RECORD.md`，截图放到 `tasks/task1/report_latex/figures/`。动态障碍物、RGB-D 和 3D 地形链路只作为扩展演示，不计入静态避障 80% 成功率。
 
+10 次实验表只需要优先填写 `EXPERIMENT_RECORD.md`。填完或修改后运行：
+
+```bash
+./run.sh task1-sync-report
+```
+
+它会从实验记录生成 `tasks/task1/STATIC_TRIALS_TABLE.md` 和 `tasks/task1/report_latex/generated_static_trials.tex`，LaTeX 报告会自动引用后者，避免在实验记录和报告中重复手改 10 行数据。
+
 跑完截图或准备打包前，可以先执行无 GUI 交付预检：
 
 ```bash
@@ -84,6 +94,7 @@ cd ~/slam_nav_ws
 ./run.sh task1-snapshot
 ./run.sh task1-check
 ./run.sh task1-experiment-check
+./run.sh task1-sync-report
 ./run.sh task1-report-audit
 ./run.sh task1-delivery-check
 ```
@@ -97,7 +108,17 @@ cd ~/slam_nav_ws
 ./run.sh task1-runtime-check nav --save
 ```
 
-默认输出到 `tasks/task1/TASK1_RUNTIME_LAST.md`。这份快照记录 ROS 话题、TF、Nav2 生命周期和 action 检查结果，适合填写 `EXPERIMENT_RECORD.md` 的“运行检查/导航检查”表格，但不能替代 GUI 截图。
+默认会更新 `tasks/task1/TASK1_RUNTIME_LAST.md`，同时归档到 `tasks/task1/runtime_checks/<时间>_<模式>.md`。这些快照记录 ROS 话题、TF、Nav2 生命周期和 action 检查结果，适合填写 `EXPERIMENT_RECORD.md` 的“运行检查/导航检查”表格，但不能替代 GUI 截图。
+
+截图保存完成后，可以用统一入口检查或导入到报告要求的标准文件名：
+
+```bash
+./run.sh task1-figures
+./run.sh task1-figures path 6-1
+./run.sh task1-figures import 6-1 /mnt/c/Users/32149/Pictures/gazebo.png
+```
+
+`task1-figures` 不会启动 GUI，也不会生成假截图；它只负责列出缺图、打印目标路径，或把你已经截好的 PNG 复制到 `tasks/task1/report_latex/figures/`。
 
 `task1-report-audit` 专门审计结课报告侧材料：姓名学号、截图引用、截图文件是否存在、PNG 文件是否有效、报告待填字段、PDF 是否比源文件旧。`task1-delivery-check` 更偏向打包视角：它会列出建议压缩包名、必须包含的源码/文档/报告材料、仍缺的截图、实验记录待填字段，以及 Git 中是否误跟踪了 `build/`、`install/`、`log/`、rosbag、点云或模型权重等重型产物。最终打包前建议执行：
 
@@ -733,7 +754,7 @@ Piper 全链路烟测：
 ./run.sh piper-full-smoke
 ```
 
-它会顺序运行安全配置检查、边界检查、依赖预检、官方 frame 审计、MoveIt2 配置映射审计、手眼标定配置检查、运行时 TF 链、runtime 命名空间图、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、移动操作组合入口、mission_behavior 到 Piper action 边界、学习层候选排序、任务层 ranked 候选显式消费门禁、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
+它会顺序运行安全配置检查、边界检查、依赖预检、官方 frame 审计、MoveIt2 配置映射审计、手眼标定配置检查、运行时 TF 链、runtime 命名空间图、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、Piper RViz 可视化配置、移动操作组合入口、mission_behavior 到 Piper action 边界、学习层候选排序、任务层 ranked 候选显式消费门禁、任务层 MoveIt2 plan-only 缺失服务拒绝门禁、任务层 MoveIt2 plan-only 通过门禁、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
 
 只检查实机前安全默认值：
 
@@ -821,13 +842,21 @@ source install/setup.bash
 ./run.sh piper-viz
 ```
 
-该命令会打开 RViz，并默认同时启动 Piper 独立 fake runtime；它能显示官方 Piper 适配链、腕部相机图像、debug 检测框、目标 pose 和 `/piper/visualization/grasp_candidates` 抓取候选 marker。它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹。需要把项目侧 MoveIt2 plan-only 也一起开起来观察时，再显式使用：
+该命令会打开 RViz，并默认同时启动 Piper 独立 fake runtime；它能显示官方 Piper 适配链、腕部相机图像、debug 检测框、目标 pose 和 `/piper/visualization/grasp_candidates` 抓取候选 marker。它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹，RViz 配置里也不提供 `/initialpose` 或 `/goal_pose` 这类 Nav2 交互工具。需要把项目侧 MoveIt2 plan-only 也一起开起来观察时，再显式使用：
 
 ```bash
 ./run.sh piper-viz start_moveit_plan:=true
 ```
 
 该模式仍保持 `allow_trajectory_execution=false`。
+
+不打开 GUI、只检查 Piper RViz 配置和可视化边界：
+
+```bash
+./run.sh piper-viz-smoke
+```
+
+该检查会确认 RViz 只订阅 `/piper/robot_description`、`/piper/arm_camera/color/image_raw`、`/piper/perception/debug_image`、`/piper/perception/target_pose` 和 `/piper/visualization/grasp_candidates` 等 Piper 专用话题，不引用 `/nav_camera`、`/goal_pose`、`/initialpose` 或 costmap。
 
 一键验证 fake 感知和任务 action：
 
@@ -925,6 +954,22 @@ source install/setup.bash
 ```bash
 ./run.sh piper-moveit-smoke
 ```
+
+验证任务层 action 会显式通过 MoveIt2 plan-only 门禁：
+
+```bash
+./run.sh piper-task-moveit-gate
+```
+
+该入口启动项目侧 MoveIt2 plan-only，再启动 Piper fake 任务链并显式打开 `require_moveit_plan_before_fake_execution:=true`。随后通过 `/piper/task/pick_object` 和 `/piper/task/place_object` 触发规划请求，确认 action 成功前已从 `/piper/plan_kinematic_path` 拿到非空轨迹；它仍不执行轨迹、不连接 SDK、不改变 task1 默认导航链路。默认配置保持 `require_moveit_plan_before_fake_execution=false`。
+
+反向验证 MoveIt2 plan-only 服务缺失时必须安全拒绝：
+
+```bash
+./run.sh piper-task-moveit-gate-fail
+```
+
+该入口不启动 MoveIt2，只启动任务层并打开同一个 plan-only 门禁；pick/place 必须返回失败，原因包含“等待规划服务超时”。这防止后续把门禁打开后，在 MoveIt2 未启动时仍然 fake 成功。
 
 想同时看 Gazebo 模型并跑 Piper 假感知/假执行，可以先开 `./run.sh sim enable_piper_arm:=true`，再另开终端运行：
 

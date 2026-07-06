@@ -11,6 +11,8 @@ set -u
 mode="auto"
 SAVE_SUMMARY=false
 SUMMARY_PATH="tasks/task1/TASK1_RUNTIME_LAST.md"
+HISTORY_DIR="tasks/task1/runtime_checks"
+SAVE_HISTORY=true
 sample_seconds="${TASK1_RUNTIME_SAMPLE_SECONDS:-6}"
 errors=0
 warnings=0
@@ -121,15 +123,17 @@ check_lifecycle_active() {
 print_usage() {
   cat <<'EOF'
 用法:
-  ./run.sh task1-runtime-check [mapping|nav|dynamic|auto] [--save] [--output <path>]
+  ./run.sh task1-runtime-check [mapping|nav|dynamic|auto] [--save] [--output <path>] [--no-history]
 
 说明:
   mapping  检查仿真 + 建图链路是否具备保存地图条件
   nav      检查仿真 + 已保存地图导航链路是否具备发目标点条件
   dynamic  检查动态障碍物/3D 增强演示链路的关键话题
   auto     根据当前 ROS 图自动判断，默认值
-  --save   将本次检查终端输出保存为 Markdown 快照，默认写入 tasks/task1/TASK1_RUNTIME_LAST.md
-  --output  配合 --save 指定快照路径
+  --save       将本次检查终端输出保存为 Markdown 快照，默认写入 tasks/task1/TASK1_RUNTIME_LAST.md
+               同时归档到 tasks/task1/runtime_checks/<时间>_<模式>.md，便于保留建图/导航/动态演示证据。
+  --output     配合 --save 指定 latest 快照路径
+  --no-history 只写 latest 快照，不写入 runtime_checks 历史目录
 
 环境变量:
   TASK1_RUNTIME_SAMPLE_SECONDS=6  设置 topic hz 采样秒数
@@ -152,6 +156,9 @@ while [[ $# -gt 0 ]]; do
       SUMMARY_PATH="$2"
       shift
       ;;
+    --no-history)
+      SAVE_HISTORY=false
+      ;;
     -h|--help|help)
       print_usage
       exit 0
@@ -173,8 +180,9 @@ fi
 
 if [[ "${SAVE_SUMMARY}" == "true" && "${TASK1_RUNTIME_SAVE_ACTIVE:-false}" != "true" ]]; then
   tmp_output="$(mktemp)"
+  tmp_summary="$(mktemp)"
   cleanup_runtime_summary() {
-    rm -f "${tmp_output}"
+    rm -f "${tmp_output}" "${tmp_summary}"
   }
   trap cleanup_runtime_summary EXIT
 
@@ -183,11 +191,15 @@ if [[ "${SAVE_SUMMARY}" == "true" && "${TASK1_RUNTIME_SAVE_ACTIVE:-false}" != "t
   status="${PIPESTATUS[0]}"
   set -e
 
+  generated_at="$(date '+%Y-%m-%d %H:%M:%S %z')"
+  timestamp="$(date '+%Y%m%d_%H%M%S')"
+  history_path="${HISTORY_DIR}/${timestamp}_${mode}.md"
+
   mkdir -p "$(dirname "${SUMMARY_PATH}")"
   {
     echo "# Task1 运行时检查快照"
     echo
-    echo "> 自动生成时间：$(date '+%Y-%m-%d %H:%M:%S %z')"
+    echo "> 自动生成时间：${generated_at}"
     echo ">"
     echo "> 生成命令：\`./run.sh task1-runtime-check ${mode} --save\`"
     echo ">"
@@ -196,9 +208,15 @@ if [[ "${SAVE_SUMMARY}" == "true" && "${TASK1_RUNTIME_SAVE_ACTIVE:-false}" != "t
     echo '```text'
     cat "${tmp_output}"
     echo '```'
-  } > "${SUMMARY_PATH}"
+  } > "${tmp_summary}"
 
+  cp "${tmp_summary}" "${SUMMARY_PATH}"
   echo "[task1-runtime] 已写入运行时快照: ${SUMMARY_PATH}"
+  if [[ "${SAVE_HISTORY}" == "true" ]]; then
+    mkdir -p "${HISTORY_DIR}"
+    cp "${tmp_summary}" "${history_path}"
+    echo "[task1-runtime] 已归档运行时快照: ${history_path}"
+  fi
   exit "${status}"
 fi
 

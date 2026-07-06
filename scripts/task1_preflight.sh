@@ -76,7 +76,7 @@ for script in \
   start_navigation.sh start_navigation_3d.sh start_navigation_rgbd.sh \
   start_navigation_full.sh start_robust_navigation.sh \
   diagnose_runtime.sh task1_status.sh task1_snapshot.sh task1_runtime_check.sh task1_delivery_check.sh \
-  task1_experiment_check.sh task1_package_preview.sh task1_report_audit.sh build_task1_report.sh task1_finalize.sh; do
+  task1_experiment_check.sh task1_figures.sh task1_sync_report.sh task1_package_preview.sh task1_report_audit.sh build_task1_report.sh task1_finalize.sh; do
   check_executable "scripts/${script}" "脚本"
 done
 
@@ -86,7 +86,7 @@ for command_name in \
   mapping auto-mapping teleop save-map save-pcd \
   nav nav-3d nav-rgbd nav-full robust-nav \
   diagnose task1-status task1-check task1-runtime-check task1-delivery-check \
-  task1-snapshot task1-experiment-check task1-package-preview task1-report-audit task1-build-report task1-finalize; do
+  task1-snapshot task1-experiment-check task1-figures task1-sync-report task1-package-preview task1-report-audit task1-build-report task1-finalize; do
   if grep -q "${command_name}" <<<"${help_text}"; then
     ok "run.sh help 包含命令: ${command_name}"
   else
@@ -128,7 +128,9 @@ for doc in \
   tasks/task1/EXPERIMENT_RECORD.md \
   tasks/task1/DELIVERY_CHECKLIST.md \
   tasks/task1/SLAM_FINAL_REPORT_DRAFT.md \
-  tasks/task1/report_latex/main.tex; do
+  tasks/task1/report_latex/main.tex \
+  tasks/task1/report_latex/generated_static_trials.tex \
+  tasks/task1/STATIC_TRIALS_TABLE.md; do
   check_file "${doc}" "task1 文档"
 done
 
@@ -166,7 +168,9 @@ check_optional_image "${FIG_DIR}/fig_9_1_dynamic_obstacle.png" "图 9-1 动态�
 todo_count="$(grep -RInE '待填|待补|待替换|【待插图|placeholderfigure' \
   tasks/task1/EXPERIMENT_RECORD.md \
   tasks/task1/SLAM_FINAL_REPORT_DRAFT.md \
-  tasks/task1/report_latex/main.tex 2>/dev/null | wc -l | tr -d ' ')"
+  tasks/task1/STATIC_TRIALS_TABLE.md \
+  tasks/task1/report_latex/main.tex \
+  tasks/task1/report_latex/generated_static_trials.tex 2>/dev/null | wc -l | tr -d ' ')"
 if [[ "${todo_count}" == "0" ]]; then
   ok "task1 实验记录和报告中未发现待填/待替换占位"
 else
