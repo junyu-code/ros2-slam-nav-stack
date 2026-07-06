@@ -3,6 +3,11 @@ project(slam_nav_piper_moveit_config)
 
 find_package(ament_cmake REQUIRED)
 
+install(PROGRAMS
+  scripts/piper_fake_joint_state_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 install(DIRECTORY
   config
   launch

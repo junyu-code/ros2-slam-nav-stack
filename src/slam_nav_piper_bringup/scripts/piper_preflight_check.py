@@ -33,6 +33,7 @@ REQUIRED_MOVEIT_PACKAGES = [
     'moveit_ros_move_group',
     'moveit_core',
     'moveit_kinematics',
+    'moveit_planners_ompl',
 ]
 
 OPTIONAL_MOVEIT_DEMO_PACKAGES = [

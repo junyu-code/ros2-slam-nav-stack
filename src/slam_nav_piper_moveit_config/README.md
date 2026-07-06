@@ -49,11 +49,11 @@ Nav2 costmap 默认观测源。
 
 ## 系统依赖
 
-本 launch 不依赖 `moveit_configs_utils`，但 AgileX 官方 demo wrapper 依赖它。若要
-直接运行官方 `piper_moveit_config_v4/v5` demo，需要安装：
+本 launch 不依赖 `moveit_configs_utils`，但需要 OMPL planner 插件。若要直接运行
+项目侧 plan-only 和 AgileX 官方 `piper_moveit_config_v4/v5` demo，建议安装：
 
 ```bash
-sudo apt-get install ros-humble-moveit-configs-utils ros-humble-moveit-ros-visualization
+sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-configs-utils ros-humble-moveit-ros-visualization
 ```
 
 当前包的目标是先完成项目侧 plan-only 配置，不直接接入任务执行。

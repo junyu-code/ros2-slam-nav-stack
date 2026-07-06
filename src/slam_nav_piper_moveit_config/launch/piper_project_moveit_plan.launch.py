@@ -26,6 +26,13 @@ def _load_text(path):
         return handle.read()
 
 
+def _semantic_description(context, config_dir):
+    srdf = _load_text(config_dir / 'piper.srdf')
+    description_mode = context.perform_substitution(LaunchConfiguration('description_mode'))
+    robot_name = 'mobile_robot' if description_mode == 'mobile' else 'slam_nav_piper_official'
+    return srdf.replace('<robot name="slam_nav_piper">', f'<robot name="{robot_name}">', 1)
+
+
 def _robot_description_command(context, package_share):
     description_share = get_package_share_directory('slam_nav_piper_description')
     simulation_share = get_package_share_path('slam_nav_simulation')
@@ -67,7 +74,7 @@ def _create_nodes(context):
 
     robot_description = {'robot_description': _robot_description_command(context, package_share)}
     moveit_params = {
-        'robot_description_semantic': _load_text(config_dir / 'piper.srdf'),
+        'robot_description_semantic': _semantic_description(context, config_dir),
         'robot_description_kinematics': _load_yaml(config_dir / 'kinematics.yaml'),
         'robot_description_planning': {
             **_load_yaml(config_dir / 'joint_limits.yaml'),
@@ -116,16 +123,15 @@ def _create_nodes(context):
         if start_joint_state_publisher:
             nodes.append(
                 Node(
-                    package='joint_state_publisher',
-                    executable='joint_state_publisher',
-                    name='piper_joint_state_publisher',
+                    package='slam_nav_piper_moveit_config',
+                    executable='piper_fake_joint_state_publisher.py',
+                    name='piper_fake_joint_state_publisher',
                     namespace='piper',
                     remappings=[
                         ('joint_states', joint_states_topic),
                     ],
                     parameters=[
                         {'use_sim_time': use_sim_time},
-                        robot_description,
                     ],
                     output='screen',
                 )
