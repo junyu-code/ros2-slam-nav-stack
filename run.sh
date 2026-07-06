@@ -35,14 +35,19 @@ show_help() {
   diagnose              运行时诊断
   task1-check           task1 交付材料预检（不启动 GUI）
   task1-runtime-check   task1 运行时链路检查（不启动 GUI）
+  task1-delivery-check  task1 打包交付前自查（不启动 GUI）
   setup-piper           准备 Piper 外部参考包
   setup-piper-moveit    准备 Piper 本地 MoveIt2 OMPL overlay（无需 sudo）
   piper-safety-check    检查 Piper 实机前安全默认值和边界开关
   piper-preflight       Piper 依赖预检（自动加载本地 MoveIt overlay）
+  piper-frame-audit     检查 Piper 官方 URDF 到项目 piper_* frame 映射
   piper-sim             单独启动 Piper 假感知/假执行冒烟链路
   piper-moveit-plan     启动 Piper 项目侧 MoveIt2 plan-only 配置
+  piper-official-frame-audit 审计 AgileX 官方 URDF 到项目侧 piper_* frame 的适配
   piper-moveit-config   审计 Piper 项目侧 MoveIt2 配置和官方 AgileX 映射
   piper-hand-eye-check   检查 Piper 腕部 RGB-D 手眼标定配置边界
+  piper-hand-eye-gate    验证真实 pick 缺少手眼标定时会安全拒绝
+  piper-base-stop-gate   验证真实运动缺少底盘停止确认时会安全拒绝
   piper-plan-test       向 MoveIt2 发送一次 Piper plan-only 规划请求
   piper-moveit-smoke    一键启动 MoveIt2 plan-only 并发送规划冒烟请求
   piper-tf-smoke        一键验证 Piper 运行时 TF 链和 task1 TF 隔离边界
@@ -62,14 +67,19 @@ show_help() {
   ./run.sh nav-full
   ./run.sh task1-check
   ./run.sh task1-runtime-check nav
+  ./run.sh task1-delivery-check
   ./run.sh real-preflight
   ./run.sh piper-safety-check
+  ./run.sh piper-frame-audit
   ./run.sh setup-piper-moveit
   ./run.sh piper-preflight
   ./run.sh piper-sim
   ./run.sh piper-moveit-plan
+  ./run.sh piper-official-frame-audit
   ./run.sh piper-moveit-config
   ./run.sh piper-hand-eye-check
+  ./run.sh piper-hand-eye-gate
+  ./run.sh piper-base-stop-gate
   ./run.sh piper-plan-test
   ./run.sh piper-moveit-smoke
   ./run.sh piper-tf-smoke
@@ -110,14 +120,19 @@ script_for_command() {
     diagnose) echo "diagnose_runtime.sh" ;;
     task1-check|task1-preflight|task1) echo "task1_preflight.sh" ;;
     task1-runtime-check|task1-runtime|runtime-check) echo "task1_runtime_check.sh" ;;
+    task1-delivery-check|task1-delivery|delivery-check) echo "task1_delivery_check.sh" ;;
     setup-piper) echo "setup_piper_open_class.sh" ;;
     setup-piper-moveit|setup-piper-moveit-overlay) echo "setup_piper_moveit_overlay.sh" ;;
     piper-safety-check|piper-safety) echo "piper_safety_check.sh" ;;
     piper-preflight|piper-check) echo "piper_preflight.sh" ;;
+    piper-frame-audit|piper-official-frame-audit|piper-frame) echo "piper_official_frame_audit.sh" ;;
     piper-sim) echo "start_piper_sim.sh" ;;
     piper-moveit-plan|piper-moveit) echo "start_piper_moveit_plan.sh" ;;
+    piper-official-frame-audit|piper-official-frame|piper-frame-audit) echo "piper_official_frame_audit.sh" ;;
     piper-moveit-config|piper-moveit-config-audit) echo "piper_moveit_config_audit.sh" ;;
     piper-hand-eye-check|piper-hand-eye|piper-calibration-check) echo "piper_hand_eye_check.sh" ;;
+    piper-hand-eye-gate|piper-hand-eye-smoke|piper-calibration-gate) echo "piper_hand_eye_gate_smoke.sh" ;;
+    piper-base-stop-gate|piper-base-stop|piper-nav-pause-gate) echo "piper_base_stop_gate_smoke.sh" ;;
     piper-plan-test|piper-plan-smoke) echo "piper_plan_smoke_test.sh" ;;
     piper-moveit-smoke|piper-smoke) echo "piper_moveit_smoke.sh" ;;
     piper-tf-smoke|piper-tf) echo "piper_tf_smoke.sh" ;;
@@ -181,8 +196,9 @@ show_menu() {
  16) runtime nav        检查导航运行时链路
  17) diagnose           运行时诊断
  18) task1-check        task1 交付材料预检
- 19) real-preflight     实机部署前预检
- 20) build              编译工作区
+ 19) task1-delivery     task1 打包交付前自查
+ 20) real-preflight     实机部署前预检
+ 21) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 
@@ -223,8 +239,9 @@ case "${choice}" in
   16) run_command task1-runtime-check nav ;;
   17) run_command diagnose ;;
   18) run_command task1-check ;;
-  19) run_command real-preflight ;;
-  20) run_command build ;;
+  19) run_command task1-delivery-check ;;
+  20) run_command real-preflight ;;
+  21) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

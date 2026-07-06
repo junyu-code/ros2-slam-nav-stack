@@ -20,6 +20,7 @@ cd ~/slam_nav_ws
 ./run.sh diagnose --duration 5
 ./run.sh task1-check
 ./run.sh task1-runtime-check nav
+./run.sh task1-delivery-check
 ./run.sh real-preflight
 ```
 
@@ -59,9 +60,17 @@ cd ~/slam_nav_ws
 ```bash
 cd ~/slam_nav_ws
 ./run.sh task1-check
+./run.sh task1-delivery-check
 ```
 
-该命令不会启动 Gazebo、RViz 或 Nav2，只检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位。普通模式下，缺截图和待填实验记录只会显示 warning；最终提交前可用 `./run.sh task1-check --strict` 把 warning 也视为未完成。
+这两个命令都不会启动 Gazebo、RViz 或 Nav2。`task1-check` 主要检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位；普通模式下，缺截图和待填实验记录只会显示 warning。
+
+`task1-delivery-check` 更偏向打包视角：它会列出建议压缩包名、必须包含的源码/文档/报告材料、仍缺的截图、实验记录待填字段，以及 Git 中是否误跟踪了 `build/`、`install/`、`log/`、rosbag、点云或模型权重等重型产物。最终打包前建议执行：
+
+```bash
+./run.sh task1-check --strict
+./run.sh task1-delivery-check --strict
+```
 
 这是一个面向 Ubuntu 22.04 + ROS2 Humble + Gazebo Classic 的通用移动机器人 SLAM 与自主导航工作区。当前主目标是稳定完成仿真建图、保存地图、加载地图导航、目标点到达和静态避障验证。
 
@@ -765,8 +774,11 @@ source install/setup.bash
 只审计 MoveIt2 配置和官方 AgileX 映射，不启动 ROS 节点：
 
 ```bash
+./run.sh piper-official-frame-audit
 ./run.sh piper-moveit-config
 ```
+
+`piper-official-frame-audit` 会解析 AgileX 官方 `piper_description`，并确认项目侧适配链已经生成 `piper_base_link`、`piper_tcp`、`piper_arm_camera_optical_frame`，避免把官方原生 `base_link/link*/joint*` 直接混入移动底盘。
 
 该检查会渲染官方 Piper URDF 适配链，确认 `piper_joint1` 到 `piper_joint8`、`piper_tcp` 和腕部相机 frame 存在，并核对项目侧 SRDF、`joint_limits.yaml`、`ros2_controllers.yaml`、`moveit_controllers.yaml` 与 AgileX 官方 `piper_moveit_config_v5` 的映射一致。
 
@@ -777,6 +789,22 @@ source install/setup.bash
 ```
 
 该检查确认标定输入只来自 `/piper/arm_camera/*`，标定服务/结果留在 `/piper/calibration/*`，frame 使用 `piper_base_link`、`piper_tcp`、`piper_arm_camera_optical_frame`，默认不允许 live motion、不发布最终 TF、不写 URDF，样本和结果默认放入已忽略的 `datasets/piper_hand_eye/`。
+
+验证真实 pick 路径会强制等待手眼标定验收：
+
+```bash
+./run.sh piper-hand-eye-gate
+```
+
+该检查会让控制桥进入 `enabled=true owner=moveit`，并让任务层声明 `real_backend_connected=true`，但保持 `hand_eye_calibrated=false`。此时 `/piper/task/pick_object` 必须返回 ABORT，拒绝原因包含“手眼标定”，防止真实后端接入后绕过 eye-in-hand 验收。
+
+验证真实机械臂动作前必须先确认底盘停止，或由任务层显式发布停车：
+
+```bash
+./run.sh piper-base-stop-gate
+```
+
+该检查会让任务层声明 `real_backend_connected=true`、`hand_eye_calibrated=true`，但保持 `base_stop_confirmed=false` 且 `publish_base_stop=false`。此时 `/piper/task/pick_object` 必须返回 ABORT，拒绝原因包含“底盘停止”或“导航暂停”，防止后续机械臂真实执行时底盘仍在运动。
 
 另开终端可以发送一次 plan-only 规划请求，用于确认 `/piper/plan_kinematic_path` 服务、`piper_arm` planning group、关节目标约束和 OMPL pipeline 是连通的：
 
@@ -836,13 +864,14 @@ Piper 预检：
 
 ```bash
 ./run.sh piper-preflight
+./run.sh piper-official-frame-audit
 ros2 run slam_nav_piper_bringup piper_preflight_check.py
 ros2 run slam_nav_piper_bringup piper_preflight_check.py --require-official
 ros2 run slam_nav_piper_bringup piper_official_frame_audit.py
 ros2 run slam_nav_piper_bringup piper_official_frame_audit.py --check-project-adapter
 ```
 
-`./run.sh piper-preflight` 会自动加载 Piper 本地 MoveIt overlay；直接 `ros2 run` 时只检查当前 shell 已 source 的环境。
+`./run.sh piper-preflight` 和 `./run.sh piper-official-frame-audit` 会自动加载当前工作区环境；直接 `ros2 run` 时只检查当前 shell 已 source 的环境。
 
 导入并构建官方包后，可以单独跑官方 demo wrapper：
 

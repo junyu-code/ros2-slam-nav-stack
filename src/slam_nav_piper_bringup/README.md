@@ -10,7 +10,7 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 ./run.sh piper-full-smoke
 ```
 
-该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、学习排序到 MoveIt2 plan-only 都是通的。
+该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-hand-eye-gate`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、真实 pick 标定门禁、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、学习排序到 MoveIt2 plan-only 都是通的。
 
 只检查安全默认值，不启动 ROS 节点：
 
@@ -102,6 +102,14 @@ MoveIt2 配置映射审计：
 
 该入口不启动相机驱动，也不移动机械臂；只检查 eye-in-hand 标定默认配置是否仍使用 `/piper/arm_camera/*`、`piper_base_link`、`piper_tcp`、`piper_arm_camera_optical_frame`，并确认结果/样本进入 `datasets/piper_hand_eye/` 而不是 `src/`。
 
+真实 pick 手眼标定门禁烟测：
+
+```bash
+./run.sh piper-hand-eye-gate
+```
+
+该入口只启动控制桥和任务层，不启动相机、Gazebo、MoveIt2 执行器或 SDK。它模拟“真实后端已声明接入，但手眼标定尚未验收”的危险状态，确认 pick action 必须安全拒绝。
+
 推荐系统安装：
 
 ```bash
@@ -149,8 +157,11 @@ ros2 run slam_nav_piper_bringup piper_preflight_check.py --require-official
 官方包导入后，先审计 URDF/Xacro 的根 frame 和 TCP frame：
 
 ```bash
+./run.sh piper-official-frame-audit
 ros2 run slam_nav_piper_bringup piper_official_frame_audit.py
 ```
+
+`./run.sh piper-official-frame-audit` 默认追加 `--check-project-adapter`，会确认官方 Piper 关节链已经被适配为 `piper_base_link/piper_link*/piper_joint*`，并补齐 `piper_tcp` 与腕部相机 frame。
 
 ## 配置文件
 

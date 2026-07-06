@@ -573,3 +573,6 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：补强 task1 最短验收路线和现场记录口径：`README.md` 与 `TASK1_FINAL_RUNBOOK.md` 增加从 `task1-check`、静态建图、保存地图、静态导航到 10 次静态避障测试的最短闭环；`RUN_AND_SCREENSHOT_STEPS.md` 增加 `task1-runtime-check` 输出如何转写到实验记录；`EXPERIMENT_RECORD.md` 增加 10 个目标区域建议、失败判定和动态障碍物不计入静态成功率的记录边界。
 - 2026-07-07：为 `./run.sh clean` 增加 `--dry-run` 安全预览模式，并把交互菜单补齐到静态/动态/RGB-D 仿真、RGB-D 导航、完整增强导航和 task1 runtime 检查；task1 文档同步建议在正式清理前先预览将被终止的进程和 FastDDS/FastRTPS 共享内存残留，降低多终端调试时误关当前流程的风险。
 - 2026-07-07：新增 `slam_nav_piper_calibration` 手眼标定配置包和 `./run.sh piper-hand-eye-check` 静态检查入口，先固定 Piper 腕部 RGB-D eye-in-hand 的 frame、topic、输出目录和安全开关；默认不启用真实采样、不运动机械臂、不发布最终 TF、不写入 URDF，只作为 task2 后续实机标定前的边界检查。
+- 2026-07-07：新增 `./run.sh task1-delivery-check` 打包交付前自查入口，独立于运行时 ROS 检查，聚焦结课提交材料：建议压缩包名、源码/脚本/文档/报告材料、截图缺口、实验记录待填字段、报告占位和 Git 中是否误跟踪 build/install/log/rosbag/点云/模型权重等重型产物。
+- 2026-07-07：为 Piper pick 任务层增加手眼标定门禁：当 `fake_execution=false` 且声明真实 MoveIt2/SDK 后端接入时，若 `hand_eye_calibrated=false` 或标定结果文件不存在，`/piper/task/pick_object` 必须安全 ABORT；新增 `./run.sh piper-hand-eye-gate` 在独立 ROS domain 下验证该安全拒绝路径，不接入 task1 默认导航链路。
+- 2026-07-07：为 Piper 真实机械臂动作增加底盘停止门禁：当 `fake_execution=false` 且声明真实后端接入时，若未显式确认 `base_stop_confirmed=true` 且任务层也没有 `publish_base_stop=true` 主动停车，pick/place 必须安全 ABORT；新增 `./run.sh piper-base-stop-gate` 验证该拒绝路径，防止后续机械臂真实执行与底盘运动互相干扰。

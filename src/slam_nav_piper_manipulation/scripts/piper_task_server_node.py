@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import time
+from pathlib import Path
 
 import rclpy
 from geometry_msgs.msg import PoseStamped, Twist
@@ -22,6 +23,8 @@ class PiperTaskServerNode(Node):
         self.declare_parameter('owner_request_topic', '/piper/control/owner_request')
         self.declare_parameter('base_cmd_vel_topic', '/cmd_vel')
         self.declare_parameter('publish_base_stop', False)
+        self.declare_parameter('require_base_stop_before_motion', True)
+        self.declare_parameter('base_stop_confirmed', False)
         self.declare_parameter('fake_execution', True)
         self.declare_parameter('default_approach_distance_m', 0.10)
         self.declare_parameter('default_gripper_width_m', 0.06)
@@ -29,13 +32,27 @@ class PiperTaskServerNode(Node):
         self.declare_parameter('ranked_grasp_candidates_topic', '/piper/learning/grasp_candidates_ranked')
         self.declare_parameter('real_backend_connected', False)
         self.declare_parameter('control_ready_timeout_s', 2.0)
+        self.declare_parameter('require_hand_eye_calibration_before_pick', True)
+        self.declare_parameter('hand_eye_calibrated', False)
+        self.declare_parameter('hand_eye_result_must_exist', True)
+        self.declare_parameter('hand_eye_result_path', 'datasets/piper_hand_eye/piper_eye_in_hand.yaml')
 
         self.latest_target_pose = None
         self.control_state = ''
         self.fake_execution = bool(self.get_parameter('fake_execution').value)
         self.real_backend_connected = bool(self.get_parameter('real_backend_connected').value)
         self.control_ready_timeout_s = float(self.get_parameter('control_ready_timeout_s').value)
+        self.require_hand_eye_calibration_before_pick = bool(
+            self.get_parameter('require_hand_eye_calibration_before_pick').value
+        )
+        self.hand_eye_calibrated = bool(self.get_parameter('hand_eye_calibrated').value)
+        self.hand_eye_result_must_exist = bool(self.get_parameter('hand_eye_result_must_exist').value)
+        self.hand_eye_result_path = str(self.get_parameter('hand_eye_result_path').value)
         self.publish_base_stop = bool(self.get_parameter('publish_base_stop').value)
+        self.require_base_stop_before_motion = bool(
+            self.get_parameter('require_base_stop_before_motion').value
+        )
+        self.base_stop_confirmed = bool(self.get_parameter('base_stop_confirmed').value)
         self.default_approach_distance_m = float(
             self.get_parameter('default_approach_distance_m').value
         )
@@ -93,6 +110,10 @@ class PiperTaskServerNode(Node):
             self.get_logger().info('Piper 任务层未接入学习排序结果，继续使用原始 grasp candidates。')
         if not self.fake_execution and not self.real_backend_connected:
             self.get_logger().warn('Piper fake_execution=false，但真实后端未声明接入；任务会安全拒绝执行。')
+        if self.require_hand_eye_calibration_before_pick and not self.hand_eye_calibrated:
+            self.get_logger().info('Piper 真实 pick 前要求手眼标定验收；当前 hand_eye_calibrated=false。')
+        if self.require_base_stop_before_motion and not (self.base_stop_confirmed or self.publish_base_stop):
+            self.get_logger().info('Piper 真实执行前要求底盘停稳或显式发布停车；当前尚未确认。')
 
     def target_pose_callback(self, msg):
         self.latest_target_pose = msg
@@ -132,7 +153,7 @@ class PiperTaskServerNode(Node):
 
         self.publish_feedback(goal_handle, feedback, '申请 MoveIt2 控制 owner', 0.15)
         self.request_owner('moveit')
-        if not self.check_execution_allowed(goal_handle, result):
+        if not self.check_execution_allowed(goal_handle, result, operation='pick'):
             return result
 
         target_pose = goal.target_pose
@@ -175,7 +196,7 @@ class PiperTaskServerNode(Node):
         self.stop_base_for_arm_motion()
         self.publish_feedback(goal_handle, feedback, '申请 MoveIt2 控制 owner', 0.15)
         self.request_owner('moveit')
-        if not self.check_execution_allowed(goal_handle, result):
+        if not self.check_execution_allowed(goal_handle, result, operation='place'):
             return result
         self.publish_feedback(goal_handle, feedback, '规划到放置位姿', 0.55)
         self.sleep_step(0.4)
@@ -199,7 +220,7 @@ class PiperTaskServerNode(Node):
         msg.data = owner
         self.owner_pub.publish(msg)
 
-    def check_execution_allowed(self, goal_handle, result):
+    def check_execution_allowed(self, goal_handle, result, operation):
         state = self.parse_control_state()
         if state.get('estop') == 'true':
             goal_handle.abort()
@@ -213,12 +234,56 @@ class PiperTaskServerNode(Node):
             result.success = False
             result.message = 'Piper 真实 MoveIt2/SDK 后端尚未接入，拒绝假装执行成功。'
             return False
+        if operation == 'pick' and not self.hand_eye_ready_for_pick():
+            goal_handle.abort()
+            result.success = False
+            result.message = (
+                'Piper 手眼标定尚未验收，拒绝真实 pick；'
+                '请先完成 /piper/arm_camera eye-in-hand 标定并人工确认结果。'
+            )
+            return False
+        if not self.base_ready_for_arm_motion():
+            goal_handle.abort()
+            result.success = False
+            result.message = (
+                'Piper 底盘停止/导航暂停状态尚未确认，拒绝真实机械臂运动；'
+                '请先暂停 Nav2 或显式打开 publish_base_stop。'
+            )
+            return False
         if not self.wait_for_moveit_owner_ready():
             goal_handle.abort()
             result.success = False
             result.message = 'Piper 控制桥未进入 enabled=true 且 owner=moveit 状态。'
             return False
         return True
+
+    def hand_eye_ready_for_pick(self):
+        if not self.require_hand_eye_calibration_before_pick:
+            self.get_logger().warn('真实 pick 已关闭手眼标定前置检查，请确认这是隔离测试。')
+            return True
+        if not self.hand_eye_calibrated:
+            return False
+        if not self.hand_eye_result_must_exist:
+            return True
+
+        result_path = Path(self.hand_eye_result_path).expanduser()
+        if not result_path.is_absolute():
+            result_path = Path.cwd() / result_path
+        if result_path.exists():
+            return True
+        self.get_logger().warn(f'手眼标定结果文件不存在: {result_path}')
+        return False
+
+    def base_ready_for_arm_motion(self):
+        if not self.require_base_stop_before_motion:
+            self.get_logger().warn('真实机械臂运动已关闭底盘停止前置检查，请确认这是隔离测试。')
+            return True
+        if self.base_stop_confirmed:
+            return True
+        if self.publish_base_stop:
+            # 发布停车指令代表任务层显式持有底盘停止意图，实机仍应由上层暂停 Nav2。
+            return True
+        return False
 
     def wait_for_moveit_owner_ready(self):
         deadline = time.monotonic() + max(0.0, self.control_ready_timeout_s)
