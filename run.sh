@@ -32,6 +32,8 @@ show_help() {
   safe-bridge           速度安全桥
   diagnose              运行时诊断
   setup-piper           准备 Piper 外部参考包
+  setup-piper-moveit    准备 Piper 本地 MoveIt2 OMPL overlay（无需 sudo）
+  piper-preflight       Piper 依赖预检（自动加载本地 MoveIt overlay）
   piper-sim             单独启动 Piper 假感知/假执行冒烟链路
   piper-moveit-plan     启动 Piper 项目侧 MoveIt2 plan-only 配置
 
@@ -40,6 +42,8 @@ show_help() {
   ./run.sh auto-mapping
   ./run.sh save-pcd nav_test_static
   ./run.sh nav-full
+  ./run.sh setup-piper-moveit
+  ./run.sh piper-preflight
   ./run.sh piper-sim arm_model:=official
   ./run.sh piper-moveit-plan
 EOF
@@ -68,6 +72,8 @@ script_for_command() {
     safe-bridge) echo "start_safe_cmd_bridge.sh" ;;
     diagnose) echo "diagnose_runtime.sh" ;;
     setup-piper) echo "setup_piper_open_class.sh" ;;
+    setup-piper-moveit|setup-piper-moveit-overlay) echo "setup_piper_moveit_overlay.sh" ;;
+    piper-preflight|piper-check) echo "piper_preflight.sh" ;;
     piper-sim) echo "start_piper_sim.sh" ;;
     piper-moveit-plan|piper-moveit) echo "start_piper_moveit_plan.sh" ;;
     help|-h|--help) echo "__help__" ;;

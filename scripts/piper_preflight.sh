@@ -10,10 +10,10 @@ for piper_moveit_local_setup in \
   "${SCRIPT_DIR}/../external/ros_humble_debs/overlay/opt/ros/humble/share/moveit_simple_controller_manager/local_setup.bash"
 do
   if [[ -f "${piper_moveit_local_setup}" ]]; then
-    # 只给 Piper MoveIt2 plan-only 入口叠加本地插件，不影响 task1 默认流程。
+    # 预检时也加载 Piper 专用本地 MoveIt2 插件，避免误报系统未 sudo 安装。
     source "${piper_moveit_local_setup}"
   fi
 done
-set -u
 
-exec ros2 launch slam_nav_piper_moveit_config piper_project_moveit_plan.launch.py "$@"
+set -u
+exec ros2 run slam_nav_piper_bringup piper_preflight_check.py "$@"
