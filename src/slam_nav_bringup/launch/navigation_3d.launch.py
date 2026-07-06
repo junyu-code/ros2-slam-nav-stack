@@ -4,7 +4,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -30,6 +30,7 @@ def generate_launch_description():
     fast_lio_config = LaunchConfiguration('fast_lio_config')
     map_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
+    navigation_params_file = LaunchConfiguration('navigation_params_file')
     initial_pose_x = LaunchConfiguration('initial_pose_x')
     initial_pose_y = LaunchConfiguration('initial_pose_y')
     initial_pose_yaw = LaunchConfiguration('initial_pose_yaw')
@@ -44,6 +45,15 @@ def generate_launch_description():
     terrain_odometry_topic = LaunchConfiguration('terrain_odometry_topic')
     terrain_map_topic = LaunchConfiguration('terrain_map_topic')
     terrain_map_ext_topic = LaunchConfiguration('terrain_map_ext_topic')
+
+    def normalize_python_bool(value):
+        # Nav2 官方 launch 里有 PythonExpression，布尔值要用 Python 可识别的 True/False。
+        lowered = str(value).strip().lower()
+        if lowered in ('true', '1', 'yes', 'on'):
+            return 'True'
+        if lowered in ('false', '0', 'no', 'off'):
+            return 'False'
+        return value
 
     adaptive_cloud_filter = Node(
         package='perception_adapter',
@@ -92,9 +102,15 @@ def generate_launch_description():
             'camera_info_topic': rgbd_camera_info_topic,
             'output_cloud_topic': rgbd_output_cloud_topic,
             'set_enabled_service': '/rgbd_nav/set_enabled',
+            'target_frame': 'base_footprint',
             'pixel_step': 4,
             'min_depth_m': 0.25,
             'max_depth_m': 5.0,
+            'obstacle_min_height_m': 0.08,
+            'obstacle_max_height_m': 1.20,
+            'min_forward_m': 0.05,
+            'max_forward_m': 4.0,
+            'max_lateral_m': 2.0,
         }],
         output='screen',
     )
@@ -126,33 +142,39 @@ def generate_launch_description():
         }.items(),
     )
 
-    navigation = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(bringup_dir, 'launch', 'navigation.launch.py')),
-        launch_arguments={
-            'use_sim_time': use_sim_time,
-            'use_composition': use_composition,
-            'container_name': container_name,
-            'localization_mode': localization_mode,
-            'static_map_to_odom_x': static_map_to_odom_x,
-            'static_map_to_odom_y': static_map_to_odom_y,
-            'static_map_to_odom_z': static_map_to_odom_z,
-            'static_map_to_odom_yaw': static_map_to_odom_yaw,
-            'static_map_to_odom_pitch': static_map_to_odom_pitch,
-            'static_map_to_odom_roll': static_map_to_odom_roll,
-            'fast_lio_config': fast_lio_config,
-            'map': map_file,
-            'params_file': params_file,
-            'initial_pose_x': initial_pose_x,
-            'initial_pose_y': initial_pose_y,
-            'initial_pose_yaw': initial_pose_yaw,
-            'rviz': rviz,
-            'rviz_config': rviz_config,
-        }.items(),
-    )
+    def make_navigation_include(context):
+        # 嵌套 launch 中存在同名参数时，先在父作用域解析成普通字符串，避免回落到子 launch 默认值。
+        return [
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(bringup_dir, 'launch', 'navigation.launch.py')
+                ),
+                launch_arguments={
+                    'use_sim_time': use_sim_time.perform(context),
+                    'use_composition': normalize_python_bool(use_composition.perform(context)),
+                    'container_name': container_name.perform(context),
+                    'localization_mode': localization_mode.perform(context),
+                    'static_map_to_odom_x': static_map_to_odom_x.perform(context),
+                    'static_map_to_odom_y': static_map_to_odom_y.perform(context),
+                    'static_map_to_odom_z': static_map_to_odom_z.perform(context),
+                    'static_map_to_odom_yaw': static_map_to_odom_yaw.perform(context),
+                    'static_map_to_odom_pitch': static_map_to_odom_pitch.perform(context),
+                    'static_map_to_odom_roll': static_map_to_odom_roll.perform(context),
+                    'fast_lio_config': fast_lio_config.perform(context),
+                    'map': map_file.perform(context),
+                    'nav2_params_file': navigation_params_file.perform(context),
+                    'initial_pose_x': initial_pose_x.perform(context),
+                    'initial_pose_y': initial_pose_y.perform(context),
+                    'initial_pose_yaw': initial_pose_yaw.perform(context),
+                    'rviz': rviz.perform(context),
+                    'rviz_config': rviz_config.perform(context),
+                }.items(),
+            )
+        ]
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
-        DeclareLaunchArgument('use_composition', default_value='True'),
+        DeclareLaunchArgument('use_composition', default_value='False'),
         DeclareLaunchArgument('container_name', default_value='nav2_container'),
         DeclareLaunchArgument('localization_mode', default_value='amcl', choices=['amcl', 'static']),
         DeclareLaunchArgument('static_map_to_odom_x', default_value='0.0'),
@@ -172,6 +194,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'params_file',
             default_value=os.path.join(bringup_dir, 'config', 'nav2_params_3d.yaml'),
+            description='Backward-compatible 3D Nav2 parameter file argument.',
+        ),
+        DeclareLaunchArgument(
+            'navigation_params_file',
+            default_value=params_file,
+            description='3D Nav2 parameter file passed into the nested navigation launch. Defaults to params_file.',
         ),
         DeclareLaunchArgument('initial_pose_x', default_value='0.0'),
         DeclareLaunchArgument('initial_pose_y', default_value='0.0'),
@@ -202,5 +230,5 @@ def generate_launch_description():
         terrain_analysis,
         terrain_analysis_ext,
         depth_obstacle_projector,
-        navigation,
+        OpaqueFunction(function=make_navigation_include),
     ])

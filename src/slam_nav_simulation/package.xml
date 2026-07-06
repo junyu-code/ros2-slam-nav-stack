@@ -16,6 +16,7 @@
   <exec_depend>joint_state_publisher</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>ros2_livox_simulation</exec_depend>
+  <exec_depend>slam_nav_piper_description</exec_depend>
   <exec_depend>xacro</exec_depend>
 
   <export>

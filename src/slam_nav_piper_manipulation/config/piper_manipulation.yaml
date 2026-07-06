@@ -9,5 +9,11 @@ piper:
       # 默认不主动发布 /cmd_vel，避免影响 task1 主导航链路；实机任务编排时再打开。
       publish_base_stop: false
       fake_execution: true
+      # 当前真实 MoveIt2/SDK 后端尚未接入；设为 false 时 action 会安全拒绝真实执行。
+      real_backend_connected: false
+      control_ready_timeout_s: 2.0
       default_approach_distance_m: 0.10
       default_gripper_width_m: 0.06
+      # 强化学习/学习排序结果默认不接入，后续充分验证后再改为 true。
+      use_ranked_grasp_candidates: false
+      ranked_grasp_candidates_topic: /piper/learning/grasp_candidates_ranked

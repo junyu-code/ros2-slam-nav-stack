@@ -14,6 +14,9 @@ def generate_launch_description():
     input_cloud_topic = LaunchConfiguration('input_cloud_topic')
     publish_tf = LaunchConfiguration('publish_tf')
     auto_align = LaunchConfiguration('auto_align')
+    registration_method = LaunchConfiguration('registration_method')
+    ndt_resolution = LaunchConfiguration('ndt_resolution')
+    ndt_step_size = LaunchConfiguration('ndt_step_size')
     crop_map_around_guess = LaunchConfiguration('crop_map_around_guess')
     local_map_radius = LaunchConfiguration('local_map_radius')
     fitness_score_threshold = LaunchConfiguration('fitness_score_threshold')
@@ -31,6 +34,9 @@ def generate_launch_description():
         DeclareLaunchArgument('input_cloud_topic', default_value='/cloud_registered'),
         DeclareLaunchArgument('publish_tf', default_value='false'),
         DeclareLaunchArgument('auto_align', default_value='false'),
+        DeclareLaunchArgument('registration_method', default_value='icp'),
+        DeclareLaunchArgument('ndt_resolution', default_value='1.0'),
+        DeclareLaunchArgument('ndt_step_size', default_value='0.1'),
         DeclareLaunchArgument('crop_map_around_guess', default_value='true'),
         DeclareLaunchArgument('local_map_radius', default_value='8.0'),
         DeclareLaunchArgument('fitness_score_threshold', default_value='0.45'),
@@ -48,6 +54,9 @@ def generate_launch_description():
                     'input_cloud_topic': input_cloud_topic,
                     'publish_tf': ParameterValue(publish_tf, value_type=bool),
                     'auto_align': ParameterValue(auto_align, value_type=bool),
+                    'registration_method': registration_method,
+                    'ndt_resolution': ParameterValue(ndt_resolution, value_type=float),
+                    'ndt_step_size': ParameterValue(ndt_step_size, value_type=float),
                     'crop_map_around_guess': ParameterValue(
                         crop_map_around_guess,
                         value_type=bool,

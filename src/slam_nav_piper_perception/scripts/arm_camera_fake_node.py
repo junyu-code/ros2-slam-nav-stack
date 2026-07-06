@@ -17,6 +17,10 @@ class ArmCameraFakeNode(Node):
         self.declare_parameter('height', 240)
         self.declare_parameter('depth_mm', 900)
         self.declare_parameter('publish_hz', 10.0)
+        self.declare_parameter('color_image_topic', '/piper/arm_camera/color/image_raw')
+        self.declare_parameter('depth_image_topic', '/piper/arm_camera/depth/image_raw')
+        self.declare_parameter('color_camera_info_topic', '/piper/arm_camera/color/camera_info')
+        self.declare_parameter('depth_camera_info_topic', '/piper/arm_camera/depth/camera_info')
 
         self.frame_id = str(self.get_parameter('frame_id').value)
         self.width = int(self.get_parameter('width').value)
@@ -24,10 +28,26 @@ class ArmCameraFakeNode(Node):
         self.depth_mm = int(self.get_parameter('depth_mm').value)
         publish_hz = max(float(self.get_parameter('publish_hz').value), 1.0)
 
-        self.color_pub = self.create_publisher(Image, '/piper/arm_camera/color/image_raw', 10)
-        self.depth_pub = self.create_publisher(Image, '/piper/arm_camera/depth/image_raw', 10)
-        self.color_info_pub = self.create_publisher(CameraInfo, '/piper/arm_camera/color/camera_info', 10)
-        self.depth_info_pub = self.create_publisher(CameraInfo, '/piper/arm_camera/depth/camera_info', 10)
+        self.color_pub = self.create_publisher(
+            Image,
+            str(self.get_parameter('color_image_topic').value),
+            10,
+        )
+        self.depth_pub = self.create_publisher(
+            Image,
+            str(self.get_parameter('depth_image_topic').value),
+            10,
+        )
+        self.color_info_pub = self.create_publisher(
+            CameraInfo,
+            str(self.get_parameter('color_camera_info_topic').value),
+            10,
+        )
+        self.depth_info_pub = self.create_publisher(
+            CameraInfo,
+            str(self.get_parameter('depth_camera_info_topic').value),
+            10,
+        )
         self.timer = self.create_timer(1.0 / publish_hz, self.publish_camera)
 
         self.get_logger().info('Piper 腕部假 RGB-D 相机已启动，话题位于 /piper/arm_camera/*。')

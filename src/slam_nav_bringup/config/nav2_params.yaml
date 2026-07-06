@@ -115,18 +115,18 @@ controller_server:
       debug_trajectory_details: false
       min_vel_x: 0.0
       min_vel_y: -0.4
-      max_vel_x: 0.7
-      max_vel_y: 0.4
-      max_vel_theta: 1.2
+      max_vel_x: 0.85
+      max_vel_y: 0.45
+      max_vel_theta: 1.35
       min_speed_xy: 0.0
-      max_speed_xy: 0.7
+      max_speed_xy: 0.85
       min_speed_theta: 0.0
-      acc_lim_x: 1.5
-      acc_lim_y: 1.2
-      acc_lim_theta: 2.0
-      decel_lim_x: -1.5
-      decel_lim_y: -1.2
-      decel_lim_theta: -2.0
+      acc_lim_x: 1.8
+      acc_lim_y: 1.4
+      acc_lim_theta: 2.2
+      decel_lim_x: -1.8
+      decel_lim_y: -1.4
+      decel_lim_theta: -2.2
       vx_samples: 20
       vy_samples: 15
       vtheta_samples: 20
@@ -299,10 +299,10 @@ velocity_smoother:
     smoothing_frequency: 20.0
     scale_velocities: false
     feedback: "OPEN_LOOP"
-    max_velocity: [0.7, 0.4, 1.2]
-    min_velocity: [-0.2, -0.4, -1.2]
-    max_accel: [1.5, 1.2, 2.0]
-    max_decel: [-1.5, -1.2, -2.0]
+    max_velocity: [0.85, 0.45, 1.35]
+    min_velocity: [-0.25, -0.45, -1.35]
+    max_accel: [1.8, 1.4, 2.2]
+    max_decel: [-1.8, -1.4, -2.2]
     odom_topic: /Odometry
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]

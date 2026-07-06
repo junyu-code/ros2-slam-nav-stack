@@ -3,6 +3,12 @@ project(slam_nav_piper_bringup)
 
 find_package(ament_cmake REQUIRED)
 
+install(PROGRAMS
+  scripts/piper_official_frame_audit.py
+  scripts/piper_preflight_check.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 install(DIRECTORY
   config
   launch

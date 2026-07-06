@@ -19,13 +19,15 @@ def include(package, relative_path, arguments):
 
 def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
+    arm_model = LaunchConfiguration('arm_model')
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
+        DeclareLaunchArgument('arm_model', default_value='placeholder', choices=['placeholder', 'official']),
         include(
             'slam_nav_piper_description',
             'launch/piper_description.launch.py',
-            {'use_sim_time': use_sim_time},
+            {'use_sim_time': use_sim_time, 'arm_model': arm_model},
         ),
         include(
             'slam_nav_piper_perception',

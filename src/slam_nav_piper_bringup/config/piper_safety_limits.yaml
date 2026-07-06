@@ -1,0 +1,20 @@
+piper_safety_limits:
+  ros__parameters:
+    # 实机前先确认这些限制，再允许任何真实运动。
+    auto_enable: false
+    allow_real_motion: false
+    require_estop_test_before_motion: true
+    require_disable_test_before_motion: true
+    require_home_test_before_motion: true
+    require_hand_eye_calibration_before_pick: true
+    base_must_be_stopped_during_arm_motion: true
+    velocity_scaling_initial: 0.10
+    acceleration_scaling_initial: 0.10
+    workspace_min_xyz: [-0.20, -0.45, 0.02]
+    workspace_max_xyz: [0.65, 0.45, 0.75]
+    forbidden_topics_for_default_nav2_costmap:
+      - /piper/arm_camera/depth/points
+      - /piper/perception/detections_3d
+      - /piper/perception/target_pose
+      - /piper/grasp_candidates
+      - /piper/learning/grasp_candidates_ranked

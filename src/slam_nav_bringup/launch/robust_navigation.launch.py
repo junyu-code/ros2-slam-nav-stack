@@ -69,7 +69,7 @@ def generate_launch_description():
             'static_map_to_odom_pitch': static_map_to_odom_pitch,
             'static_map_to_odom_roll': static_map_to_odom_roll,
             'map': map_file,
-            'params_file': params_file,
+            'navigation_params_file': params_file,
             'fast_lio_config': fast_lio_config,
             'initial_pose_x': initial_pose_x,
             'initial_pose_y': initial_pose_y,
@@ -118,7 +118,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
-        DeclareLaunchArgument('use_composition', default_value='True'),
+        DeclareLaunchArgument('use_composition', default_value='False'),
         DeclareLaunchArgument('container_name', default_value='nav2_container'),
         DeclareLaunchArgument('localization_mode', default_value='amcl', choices=['amcl', 'static']),
         DeclareLaunchArgument('static_map_to_odom_x', default_value='0.0'),

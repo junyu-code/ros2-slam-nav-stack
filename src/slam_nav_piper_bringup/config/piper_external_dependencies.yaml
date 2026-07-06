@@ -1,0 +1,53 @@
+piper_external_dependencies:
+  ros__parameters:
+    # 该文件只描述外部依赖来源，不代表当前工作区已经接入或启动这些后端。
+    repos_file: piper_external.repos
+    open_class_setup_script: scripts/setup_piper_open_class.sh
+    open_class_downloader_script: scripts/download_agilex_open_class_piper.py
+    import_target_dir: external/agilex
+    open_class_download:
+      default_mode: api
+      retry_safe: true
+      wait_rate_limit_env: PIPER_OPEN_CLASS_WAIT_RATE_LIMIT
+      alternative_modes_env: PIPER_OPEN_CLASS_DOWNLOAD_MODE
+      alternative_modes:
+        - api
+        - auto
+        - tarball
+        - git
+    moveit2_apt_package: ros-humble-moveit-ros-planning-interface
+    required_apt_packages:
+      - ros-humble-moveit
+      - ros-humble-moveit-ros-planning-interface
+      - ros-humble-ros2-control
+      - ros-humble-ros2-controllers
+      - ros-humble-controller-manager
+      - ros-humble-control-toolbox
+      - ros-humble-joint-state-broadcaster
+      - ros-humble-joint-trajectory-controller
+      - ros-humble-joint-state-publisher
+      - ros-humble-joint-state-publisher-gui
+      - ros-humble-gripper-controllers
+      - ros-humble-trajectory-msgs
+      - python3-vcstool
+    agilex_repositories:
+      - name: agx_arm_ros
+        url: https://github.com/agilexrobotics/agx_arm_ros.git
+        version: ros2
+      - name: agx_arm_urdf
+        url: https://github.com/agilexrobotics/agx_arm_urdf.git
+        version: main
+      - name: agx_arm_sim
+        url: https://github.com/agilexrobotics/agx_arm_sim.git
+        version: master
+      - name: pyAgxArm
+        url: https://github.com/agilexrobotics/pyAgxArm.git
+        version: master
+      - name: agilex_open_class
+        url: https://github.com/agilexrobotics/agilex_open_class.git
+        version: master
+        useful_subdir: piper
+        note: 课程示例里包含 piper_description、piper_moveit_config_v4 和 piper_moveit_config_v5。
+    forbidden_default_remaps:
+      - /piper/arm_camera/* -> /nav_camera/*
+      - /piper/perception/* -> Nav2 costmap

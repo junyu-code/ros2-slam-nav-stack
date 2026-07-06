@@ -25,15 +25,24 @@ class PiperTaskServerNode(Node):
         self.declare_parameter('fake_execution', True)
         self.declare_parameter('default_approach_distance_m', 0.10)
         self.declare_parameter('default_gripper_width_m', 0.06)
+        self.declare_parameter('use_ranked_grasp_candidates', False)
+        self.declare_parameter('ranked_grasp_candidates_topic', '/piper/learning/grasp_candidates_ranked')
+        self.declare_parameter('real_backend_connected', False)
+        self.declare_parameter('control_ready_timeout_s', 2.0)
 
         self.latest_target_pose = None
         self.control_state = ''
         self.fake_execution = bool(self.get_parameter('fake_execution').value)
+        self.real_backend_connected = bool(self.get_parameter('real_backend_connected').value)
+        self.control_ready_timeout_s = float(self.get_parameter('control_ready_timeout_s').value)
         self.publish_base_stop = bool(self.get_parameter('publish_base_stop').value)
         self.default_approach_distance_m = float(
             self.get_parameter('default_approach_distance_m').value
         )
         self.default_gripper_width_m = float(self.get_parameter('default_gripper_width_m').value)
+        self.use_ranked_grasp_candidates = bool(
+            self.get_parameter('use_ranked_grasp_candidates').value
+        )
 
         self.create_subscription(
             PoseStamped,
@@ -80,6 +89,10 @@ class PiperTaskServerNode(Node):
         self.get_logger().info(
             f'Piper 任务 action server 已启动，fake_execution={self.fake_execution}。'
         )
+        if not self.use_ranked_grasp_candidates:
+            self.get_logger().info('Piper 任务层未接入学习排序结果，继续使用原始 grasp candidates。')
+        if not self.fake_execution and not self.real_backend_connected:
+            self.get_logger().warn('Piper fake_execution=false，但真实后端未声明接入；任务会安全拒绝执行。')
 
     def target_pose_callback(self, msg):
         self.latest_target_pose = msg
@@ -119,6 +132,8 @@ class PiperTaskServerNode(Node):
 
         self.publish_feedback(goal_handle, feedback, '申请 MoveIt2 控制 owner', 0.15)
         self.request_owner('moveit')
+        if not self.check_execution_allowed(goal_handle, result):
+            return result
 
         target_pose = goal.target_pose
         if not target_pose.header.frame_id:
@@ -160,6 +175,8 @@ class PiperTaskServerNode(Node):
         self.stop_base_for_arm_motion()
         self.publish_feedback(goal_handle, feedback, '申请 MoveIt2 控制 owner', 0.15)
         self.request_owner('moveit')
+        if not self.check_execution_allowed(goal_handle, result):
+            return result
         self.publish_feedback(goal_handle, feedback, '规划到放置位姿', 0.55)
         self.sleep_step(0.4)
         if goal.open_gripper:
@@ -181,6 +198,49 @@ class PiperTaskServerNode(Node):
         msg = String()
         msg.data = owner
         self.owner_pub.publish(msg)
+
+    def check_execution_allowed(self, goal_handle, result):
+        state = self.parse_control_state()
+        if state.get('estop') == 'true':
+            goal_handle.abort()
+            result.success = False
+            result.message = 'Piper 处于急停状态，拒绝执行任务。'
+            return False
+        if self.fake_execution:
+            return True
+        if not self.real_backend_connected:
+            goal_handle.abort()
+            result.success = False
+            result.message = 'Piper 真实 MoveIt2/SDK 后端尚未接入，拒绝假装执行成功。'
+            return False
+        if not self.wait_for_moveit_owner_ready():
+            goal_handle.abort()
+            result.success = False
+            result.message = 'Piper 控制桥未进入 enabled=true 且 owner=moveit 状态。'
+            return False
+        return True
+
+    def wait_for_moveit_owner_ready(self):
+        deadline = time.monotonic() + max(0.0, self.control_ready_timeout_s)
+        while rclpy.ok() and time.monotonic() <= deadline:
+            state = self.parse_control_state()
+            if (
+                state.get('owner') == 'moveit'
+                and state.get('enabled') == 'true'
+                and state.get('estop') != 'true'
+            ):
+                return True
+            time.sleep(0.05)
+        return False
+
+    def parse_control_state(self):
+        parsed = {}
+        for item in self.control_state.split(';'):
+            if '=' not in item:
+                continue
+            key, value = item.split('=', 1)
+            parsed[key.strip()] = value.strip()
+        return parsed
 
     def stop_base_for_arm_motion(self):
         if not self.publish_base_stop:

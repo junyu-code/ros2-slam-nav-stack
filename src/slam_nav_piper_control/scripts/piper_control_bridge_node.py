@@ -20,10 +20,27 @@ class PiperControlBridgeNode(Node):
         self.declare_parameter('auto_enable', False)
         self.declare_parameter('state_topic', '/piper/control/state')
         self.declare_parameter('owner_request_topic', '/piper/control/owner_request')
+        self.declare_parameter('moveit_config_package', '')
+        self.declare_parameter('moveit_move_group_namespace', '/piper')
+        self.declare_parameter('moveit_planning_group', 'piper_arm')
+        self.declare_parameter('moveit_end_effector_group', 'piper_gripper')
+        self.declare_parameter('moveit_tcp_frame', 'piper_tcp')
+        self.declare_parameter('moveit_base_frame', 'piper_base_link')
+        self.declare_parameter('sdk_driver_package', 'agx_arm_ros')
+        self.declare_parameter('sdk_driver_namespace', '/piper')
+        self.declare_parameter('sdk_arm_type', 'piper')
+        self.declare_parameter('sdk_effector_type', 'agx_gripper')
+        self.declare_parameter('allow_sdk_motion_test', False)
+        self.declare_parameter('allow_real_motion', False)
+        self.declare_parameter('velocity_scaling', 0.10)
+        self.declare_parameter('acceleration_scaling', 0.10)
+        self.declare_parameter('workspace_min_xyz', [-0.20, -0.45, 0.02])
+        self.declare_parameter('workspace_max_xyz', [0.65, 0.45, 0.75])
 
         self.backend = str(self.get_parameter('backend').value)
         self.owner = self.normalize_owner(str(self.get_parameter('initial_owner').value))
         self.enabled = bool(self.get_parameter('auto_enable').value)
+        self.allow_real_motion = bool(self.get_parameter('allow_real_motion').value)
         self.estopped = False
         self.last_command_wall = time.monotonic()
 
@@ -46,6 +63,8 @@ class PiperControlBridgeNode(Node):
         self.get_logger().info(
             f'Piper 控制桥已启动: backend={self.backend}, owner={self.owner}, auto_enable={self.enabled}'
         )
+        if not self.allow_real_motion:
+            self.get_logger().info('Piper 真实运动许可为 false：当前配置只允许边界冒烟和安全检查。')
 
     def normalize_owner(self, owner):
         if owner not in self.VALID_OWNERS:
@@ -74,6 +93,10 @@ class PiperControlBridgeNode(Node):
         if self.estopped:
             response.success = False
             response.message = 'Piper 处于急停状态，需先 clear_estop。'
+            return response
+        if not self.allow_real_motion and self.backend != 'moveit':
+            response.success = False
+            response.message = '当前未允许真实运动，拒绝启用非 MoveIt2 占位后端。'
             return response
         self.enabled = True
         response.success = True

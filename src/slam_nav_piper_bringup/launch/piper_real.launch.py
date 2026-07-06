@@ -20,14 +20,18 @@ def include(package, relative_path, arguments):
 def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     backend = LaunchConfiguration('backend')
+    arm_model = LaunchConfiguration('arm_model')
+    real_backend_connected = LaunchConfiguration('real_backend_connected')
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('backend', default_value='moveit'),
+        DeclareLaunchArgument('arm_model', default_value='placeholder', choices=['placeholder', 'official']),
+        DeclareLaunchArgument('real_backend_connected', default_value='false'),
         include(
             'slam_nav_piper_description',
             'launch/piper_description.launch.py',
-            {'use_sim_time': use_sim_time},
+            {'use_sim_time': use_sim_time, 'arm_model': arm_model},
         ),
         include(
             'slam_nav_piper_perception',
@@ -50,6 +54,7 @@ def generate_launch_description():
             {
                 'use_sim_time': use_sim_time,
                 'fake_execution': 'false',
+                'real_backend_connected': real_backend_connected,
                 'publish_base_stop': 'false',
             },
         ),

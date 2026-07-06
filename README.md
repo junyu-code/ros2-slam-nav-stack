@@ -1,8 +1,29 @@
 # Ubuntu 22.04 ROS2 SLAM Navigation System
 
+## 根目录入口
+
+根目录只保留统一导航入口：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh
+```
+
+也可以直接带命令运行：
+
+```bash
+./run.sh sim
+./run.sh mapping
+./run.sh auto-mapping
+./run.sh nav
+./run.sh diagnose --duration 5
+```
+
+实际脚本统一收纳在 `scripts/` 目录，例如 `scripts/start_navigation.sh`。日常建议优先使用 `./run.sh <命令>`，这样根目录更干净，也不需要记住每个脚本文件名。
+
 这是一个面向 Ubuntu 22.04 + ROS2 Humble + Gazebo Classic 的通用移动机器人 SLAM 与自主导航工作区。当前主目标是稳定完成仿真建图、保存地图、加载地图导航、目标点到达和静态避障验证。
 
-项目长期会继续扩展 RGB-D 深度相机、语义识别、行为树和机械臂，但这些内容不作为当前结课作业的主流程。
+项目长期会继续扩展 RGB-D 深度相机、语义识别、行为树和机械臂。
 
 ## 工作区结构
 
@@ -27,6 +48,7 @@ slam_nav_ws/
     slam_nav_piper_perception/  # Piper 独立 RGB-D 感知，使用 /piper/arm_camera/*
     slam_nav_piper_control/     # Piper MoveIt2/SDK 控制边界和安全 owner 管理
     slam_nav_piper_manipulation/# Piper pick/place 任务 action server
+    slam_nav_piper_learning/    # Piper 后续学习/强化学习策略层，默认不接入
     slam_nav_piper_bringup/     # Piper 独立启动入口，不参与 task1 默认链路
     safe_cmd_bridge/           # 通用速度安全桥，用于限速、限加速度、超时停车、反馈看门狗和可选 UDP 转发
     localization_guard/        # 定位健康监控，用于检测断流、跳变和速度异常
@@ -40,7 +62,7 @@ slam_nav_ws/
 
 ```bash
 cd ~/slam_nav_ws
-./build.sh
+./run.sh build
 source install/setup.bash
 ```
 
@@ -52,7 +74,7 @@ source install/setup.bash
 
 ```bash
 cd ~/slam_nav_ws
-./start_simulation.sh
+./run.sh sim
 ```
 
 WSL 中 Gazebo Classic 有时启动较慢，看到下面日志后再继续启动建图或导航更稳：
@@ -65,21 +87,44 @@ SpawnEntity: Successfully spawned entity [mobile_robot]
 
 ```bash
 cd ~/slam_nav_ws
-./start_mapping.sh
+./run.sh mapping
 ```
 
 终端 3 键盘控制机器人探索场地：
 
 ```bash
 cd ~/slam_nav_ws
-./teleop.sh
+./run.sh teleop
 ```
+
+如果不想手动键盘探索，可以用自动探索建图入口替代 `start_mapping.sh`：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh auto-mapping
+```
+
+该入口会启动 FAST-LIO2、`pointcloud_to_laserscan`、slam_toolbox、RViz 和 `auto_explore_mapper`。自动探索节点只使用 `/scan` 做保守巡航：前方安全时慢速前进，遇到近距离障碍时后退/转向，周期性原地旋转补全点云视角。它适合懒人扫静态地图，但不是完整 frontier explorer；如果发现某个角落没有扫到，仍然可以临时关闭它后用 `teleop.sh` 补扫。
 
 保存地图：
 
 ```bash
 cd ~/slam_nav_ws
-./save_map.sh nav_test_map
+./run.sh save-map nav_test_map
+```
+
+保存 FAST-LIO 累计出的 PCD 地图：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh save-pcd nav_test_static
+```
+
+默认 PCD 会写入：
+
+```text
+src/FAST_LIO/PCD/scan.pcd
+src/FAST_LIO/PCD/nav_test_static.pcd
 ```
 
 保存结果应位于：
@@ -97,15 +142,15 @@ src/slam_nav_bringup/map/nav_test_map.pgm
 
 ```bash
 cd ~/slam_nav_ws
-./clean.sh
-./start_simulation.sh
+./run.sh clean
+./run.sh sim
 ```
 
 终端 2：
 
 ```bash
 cd ~/slam_nav_ws
-./start_navigation.sh
+./run.sh nav
 ```
 
 当前 `start_navigation.sh` 会启动：
@@ -158,11 +203,13 @@ ros2 run tf2_ros tf2_echo map base_footprint
 ros2 pkg prefix nav2_planner
 ```
 
-正常情况下应输出 `/opt/ros/humble`。如果输出 `/home/junyu/0glut2/...` 等旧工作区路径，说明当前终端环境混入了旧覆盖层。项目脚本已经在启动时清理 `AMENT_PREFIX_PATH`、`COLCON_PREFIX_PATH`、`CMAKE_PREFIX_PATH` 和 `ROS_PACKAGE_PATH`，遇到这种情况时执行 `./clean.sh` 后重新从 `~/slam_nav_ws` 运行启动脚本。
+正常情况下应输出 `/opt/ros/humble`。如果输出 `/home/junyu/0glut2/...` 等旧工作区路径，说明当前终端环境混入了旧覆盖层。项目脚本已经在启动时清理 `AMENT_PREFIX_PATH`、`COLCON_PREFIX_PATH`、`CMAKE_PREFIX_PATH` 和 `ROS_PACKAGE_PATH`，遇到这种情况时执行 `./run.sh clean` 后重新从 `~/slam_nav_ws` 运行启动脚本。
 
 若 RViz 中发送目标点后出现 `Planning algorithm GridBased failed to generate a valid path`，优先确认机器人当前位置和目标点都在白色空旷区域内，并与障碍物黑边或灰色膨胀区保持一定距离。机器人贴近障碍物时，起点可能已经落入代价地图膨胀区，规划器会合理地拒绝生成路径。
 
-Livox Mid-360 传感器已设置为 `always_on`，无 GUI 模式也可以发布 `/livox/lidar`。作业截图和交互调试仍建议使用 `./start_simulation.sh` 的默认 GUI 模式。
+Livox Mid-360 传感器已设置为 `always_on`，无 GUI 模式也可以发布 `/livox/lidar`。作业截图和交互调试仍建议使用 `./run.sh sim` 的默认 GUI 模式。
+
+静态测试场地中的斜坡已经从单个倾斜长方体调整为“入口引导板 + 缓坡 + 顶部平台”的组合，坡度更缓，入口碰撞边缘更低。这样更适合自动探索和 PCD 建图，也方便后续观察 3D 地形代价地图对坡面/平台的响应。
 
 
 ## 增强流程：3D 地形代价地图导航
@@ -171,7 +218,7 @@ Livox Mid-360 传感器已设置为 `always_on`，无 GUI 模式也可以发布 
 
 ```bash
 cd ~/slam_nav_ws
-./start_navigation_3d.sh
+./run.sh nav-3d
 ```
 
 该入口会在默认导航链路基础上额外启动：
@@ -201,13 +248,86 @@ src/pb_omni_pid_pursuit_controller/
 
 `adaptive_cloud_filter` 仍保留为辅助感知适配与可视化输出，默认 3D costmap 不再直接订阅 `/cloud_nav_filtered`。初次使用时建议观察 `/terrain_map`、`/terrain_map_ext`、`/scan`、`/local_costmap/costmap` 和 `/global_costmap/costmap` 是否正常。
 
+## 增强流程：RGB-D 松耦合近场避障
+
+RGB-D 深度相机已经以松耦合方式接入 local costmap：深度图先由 `depth_obstacle_projector` 投影为 `/visual_obstacles`，再作为 `ObstacleLayer` 的额外 PointCloud2 观察源。默认 3D 导航不启用这一路，方便对比纯 LiDAR 3D 与 LiDAR + RGB-D。
+
+终端 1 启动带深度相机的仿真：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh sim enable_nav_rgbd_camera:=true
+```
+
+终端 2 启动 RGB-D 增强导航：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh nav-rgbd
+```
+
+对应配置：
+
+```text
+src/slam_nav_bringup/config/nav2_params_3d_rgbd.yaml
+start_navigation_rgbd.sh
+```
+
+当前融合边界：
+
+```text
+/nav_camera/depth/image_raw + /nav_camera/depth/camera_info
+  -> depth_obstacle_projector
+  -> /visual_obstacles
+  -> local_costmap obstacle_layer
+```
+
+`/visual_obstacles` 只接入 local costmap，用于近距离动态感知和视觉补盲；global costmap 仍主要依赖静态地图、LiDAR 地形分析和 `/scan`，避免视觉误检长期污染全局路径。
+
+## 顶配流程：动态障碍 + RGB-D + 3D 鲁棒导航
+
+如果要展示当前仿真中能组合起来的最完整配置，使用下面两个脚本：
+
+终端 1 启动动态障碍物场景，并给机器人挂载导航 RGB-D 相机：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh sim-dynamic-rgbd
+```
+
+终端 2 启动完整导航链路：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh nav-full
+```
+
+该入口等价于组合以下能力：
+
+```text
+动态障碍物 world
+  + /livox/lidar 与 /livox/imu
+  + FAST-LIO2 /Odometry 与 /cloud_registered
+  + terrain_analysis /terrain_map 与 /terrain_map_ext
+  + IntensityVoxelLayer 3D 地形代价地图
+  + /scan LaserScan 障碍物兜底
+  + RGB-D depth_obstacle_projector -> /visual_obstacles
+  + SmacPlanner2D 全局规划
+  + OmniPidPursuitController 全向路径跟踪
+  + 行为树后退恢复
+  + localization_guard 定位健康监控
+  + safe_cmd_bridge 速度安全桥观测
+```
+
+注意：动态障碍物不写入保存地图，也不作为 global costmap 的长期障碍。它主要通过 `/scan`、`/terrain_map` 和 `/visual_obstacles` 进入 local costmap，用于实时避障。这样可以避免动态物体污染全局静态路径，同时保留近场避障响应。
+
 ## 增强流程：鲁棒导航入口
 
 `start_robust_navigation.sh` 是面向后续长期开发的统一增强入口，它会启动 3D 点云导航、定位健康监控和速度安全桥：
 
 ```bash
 cd ~/slam_nav_ws
-./start_robust_navigation.sh
+./run.sh robust-nav
 ```
 
 默认组合：
@@ -221,7 +341,7 @@ safe_cmd_bridge.launch.py
 默认情况下，速度安全桥只把 `/cmd_vel` 整形成 `/cmd_vel_safe`，不会改变 Gazebo 底盘仍然订阅 `/cmd_vel` 的事实；定位健康监控也只发布状态，不主动停车。这让增强入口适合先做观察和调试。进入真实底盘部署时，可以逐步打开：
 
 ```bash
-./start_robust_navigation.sh \
+./run.sh robust-nav \
   publish_zero_on_fault:=true \
   safe_enable_fault_stop:=true \
   safe_enable_udp_output:=true \
@@ -278,7 +398,7 @@ ros2 launch mission_behavior mission_behavior.launch.py \
 
 ```bash
 cd ~/slam_nav_ws
-./start_safe_cmd_bridge.sh
+./run.sh safe-bridge
 ```
 
 默认输入 `/cmd_vel`，输出 `/cmd_vel_safe`。可以用下面命令观察安全层是否正常限幅：
@@ -297,7 +417,7 @@ ros2 topic echo /cmd_vel_safe
 如果底盘能提供实际里程计反馈，可以打开反馈看门狗，检查“持续发送速度但底盘没有响应”或“底盘反馈断流”的情况：
 
 ```bash
-./start_robust_navigation.sh \
+./run.sh robust-nav \
   safe_enable_feedback_watchdog:=true \
   safe_feedback_topic:=/base/odom
 ```
@@ -311,13 +431,32 @@ ros2 topic echo /cmd_vel_safe
 
 ## 可选流程：PCD 地图辅助重定位
 
-`src/cloud_relocalization/` 提供一个可触发的 ICP 点云地图重定位入口，用于部署阶段处理初始位姿不准、局部漂移或需要从已保存 PCD 地图恢复的情况。它默认只发布状态、估计位姿和对齐点云，不直接接管 `map -> odom`。
+`src/cloud_relocalization/` 提供一个可触发的点云地图重定位入口，用于部署阶段处理初始位姿不准、局部漂移或需要从已保存 PCD 地图恢复的情况。它支持 `icp`、`gicp` 和 `ndt` 三种配准后端，默认只发布状态、估计位姿和对齐点云，不直接接管 `map -> odom`。
 
 ```bash
 cd ~/slam_nav_ws
-./start_relocalization.sh \
+./run.sh relocalization \
   map_pcd_path:=/home/junyu/slam_nav_ws/src/FAST_LIO/PCD/scan.pcd \
   input_cloud_topic:=/cloud_registered \
+  publish_tf:=false
+```
+
+GICP 便捷入口：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh relocalization-gicp \
+  map_pcd_path:=/home/junyu/slam_nav_ws/src/FAST_LIO/PCD/scan.pcd \
+  input_cloud_topic:=/cloud_registered
+```
+
+NDT 可直接通过参数切换：
+
+```bash
+./run.sh relocalization \
+  registration_method:=ndt \
+  ndt_resolution:=1.0 \
+  map_pcd_path:=/home/junyu/slam_nav_ws/src/FAST_LIO/PCD/scan.pcd \
   publish_tf:=false
 ```
 
@@ -327,7 +466,17 @@ cd ~/slam_nav_ws
 ros2 service call /relocalization/trigger std_srvs/srv/Trigger {}
 ```
 
-建议先在 RViz 中观察 `/relocalization/aligned_cloud` 和 `/relocalization/pose`，确认匹配方向正确后，再显式使用 `publish_tf:=true`。当前实现会围绕初始位姿裁剪局部 PCD 子图，并同时检查 ICP fitness、局部地图点数和位姿跳变门限，避免相似场景下错误匹配把坐标系突然拉偏。
+建议先在 RViz 中观察 `/relocalization/aligned_cloud` 和 `/relocalization/pose`，确认匹配方向正确后，再显式使用 `publish_tf:=true`。当前实现会围绕初始位姿裁剪局部 PCD 子图，并同时检查 fitness、局部地图点数和位姿跳变门限，避免相似场景下错误匹配把坐标系突然拉偏。
+
+三种后端的取舍：
+
+```text
+ICP：速度快、参数少，适合初值较准的场景。
+GICP：利用局部几何协方差，通常比普通 ICP 更稳，但计算更重。
+NDT：适合体素化先验地图，需要调 ndt_resolution 和初值。
+```
+
+注意不要同时让多个节点发布同一个 `map -> odom`。如果当前导航已经由 AMCL、静态 TF 或其他定位模块提供 `map -> odom`，本模块应保持 `publish_tf:=false`，先作为观测和诊断入口。
 
 ## 可选流程：定位健康监控
 
@@ -335,7 +484,7 @@ ros2 service call /relocalization/trigger std_srvs/srv/Trigger {}
 
 ```bash
 cd ~/slam_nav_ws
-./start_localization_guard.sh
+./run.sh guard
 ```
 
 默认只监控，不接管控制。输出话题：
@@ -349,7 +498,7 @@ cd ~/slam_nav_ws
 实机保守模式可以打开故障零速度输出：
 
 ```bash
-./start_localization_guard.sh publish_zero_on_fault:=true
+./run.sh guard publish_zero_on_fault:=true
 ```
 
 这个模块不替代地图辅助重定位算法。它的作用是先把“定位是否可信”变成明确状态，后续可以接入任务层、速度安全桥或重定位触发逻辑。
@@ -376,7 +525,7 @@ ros2 lifecycle nodes
 
 ```bash
 cd ~/slam_nav_ws
-./diagnose_runtime.sh --duration 5
+./run.sh diagnose --duration 5
 ```
 
 它会采样 `/clock`、`/livox/lidar`、`/cloud_registered`、`/cloud_nav_filtered`、`/nav_obstacle_cloud`、`/nav_ground_cloud`、`/visual_obstacles`、`/scan`、`/Odometry`、`/map`、`/cmd_vel`、`/cmd_vel_safe` 和关键 TF 链路，并检查消息时间戳与仿真时间是否明显错位。诊断输出还会列出 local/global costmap 正在订阅哪些观测源，便于发现 costmap 误订阅完整点云或未验证视觉点云的问题。遇到 `timestamp earlier than transform cache`、`map frame does not exist`、`GridBased failed`、话题断流或 RViz 中 TF 断链时，建议先跑这个命令确认底层输入是否正常。
@@ -394,7 +543,7 @@ ros2 topic echo /perception_mode
 
 ```bash
 cd ~/slam_nav_ws
-./clean.sh
+./run.sh clean
 ```
 
 ## 当前创新定位
@@ -428,6 +577,25 @@ ros2 pkg prefix moveit_ros_move_group
 ros2 pkg prefix moveit_core
 ```
 
+先看 Gazebo 里的底盘 + Piper 臂：
+
+```bash
+cd ~/slam_nav_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+./run.sh sim enable_piper_arm:=true
+```
+
+这个开关默认关闭；不传 `enable_piper_arm:=true` 时，现有仿真机器人保持 task1 默认形态。默认 `piper_arm_model:=placeholder` 仍使用固定关节占位模型，用来检查安装位置、外形尺度和 TF 链，不发布机械臂相机数据，也不接入 Nav2 costmap。
+
+导入并构建 AgileX open class 的 `piper_description` 后，可以显式把仿真里的占位关节链替换成官方 Piper URDF 适配链：
+
+```bash
+./run.sh sim enable_piper_arm:=true piper_arm_model:=official
+```
+
+官方适配链会把 AgileX 原始 `base_link/link1...` 重命名为项目侧 `piper_base_link/piper_link1...`，避免和移动底盘 `base_link` 冲突；官方 MoveIt2 v4/v5 demo 仍作为独立 wrapper 启动，不会自动接入 task1。
+
 Piper 冒烟启动：
 
 ```bash
@@ -437,7 +605,75 @@ source install/setup.bash
 ros2 launch slam_nav_piper_bringup piper_sim.launch.py
 ```
 
-该入口只启动占位 TF、假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake pick/place action。真实机械臂阶段仍需要接入 AgileX 官方 Piper URDF/MoveIt2 配置或厂家 SDK，项目侧上层接口保持 `/piper/task/pick_object` 和 `/piper/task/place_object`。
+该入口只启动 Piper TF、假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake pick/place action。默认 TF 使用占位模型；需要对照官方 URDF 时可加 `arm_model:=official`。项目侧上层接口保持 `/piper/task/pick_object` 和 `/piper/task/place_object`。
+
+想同时看 Gazebo 模型并跑 Piper 假感知/假执行，可以先开 `./run.sh sim enable_piper_arm:=true`，再另开终端运行：
+
+```bash
+source /opt/ros/humble/setup.bash
+source ~/slam_nav_ws/install/setup.bash
+ros2 launch slam_nav_piper_bringup piper_mobile_manipulation.launch.py use_sim_time:=true fake_camera:=true fake_execution:=true
+```
+
+外部依赖先只记录在 `piper_external.repos`，不并入主仓库：
+
+```bash
+mkdir -p external
+vcs import external < piper_external.repos
+```
+
+AgileX Piper 课程参考已记录在外部清单里：
+
+```text
+https://github.com/agilexrobotics/agilex_open_class/tree/master/piper
+```
+
+它里面的 `piper_description`、`piper_moveit_config_v4`、`piper_moveit_config_v5` 作为官方模型和 MoveIt2 示例来源。当前仓库只记录来源和配置边界，没有把这些包接入 task1，也没有默认启动 MoveIt2 控制器。
+
+只准备官方 Piper open class 包时，可以使用：
+
+```bash
+./run.sh setup-piper
+source install/setup.bash
+```
+
+该脚本默认只下载 AgileX open class 的 `piper/` 子目录中三个官方包，目标目录是 `external/agilex/agilex_open_class`，可重复执行并跳过已完成文件。GitHub API 额度用尽时，可等待重置后重跑，或显式让脚本自动等待：
+
+```bash
+PIPER_OPEN_CLASS_WAIT_RATE_LIMIT=1 ./run.sh setup-piper
+```
+
+Piper 预检：
+
+```bash
+ros2 run slam_nav_piper_bringup piper_preflight_check.py
+ros2 run slam_nav_piper_bringup piper_preflight_check.py --require-official
+ros2 run slam_nav_piper_bringup piper_official_frame_audit.py
+ros2 run slam_nav_piper_bringup piper_official_frame_audit.py --check-project-adapter
+```
+
+导入并构建官方包后，可以单独跑官方 demo wrapper：
+
+```bash
+ros2 launch slam_nav_piper_bringup piper_official_moveit_demo.launch.py
+ros2 launch slam_nav_piper_bringup piper_official_gazebo_demo.launch.py
+```
+
+官方描述适配入口：
+
+```bash
+ros2 launch slam_nav_piper_description piper_official_description.launch.py
+```
+
+后续可能使用强化学习时，先单独启动学习层做抓取候选排序冒烟：
+
+```bash
+ros2 launch slam_nav_piper_learning piper_learning.launch.py enable_learning:=true policy_backend:=heuristic
+```
+
+默认任务层不会消费 `/piper/learning/grasp_candidates_ranked`，训练数据、模型权重、checkpoint 和 rosbag 也都被 `.gitignore` 排除，避免把 GitHub 仓库撑大。
+
+实机入口默认不会假装执行真实机械臂：`piper_real.launch.py` 里 `real_backend_connected=false`，只有 MoveIt2/SDK 后端完成隔离验证后才显式打开。
 
 
 ## 常见问题：FastDDS 共享内存端口锁
@@ -452,7 +688,7 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py
 
 ```bash
 cd ~/slam_nav_ws
-./clean.sh
+./run.sh clean
 ```
 
 不要在 ROS/Gazebo 正在运行时手动删除 `/dev/shm/fastrtps_*` 或 `sem.fastrtps_*`，否则可能打断正在通信的节点。`clean.sh` 会先终止本工作区相关进程，再清理 FastDDS/FastRTPS 的共享内存残留。

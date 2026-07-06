@@ -123,20 +123,20 @@ controller_server:
       rotation_ki: 0.0
       rotation_kd: 0.08
       transform_tolerance: 0.2
-      lookahead_dist: 0.45
+      lookahead_dist: 0.55
       use_velocity_scaled_lookahead_dist: true
       lookahead_time: 0.8
       min_lookahead_dist: 0.28
-      max_lookahead_dist: 0.9
+      max_lookahead_dist: 1.1
       use_interpolation: true
       use_rotate_to_heading: false
       rotate_to_heading_threshold: 0.25
       min_approach_linear_velocity: 0.04
-      approach_velocity_scaling_dist: 0.7
+      approach_velocity_scaling_dist: 0.8
       v_linear_min: -0.35
-      v_linear_max: 0.55
-      v_angular_min: -1.2
-      v_angular_max: 1.2
+      v_linear_max: 0.75
+      v_angular_min: -1.35
+      v_angular_max: 1.35
       enable_curvature_speed_limit: true
       curvature_min: 0.35
       curvature_max: 0.9
@@ -364,10 +364,10 @@ velocity_smoother:
     smoothing_frequency: 20.0
     scale_velocities: false
     feedback: "OPEN_LOOP"
-    max_velocity: [0.7, 0.4, 1.2]
-    min_velocity: [-0.35, -0.4, -1.2]
-    max_accel: [1.5, 1.2, 2.0]
-    max_decel: [-1.5, -1.2, -2.0]
+    max_velocity: [0.85, 0.45, 1.35]
+    min_velocity: [-0.35, -0.45, -1.35]
+    max_accel: [1.8, 1.4, 2.2]
+    max_decel: [-1.8, -1.4, -2.2]
     odom_topic: /Odometry
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]

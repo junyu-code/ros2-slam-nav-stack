@@ -433,7 +433,7 @@ Visualization Manager:
           Channel Name: intensity
           Class: rviz_default_plugins/PointCloud2
           Color: 255; 255; 255
-          Color Transformer: RGB8
+          Color Transformer: AxisColor
           Decay Time: 0
           Enabled: true
           Invert Rainbow: false
@@ -466,14 +466,14 @@ Visualization Manager:
           Max Value: 1
           Median window: 5
           Min Value: 0
-          Name: RealsenseCamera
+          Name: Nav RGB-D Depth
           Normalize Range: true
           Topic:
             Depth: 5
             Durability Policy: Volatile
             History Policy: Keep Last
-            Reliability Policy: Reliable
-            Value: /intel_realsense_r200_depth/image_raw
+            Reliability Policy: Best Effort
+            Value: /nav_camera/depth/image_raw
           Value: true
         - Alpha: 1
           Autocompute Intensity Bounds: true
@@ -485,7 +485,7 @@ Visualization Manager:
           Channel Name: intensity
           Class: rviz_default_plugins/PointCloud2
           Color: 255; 255; 255
-          Color Transformer: RGB8
+          Color Transformer: AxisColor
           Decay Time: 0
           Enabled: true
           Invert Rainbow: false
@@ -493,7 +493,7 @@ Visualization Manager:
           Max Intensity: 4096
           Min Color: 0; 0; 0
           Min Intensity: 0
-          Name: RealsenseDepthImage
+          Name: Visual Obstacles
           Position Transformer: XYZ
           Selectable: true
           Size (Pixels): 3
@@ -504,13 +504,13 @@ Visualization Manager:
             Durability Policy: Volatile
             Filter size: 10
             History Policy: Keep Last
-            Reliability Policy: Reliable
-            Value: /intel_realsense_r200_depth/points
+            Reliability Policy: Best Effort
+            Value: /visual_obstacles
           Use Fixed Frame: true
           Use rainbow: true
           Value: true
-      Enabled: false
-      Name: Realsense
+      Enabled: true
+      Name: RGB-D Camera
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: MarkerArray

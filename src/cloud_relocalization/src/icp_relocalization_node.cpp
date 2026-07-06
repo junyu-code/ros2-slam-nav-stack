@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -14,7 +16,9 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/registration/gicp.h>
 #include <pcl/registration/icp.h>
+#include <pcl/registration/ndt.h>
 #include <pcl_conversions/pcl_conversions.h>
 
 #include "builtin_interfaces/msg/time.hpp"
@@ -52,6 +56,8 @@ public:
     publish_tf_ = declare_parameter<bool>("publish_tf", true);
     auto_align_ = declare_parameter<bool>("auto_align", false);
     use_last_transform_as_guess_ = declare_parameter<bool>("use_last_transform_as_guess", true);
+    registration_method_ = normalizeMethod(
+      declare_parameter<std::string>("registration_method", "icp"));
 
     map_leaf_size_ = declare_parameter<double>("map_leaf_size", 0.12);
     scan_leaf_size_ = declare_parameter<double>("scan_leaf_size", 0.10);
@@ -62,6 +68,8 @@ public:
       declare_parameter<double>("euclidean_fitness_epsilon", 1e-4);
     fitness_score_threshold_ = declare_parameter<double>("fitness_score_threshold", 0.45);
     max_iterations_ = declare_parameter<int>("max_iterations", 45);
+    ndt_resolution_ = declare_parameter<double>("ndt_resolution", 1.0);
+    ndt_step_size_ = declare_parameter<double>("ndt_step_size", 0.1);
     min_scan_points_ = declare_parameter<int>("min_scan_points", 120);
     min_map_points_ = declare_parameter<int>("min_map_points", 300);
     min_interval_sec_ = declare_parameter<double>("min_interval_sec", 2.0);
@@ -93,9 +101,9 @@ public:
 
     RCLCPP_INFO(
       get_logger(),
-      "ICP relocalization ready: map=%s cloud=%s service=%s loaded=%s",
-      map_pcd_path_.c_str(), input_cloud_topic_.c_str(), trigger_service_.c_str(),
-      map_loaded_ ? "true" : "false");
+      "cloud relocalization ready: method=%s map=%s cloud=%s service=%s loaded=%s",
+      registration_method_.c_str(), map_pcd_path_.c_str(), input_cloud_topic_.c_str(),
+      trigger_service_.c_str(), map_loaded_ ? "true" : "false");
   }
 
 private:
@@ -110,7 +118,7 @@ private:
     }
     pending_trigger_.store(true);
     response->success = true;
-    response->message = "ICP relocalization will run on the next cloud";
+    response->message = registrationLabel() + " relocalization will run on the next cloud";
   }
 
   void cloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
@@ -131,7 +139,7 @@ private:
     }
 
     aligning_.store(true);
-    runIcp(*msg);
+    runRelocalization(*msg);
     last_alignment_time_ = now;
     aligning_.store(false);
   }
@@ -158,7 +166,7 @@ private:
     return !map_cloud_->empty();
   }
 
-  void runIcp(const sensor_msgs::msg::PointCloud2 & msg)
+  void runRelocalization(const sensor_msgs::msg::PointCloud2 & msg)
   {
     auto scan = std::make_shared<CloudT>();
     pcl::fromROSMsg(msg, *scan);
@@ -171,7 +179,6 @@ private:
       return;
     }
 
-    pcl::IterativeClosestPoint<PointT, PointT> icp;
     const Eigen::Matrix4f guess =
       use_last_transform_as_guess_ ? last_transform_ : initial_transform_;
     const auto target_map = targetMapForGuess(guess);
@@ -183,34 +190,69 @@ private:
       return;
     }
 
-    icp.setInputSource(filtered_scan);
-    icp.setInputTarget(target_map);
-    icp.setMaximumIterations(std::max(1, max_iterations_));
-    icp.setMaxCorrespondenceDistance(max_correspondence_distance_);
-    icp.setTransformationEpsilon(transformation_epsilon_);
-    icp.setEuclideanFitnessEpsilon(euclidean_fitness_epsilon_);
-
     CloudT aligned;
-    icp.align(aligned, guess);
+    Eigen::Matrix4f result_transform = Eigen::Matrix4f::Identity();
+    double fitness = std::numeric_limits<double>::infinity();
+    bool converged = false;
 
-    const double fitness = icp.getFitnessScore();
-    if (!icp.hasConverged() || fitness > fitness_score_threshold_) {
+    if (registration_method_ == "gicp") {
+      pcl::GeneralizedIterativeClosestPoint<PointT, PointT> gicp;
+      configureIcpLikeRegistration(gicp, filtered_scan, target_map);
+      gicp.align(aligned, guess);
+      converged = gicp.hasConverged();
+      fitness = gicp.getFitnessScore();
+      result_transform = gicp.getFinalTransformation();
+    } else if (registration_method_ == "ndt") {
+      pcl::NormalDistributionsTransform<PointT, PointT> ndt;
+      ndt.setInputSource(filtered_scan);
+      ndt.setInputTarget(target_map);
+      ndt.setMaximumIterations(std::max(1, max_iterations_));
+      ndt.setTransformationEpsilon(transformation_epsilon_);
+      ndt.setStepSize(std::max(0.01, ndt_step_size_));
+      ndt.setResolution(std::max(0.1, ndt_resolution_));
+      ndt.align(aligned, guess);
+      converged = ndt.hasConverged();
+      fitness = ndt.getFitnessScore();
+      result_transform = ndt.getFinalTransformation();
+    } else {
+      pcl::IterativeClosestPoint<PointT, PointT> icp;
+      configureIcpLikeRegistration(icp, filtered_scan, target_map);
+      icp.align(aligned, guess);
+      converged = icp.hasConverged();
+      fitness = icp.getFitnessScore();
+      result_transform = icp.getFinalTransformation();
+    }
+
+    if (!converged || fitness > fitness_score_threshold_) {
       std::ostringstream oss;
-      oss << "ICP rejected: converged=" << (icp.hasConverged() ? "true" : "false")
+      oss << registrationLabel() << " rejected: converged=" << (converged ? "true" : "false")
           << " fitness=" << fitness
           << " threshold=" << fitness_score_threshold_;
       publishStatus(false, oss.str());
       return;
     }
 
-    const auto result_transform = icp.getFinalTransformation();
     if (!isResultAcceptable(guess, result_transform)) {
-      publishStatus(false, "ICP rejected: result jump exceeds configured gate");
+      publishStatus(false, registrationLabel() + " rejected: result jump exceeds configured gate");
       return;
     }
 
     last_transform_ = result_transform;
     publishResult(msg.header.stamp, aligned, fitness);
+  }
+
+  template<typename RegistrationT>
+  void configureIcpLikeRegistration(
+    RegistrationT & registration,
+    const std::shared_ptr<CloudT> & source,
+    const std::shared_ptr<CloudT> & target) const
+  {
+    registration.setInputSource(source);
+    registration.setInputTarget(target);
+    registration.setMaximumIterations(std::max(1, max_iterations_));
+    registration.setMaxCorrespondenceDistance(max_correspondence_distance_);
+    registration.setTransformationEpsilon(transformation_epsilon_);
+    registration.setEuclideanFitnessEpsilon(euclidean_fitness_epsilon_);
   }
 
   std::shared_ptr<CloudT> targetMapForGuess(const Eigen::Matrix4f & guess) const
@@ -307,7 +349,7 @@ private:
     aligned_cloud_pub_->publish(aligned_msg);
 
     std::ostringstream oss;
-    oss << "ICP accepted: fitness=" << fitness
+    oss << registrationLabel() << " accepted: fitness=" << fitness
         << " x=" << pose.pose.position.x
         << " y=" << pose.pose.position.y;
     publishStatus(true, oss.str());
@@ -364,6 +406,32 @@ private:
     }
   }
 
+  std::string normalizeMethod(std::string method) const
+  {
+    std::transform(method.begin(), method.end(), method.begin(), [](unsigned char c) {
+      return static_cast<char>(std::tolower(c));
+    });
+    if (method != "icp" && method != "gicp" && method != "ndt") {
+      RCLCPP_WARN(
+        get_logger(),
+        "unsupported registration_method '%s', fallback to icp",
+        method.c_str());
+      return "icp";
+    }
+    return method;
+  }
+
+  std::string registrationLabel() const
+  {
+    if (registration_method_ == "gicp") {
+      return "GICP";
+    }
+    if (registration_method_ == "ndt") {
+      return "NDT";
+    }
+    return "ICP";
+  }
+
   std::string map_pcd_path_;
   std::string input_cloud_topic_;
   std::string aligned_cloud_topic_;
@@ -375,6 +443,7 @@ private:
   bool publish_tf_{};
   bool auto_align_{};
   bool use_last_transform_as_guess_{};
+  std::string registration_method_;
   double map_leaf_size_{};
   double scan_leaf_size_{};
   double max_correspondence_distance_{};
@@ -382,6 +451,8 @@ private:
   double euclidean_fitness_epsilon_{};
   double fitness_score_threshold_{};
   int max_iterations_{};
+  double ndt_resolution_{};
+  double ndt_step_size_{};
   int min_scan_points_{};
   int min_map_points_{};
   double min_interval_sec_{};

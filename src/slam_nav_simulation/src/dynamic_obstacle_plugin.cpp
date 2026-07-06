@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 #include <gazebo/common/Plugin.hh>
 #include <gazebo/gazebo.hh>
@@ -25,6 +26,9 @@ public:
 
     speed_ = std::max(0.01, GetDouble(sdf, "speed", 0.35));
     pause_time_ = std::max(0.0, GetDouble(sdf, "pause_time", 0.6));
+    robot_model_name_ = GetString(sdf, "robot_model", "mobile_robot");
+    yield_radius_ = std::max(0.0, GetDouble(sdf, "yield_radius", 0.0));
+    yield_resume_radius_ = std::max(yield_radius_, GetDouble(sdf, "yield_resume_radius", yield_radius_ + 0.25));
 
     const auto delta = end_ - start_;
     travel_distance_ = delta.Length();
@@ -44,6 +48,17 @@ private:
     return sdf->Get<double>(name);
   }
 
+  static std::string GetString(
+    const sdf::ElementPtr & sdf,
+    const std::string & name,
+    const std::string & fallback)
+  {
+    if (!sdf || !sdf->HasElement(name)) {
+      return fallback;
+    }
+    return sdf->Get<std::string>(name);
+  }
+
   void OnUpdate(const common::UpdateInfo & info)
   {
     if (!model_ || travel_distance_ < 1e-6) {
@@ -53,7 +68,19 @@ private:
     const double now = info.simTime.Double();
     if (!started_) {
       start_time_ = now;
+      last_update_time_ = now;
       started_ = true;
+    }
+
+    const double dt = std::max(0.0, now - last_update_time_);
+    last_update_time_ = now;
+
+    // 动态障碍物是运动学物体，直接撞车会把定位状态撞偏；靠近机器人时先暂停轨迹。
+    if (shouldYieldToRobot()) {
+      start_time_ += dt;
+      model_->SetLinearVel(ignition::math::Vector3d::Zero);
+      model_->SetAngularVel(ignition::math::Vector3d::Zero);
+      return;
     }
 
     const double cycle_time = 2.0 * travel_time_ + 2.0 * pause_time_;
@@ -89,6 +116,39 @@ private:
     model_->SetAngularVel(ignition::math::Vector3d::Zero);
   }
 
+  bool shouldYieldToRobot()
+  {
+    if (yield_radius_ <= 0.0 || !model_) {
+      yielding_ = false;
+      return false;
+    }
+
+    const auto world = model_->GetWorld();
+    if (!world) {
+      yielding_ = false;
+      return false;
+    }
+
+    const auto robot = world->ModelByName(robot_model_name_);
+    if (!robot) {
+      yielding_ = false;
+      return false;
+    }
+
+    const auto obstacle_pos = model_->WorldPose().Pos();
+    const auto robot_pos = robot->WorldPose().Pos();
+    const double distance_xy = std::hypot(
+      obstacle_pos.X() - robot_pos.X(),
+      obstacle_pos.Y() - robot_pos.Y());
+
+    if (yielding_) {
+      yielding_ = distance_xy < yield_resume_radius_;
+    } else {
+      yielding_ = distance_xy < yield_radius_;
+    }
+    return yielding_;
+  }
+
   physics::ModelPtr model_;
   event::ConnectionPtr update_connection_;
   ignition::math::Pose3d start_pose_;
@@ -96,11 +156,16 @@ private:
   ignition::math::Vector3d end_;
   double speed_{0.35};
   double pause_time_{0.6};
+  double yield_radius_{0.0};
+  double yield_resume_radius_{0.0};
   double travel_distance_{0.0};
   double travel_time_{1.0};
   double forward_yaw_{0.0};
   double start_time_{0.0};
+  double last_update_time_{0.0};
+  std::string robot_model_name_{"mobile_robot"};
   bool started_{false};
+  bool yielding_{false};
 };
 
 GZ_REGISTER_MODEL_PLUGIN(DynamicObstaclePlugin)

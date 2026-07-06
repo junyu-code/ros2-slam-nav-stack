@@ -7,3 +7,21 @@ piper:
       auto_enable: false
       state_topic: /piper/control/state
       owner_request_topic: /piper/control/owner_request
+      # 当前只配置边界，不在本节点里直接启动 MoveIt2 或厂家 SDK。
+      moveit_config_package: slam_nav_piper_moveit_config
+      moveit_move_group_namespace: /piper
+      moveit_planning_group: piper_arm
+      moveit_end_effector_group: piper_gripper
+      moveit_tcp_frame: piper_tcp
+      moveit_base_frame: piper_base_link
+      sdk_driver_package: agx_arm_ros
+      sdk_driver_namespace: /piper
+      sdk_arm_type: piper
+      sdk_effector_type: agx_gripper
+      allow_sdk_motion_test: false
+      # 实机首次启动必须保持 false，确认急停、限速和工作空间后再逐步打开。
+      allow_real_motion: false
+      velocity_scaling: 0.10
+      acceleration_scaling: 0.10
+      workspace_min_xyz: [-0.20, -0.45, 0.02]
+      workspace_max_xyz: [0.65, 0.45, 0.75]

@@ -1,0 +1,24 @@
+piper_learning_boundary:
+  ros__parameters:
+    # 强化学习先作为离线/旁路策略层，不参与默认 pick/place 决策。
+    enabled: false
+    package: slam_nav_piper_learning
+    launch_file: piper_learning.launch.py
+    policy_backend: disabled
+    input_candidates_topic: /piper/grasp_candidates
+    ranked_candidates_topic: /piper/learning/grasp_candidates_ranked
+    mission_consumes_ranked_candidates: false
+    allowed_policy_roles:
+      - grasp_candidate_ranking
+      - visual_servo_hint
+      - active_viewpoint_hint
+      - failure_recovery_hint
+    forbidden_policy_roles:
+      - direct_joint_control
+      - direct_base_cmd_vel_control
+      - bypass_moveit_collision_check
+      - bypass_estop_or_disable
+    artifact_roots:
+      dataset_root: datasets/piper
+      checkpoint_root: checkpoints/piper
+      run_log_root: runs/piper

@@ -11,6 +11,7 @@
 
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
   <exec_depend>slam_nav_piper_control</exec_depend>
   <exec_depend>slam_nav_piper_description</exec_depend>
   <exec_depend>slam_nav_piper_manipulation</exec_depend>

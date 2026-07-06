@@ -1,0 +1,45 @@
+piper_moveit2_boundary:
+  ros__parameters:
+    # 当前是 MoveIt2 接入前的边界配置，不会自动启动 move_group。
+    enabled: false
+    config_package: ''
+    move_group_launch_file: move_group.launch.py
+    namespace: /piper
+    planning_group: piper_arm
+    end_effector_group: piper_gripper
+    base_frame: piper_base_link
+    tcp_frame: piper_tcp
+    project_side_config:
+      package: slam_nav_piper_moveit_config
+      launch: piper_project_moveit_plan.launch.py
+      planning_group: piper_arm
+      gripper_group: piper_gripper
+      tcp_frame: piper_tcp
+      default_allow_trajectory_execution: false
+      note: 该配置只做 plan-only/后端接入前验证，默认不连接 task1、Nav2 或厂家 SDK。
+    official_open_class_reference:
+      repo: https://github.com/agilexrobotics/agilex_open_class/tree/master/piper
+      description_package: piper_description
+      description_xacro: urdf/piper_description.xacro
+      display_launch: display_piper.launch.py
+      gazebo_launch: piper_gazebo.launch.py
+      rviz_moveit_config_package: piper_moveit_config_v5
+      gazebo_moveit_config_package: piper_moveit_config_v4
+      demo_launch: demo.launch.py
+      project_adapter_launch: slam_nav_piper_description/piper_official_description.launch.py
+      project_arm_model_argument: arm_model:=official
+      official_native_frames: base_link/link1/link2/link3/link4/link5/link6
+      project_adapted_frames: piper_base_link/piper_link1/piper_link2/piper_link3/piper_link4/piper_link5/piper_link6
+      official_tcp_parent_frame_default: piper_link6
+      note: 官方 MoveIt2 demo 仍使用原生命名；移动底盘组合模型需要 piper_* 适配后的 SRDF/controllers。
+    default_planner_id: RRTConnectkConfigDefault
+    plan_only_default: true
+    allowed_planning_time_s: 5.0
+    num_planning_attempts: 5
+    velocity_scaling: 0.10
+    acceleration_scaling: 0.10
+    controller_boundary:
+      # ros2_control 或厂家驱动控制器后续只在控制桥内部适配。
+      joint_trajectory_controller: /piper/piper_arm_controller/follow_joint_trajectory
+      gripper_controller: /piper/gripper_controller/gripper_cmd
+      expose_to_mission_behavior: false

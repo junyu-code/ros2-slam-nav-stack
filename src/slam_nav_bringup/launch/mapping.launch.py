@@ -8,6 +8,7 @@ from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -18,9 +19,13 @@ def generate_launch_description():
     fast_lio_config = LaunchConfiguration('fast_lio_config')
     slam_params = LaunchConfiguration('slam_params')
     rviz = LaunchConfiguration('rviz')
+    auto_explore = LaunchConfiguration('auto_explore')
+    auto_explore_max_runtime_sec = LaunchConfiguration('auto_explore_max_runtime_sec')
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
+        DeclareLaunchArgument('auto_explore', default_value='false'),
+        DeclareLaunchArgument('auto_explore_max_runtime_sec', default_value='0.0'),
         DeclareLaunchArgument(
             'fast_lio_config',
             default_value=os.path.join(fast_lio_dir, 'config', 'mid360.yaml'),
@@ -86,6 +91,20 @@ def generate_launch_description():
             package='rviz2',
             executable='rviz2',
             condition=IfCondition(rviz),
+            output='screen',
+        ),
+        Node(
+            package='slam_nav_bringup',
+            executable='auto_explore_mapping.py',
+            name='auto_explore_mapper',
+            condition=IfCondition(auto_explore),
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                'max_runtime_sec': ParameterValue(
+                    auto_explore_max_runtime_sec,
+                    value_type=float,
+                ),
+            }],
             output='screen',
         ),
     ])

@@ -1,0 +1,16 @@
+piper:
+  grasp_candidate_ranker_node:
+    ros__parameters:
+      # 当前学习层默认禁用；后续验证通过后再由任务层显式消费 ranked 输出。
+      policy_backend: disabled
+      input_candidates_topic: /piper/grasp_candidates
+      output_candidates_topic: /piper/learning/grasp_candidates_ranked
+      policy_model_path: ''
+      min_score: 0.0
+      max_candidates: 8
+      publish_passthrough_when_disabled: false
+      stamp_ranked_candidates: true
+      # 强化学习相关路径只写配置，不把数据和权重提交进 Git。
+      dataset_root: datasets/piper
+      checkpoint_root: checkpoints/piper
+      tensorboard_root: runs/piper

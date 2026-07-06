@@ -8,6 +8,34 @@ __pycache__/
 *.db3
 *.mcap
 *.log
-tasks/
+
+# task 目录里只准备跟踪轻量 Markdown 规划文档，报告源文件、Word/PDF 和数据产物先不进仓库。
+tasks/*
+!tasks/task2/
+tasks/task2/*
+!tasks/task2/FUTURE_ROADMAP.md
+!tasks/task2/PIPER_MOBILE_MANIPULATION.md
+
+# 外部依赖只提交 .repos/说明文件，不把第三方仓库源码直接并入主仓库。
+external/
+third_party/
+vendor/
+
+# 强化学习、感知数据和地图产物体积容易失控，后续统一用外部数据盘或 Git LFS 管理。
+datasets/
+models/
+checkpoints/
+runs/
+wandb/
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.engine
+*.safetensors
+*.pcd
+*.ply
+*.las
+*.laz
 src/FAST_LIO/PCD/
 src/FAST_LIO/Log/*.txt

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}/.."
+
 # 清理本工作区常见的 ROS/Gazebo/RViz/Nav2 残留进程。
 PATTERN="slam_nav_simulation|slam_nav_bringup|fastlio_mapping|async_slam_toolbox_node|pointcloud_to_laserscan_node|adaptive_cloud_filter|localization_guard_node.py|robot_state_publisher|joint_state_publisher|spawn_entity.py|gzserver|gzclient|rviz2|nav2_|map_server|amcl|controller_server|planner_server|smoother_server|behavior_server|bt_navigator|waypoint_follower|velocity_smoother|lifecycle_manager|publish_initial_pose.py|mission_behavior_node.py|safe_cmd_bridge_node.py"
 

@@ -9,12 +9,16 @@
 #include <string>
 #include <vector>
 
+#include "geometry_msgs/msg/point_stamped.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/point_cloud2_iterator.hpp"
 #include "std_srvs/srv/set_bool.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
 
 namespace rgbd_navigation_perception
 {
@@ -80,12 +84,21 @@ public:
       "camera_info_topic", "/nav_camera/depth/camera_info");
     output_cloud_topic_ = declare_parameter<std::string>("output_cloud_topic", "/visual_obstacles");
     frame_id_override_ = declare_parameter<std::string>("frame_id_override", "");
+    target_frame_ = declare_parameter<std::string>("target_frame", "base_footprint");
     set_enabled_service_ = declare_parameter<std::string>(
       "set_enabled_service", "/rgbd_nav/set_enabled");
 
     pixel_step_ = declare_parameter<int>("pixel_step", 4);
     min_depth_m_ = declare_parameter<double>("min_depth_m", 0.25);
     max_depth_m_ = declare_parameter<double>("max_depth_m", 5.0);
+    obstacle_min_height_m_ = declare_parameter<double>("obstacle_min_height_m", 0.08);
+    obstacle_max_height_m_ = declare_parameter<double>("obstacle_max_height_m", 1.20);
+    min_forward_m_ = declare_parameter<double>("min_forward_m", 0.05);
+    max_forward_m_ = declare_parameter<double>("max_forward_m", 4.0);
+    max_lateral_m_ = declare_parameter<double>("max_lateral_m", 2.0);
+
+    tf_buffer_ = std::make_unique<tf2_ros::Buffer>(get_clock());
+    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
     cloud_pub_ = create_publisher<sensor_msgs::msg::PointCloud2>(
       output_cloud_topic_, rclcpp::SensorDataQoS());
@@ -108,11 +121,12 @@ public:
 
     RCLCPP_INFO(
       get_logger(),
-      "depth_obstacle_projector ready: enabled=%s depth=%s info=%s output=%s",
+      "depth_obstacle_projector ready: enabled=%s depth=%s info=%s output=%s target=%s",
       enabled_ ? "true" : "false",
       depth_image_topic_.c_str(),
       camera_info_topic_.c_str(),
-      output_cloud_topic_.c_str());
+      output_cloud_topic_.c_str(),
+      target_frame_.c_str());
   }
 
 private:
@@ -158,7 +172,12 @@ private:
       return;
     }
 
-    const auto points = projectDepthImage(*msg);
+    geometry_msgs::msg::TransformStamped sensor_to_target;
+    if (!lookupSensorToTarget(*msg, sensor_to_target)) {
+      return;
+    }
+
+    const auto points = projectDepthImage(*msg, sensor_to_target);
     sensor_msgs::msg::PointCloud2 cloud;
     fillPointCloud(*msg, points, cloud);
     cloud_pub_->publish(cloud);
@@ -169,7 +188,35 @@ private:
       msg->width, msg->height, points.size(), enabled_ ? "true" : "false");
   }
 
-  std::vector<PointXYZ> projectDepthImage(const sensor_msgs::msg::Image & msg)
+  bool lookupSensorToTarget(
+    const sensor_msgs::msg::Image & msg,
+    geometry_msgs::msg::TransformStamped & sensor_to_target)
+  {
+    const std::string sensor_frame = !frame_id_override_.empty() ?
+      frame_id_override_ : msg.header.frame_id;
+    if (sensor_frame.empty()) {
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 3000,
+        "深度图没有 frame_id，无法投影到机器人坐标系");
+      return false;
+    }
+
+    try {
+      sensor_to_target = tf_buffer_->lookupTransform(
+        target_frame_, sensor_frame, msg.header.stamp, rclcpp::Duration::from_seconds(0.05));
+      return true;
+    } catch (const tf2::TransformException & ex) {
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 3000,
+        "等待 RGB-D TF %s -> %s: %s",
+        sensor_frame.c_str(), target_frame_.c_str(), ex.what());
+      return false;
+    }
+  }
+
+  std::vector<PointXYZ> projectDepthImage(
+    const sensor_msgs::msg::Image & msg,
+    const geometry_msgs::msg::TransformStamped & sensor_to_target)
   {
     std::vector<PointXYZ> points;
     const int step = std::max(pixel_step_, 1);
@@ -203,12 +250,24 @@ private:
         }
 
         // 深度图投影采用 ROS 光学坐标系：x 向右，y 向下，z 向前。
-        const double x = (static_cast<double>(u) - intrinsics_.cx) * depth_m / intrinsics_.fx;
-        const double y = (static_cast<double>(v) - intrinsics_.cy) * depth_m / intrinsics_.fy;
+        geometry_msgs::msg::PointStamped optical_point;
+        optical_point.header = msg.header;
+        optical_point.point.x =
+          (static_cast<double>(u) - intrinsics_.cx) * depth_m / intrinsics_.fx;
+        optical_point.point.y =
+          (static_cast<double>(v) - intrinsics_.cy) * depth_m / intrinsics_.fy;
+        optical_point.point.z = depth_m;
+
+        geometry_msgs::msg::PointStamped target_point;
+        tf2::doTransform(optical_point, target_point, sensor_to_target);
+        if (!isObstaclePointUsable(target_point)) {
+          continue;
+        }
+
         points.push_back(PointXYZ{
-          static_cast<float>(x),
-          static_cast<float>(y),
-          static_cast<float>(depth_m)});
+          static_cast<float>(target_point.point.x),
+          static_cast<float>(target_point.point.y),
+          static_cast<float>(target_point.point.z)});
       }
     }
 
@@ -236,15 +295,28 @@ private:
     return std::isfinite(depth_m) && depth_m >= min_depth_m_ && depth_m <= max_depth_m_;
   }
 
+  bool isObstaclePointUsable(const geometry_msgs::msg::PointStamped & point) const
+  {
+    const auto & p = point.point;
+    if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z)) {
+      return false;
+    }
+    if (p.x < min_forward_m_ || p.x > max_forward_m_) {
+      return false;
+    }
+    if (std::abs(p.y) > max_lateral_m_) {
+      return false;
+    }
+    return p.z >= obstacle_min_height_m_ && p.z <= obstacle_max_height_m_;
+  }
+
   void fillPointCloud(
     const sensor_msgs::msg::Image & depth_msg,
     const std::vector<PointXYZ> & points,
     sensor_msgs::msg::PointCloud2 & cloud) const
   {
     cloud.header = depth_msg.header;
-    if (!frame_id_override_.empty()) {
-      cloud.header.frame_id = frame_id_override_;
-    }
+    cloud.header.frame_id = target_frame_;
     cloud.is_bigendian = false;
     cloud.is_dense = true;
 
@@ -283,16 +355,24 @@ private:
   std::string camera_info_topic_;
   std::string output_cloud_topic_;
   std::string frame_id_override_;
+  std::string target_frame_;
   std::string set_enabled_service_;
   int pixel_step_{4};
   double min_depth_m_{0.25};
   double max_depth_m_{5.0};
+  double obstacle_min_height_m_{0.08};
+  double obstacle_max_height_m_{1.20};
+  double min_forward_m_{0.05};
+  double max_forward_m_{4.0};
+  double max_lateral_m_{2.0};
   Intrinsics intrinsics_;
 
   rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr depth_sub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_pub_;
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr enable_service_;
+  std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 };
 }  // namespace rgbd_navigation_perception
 

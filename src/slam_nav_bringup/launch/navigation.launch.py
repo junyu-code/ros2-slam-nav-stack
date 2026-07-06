@@ -8,6 +8,8 @@ from launch.actions import (
     DeclareLaunchArgument,
     GroupAction,
     IncludeLaunchDescription,
+    LogInfo,
+    OpaqueFunction,
     RegisterEventHandler,
     TimerAction,
 )
@@ -26,6 +28,7 @@ def generate_launch_description():
     fast_lio_config = LaunchConfiguration('fast_lio_config')
     map_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
+    nav2_params_file = LaunchConfiguration('nav2_params_file')
     use_sim_time = LaunchConfiguration('use_sim_time')
     use_composition = LaunchConfiguration('use_composition')
     container_name = LaunchConfiguration('container_name')
@@ -42,29 +45,51 @@ def generate_launch_description():
     initial_pose_y = LaunchConfiguration('initial_pose_y')
     initial_pose_yaw = LaunchConfiguration('initial_pose_yaw')
 
-    localization_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(nav2_dir, 'launch', 'localization_launch.py')),
-        condition=IfCondition(PythonExpression(["'", localization_mode, "' == 'amcl'"])),
-        launch_arguments={
-            'map': map_file,
-            'use_sim_time': use_sim_time,
-            'params_file': params_file,
-            'autostart': 'true',
-            'use_composition': use_composition,
-            'container_name': container_name,
-        }.items(),
-    )
+    def normalize_python_bool(value):
+        # Nav2 官方 launch 里有 PythonExpression，布尔值要用 Python 可识别的 True/False。
+        lowered = str(value).strip().lower()
+        if lowered in ('true', '1', 'yes', 'on'):
+            return 'True'
+        if lowered in ('false', '0', 'no', 'off'):
+            return 'False'
+        return value
 
-    navigation_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(nav2_dir, 'launch', 'navigation_launch.py')),
-        launch_arguments={
-            'use_sim_time': use_sim_time,
-            'params_file': params_file,
-            'autostart': 'true',
-            'use_composition': use_composition,
-            'container_name': container_name,
-        }.items(),
-    )
+    def make_localization_include(context):
+        # 先在当前 launch 作用域解析路径，再传给 Nav2 官方 launch，避免嵌套默认参数覆盖。
+        return [
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(nav2_dir, 'launch', 'localization_launch.py')
+                ),
+                launch_arguments={
+                    'map': map_file.perform(context),
+                    'use_sim_time': use_sim_time.perform(context),
+                    'params_file': nav2_params_file.perform(context),
+                    'autostart': 'true',
+                    'use_composition': normalize_python_bool(use_composition.perform(context)),
+                    'container_name': container_name.perform(context),
+                }.items(),
+            )
+        ]
+
+    def make_navigation_include(context):
+        # 同上，Nav2 参数文件必须在这里解析成实际路径。
+        resolved_params_file = nav2_params_file.perform(context)
+        return [
+            LogInfo(msg=f'Using Nav2 params file: {resolved_params_file}'),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(nav2_dir, 'launch', 'navigation_launch.py')
+                ),
+                launch_arguments={
+                    'use_sim_time': use_sim_time.perform(context),
+                    'params_file': resolved_params_file,
+                    'autostart': 'true',
+                    'use_composition': normalize_python_bool(use_composition.perform(context)),
+                    'container_name': container_name.perform(context),
+                }.items(),
+            )
+        ]
 
     initial_pose_publisher = Node(
         package='slam_nav_bringup',
@@ -87,7 +112,7 @@ def generate_launch_description():
         name='map_server',
         output='screen',
         parameters=[
-            params_file,
+            nav2_params_file,
             {
                 'use_sim_time': use_sim_time,
                 'yaml_filename': map_file,
@@ -133,12 +158,19 @@ def generate_launch_description():
         ],
     )
 
+    amcl_localization = GroupAction(
+        condition=IfCondition(PythonExpression(["'", localization_mode, "' == 'amcl'"])),
+        actions=[
+            OpaqueFunction(function=make_localization_include),
+        ],
+    )
+
     static_navigation_start = GroupAction(
         condition=IfCondition(PythonExpression(["'", localization_mode, "' == 'static'"])),
         actions=[
             TimerAction(
                 period=10.0,
-                actions=[navigation_launch],
+                actions=[OpaqueFunction(function=make_navigation_include)],
             ),
         ],
     )
@@ -174,6 +206,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'params_file',
             default_value=os.path.join(bringup_dir, 'config', 'nav2_params.yaml'),
+            description='Backward-compatible Nav2 parameter file argument.',
+        ),
+        DeclareLaunchArgument(
+            'nav2_params_file',
+            default_value=params_file,
+            description='Nav2 parameter file passed into Nav2 bringup. Defaults to params_file.',
         ),
         DeclareLaunchArgument('initial_pose_x', default_value='0.0'),
         DeclareLaunchArgument('initial_pose_y', default_value='0.0'),
@@ -238,7 +276,7 @@ def generate_launch_description():
         TimerAction(
             period=8.0,
             actions=[
-                localization_launch,
+                amcl_localization,
                 initial_pose_publisher,
                 static_localization,
             ],
@@ -250,7 +288,7 @@ def generate_launch_description():
                 on_exit=[
                     TimerAction(
                         period=2.0,
-                        actions=[navigation_launch],
+                        actions=[OpaqueFunction(function=make_navigation_include)],
                     ),
                 ],
             )

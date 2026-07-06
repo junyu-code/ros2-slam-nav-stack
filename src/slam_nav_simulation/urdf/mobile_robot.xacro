@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <robot name="mobile_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:arg name="enable_nav_rgbd_camera" default="false"/>
+  <xacro:arg name="enable_piper_arm" default="false"/>
   <xacro:property name="PI" value="3.141592653589793"/>
   <!-- 底盘几何参数需要与 Nav2 footprint 保持同步，footprint 额外留安全余量。 -->
   <xacro:property name="chassis_length" value="0.46"/>
@@ -17,6 +18,8 @@
   <xacro:property name="livox_z" value="0.20"/>
   <xacro:property name="nav_camera_x" value="0.24"/>
   <xacro:property name="nav_camera_z" value="0.20"/>
+  <xacro:property name="piper_mount_x" value="0.16"/>
+  <xacro:property name="piper_mount_z" value="0.22"/>
 
   <xacro:macro name="box_inertial" params="mass x y z">
     <inertial>
@@ -259,6 +262,239 @@
           <max_depth>8.0</max_depth>
         </plugin>
       </sensor>
+    </gazebo>
+  </xacro:if>
+
+  <xacro:if value="$(arg enable_piper_arm)">
+    <!-- Piper 仿真占位模型默认关闭，只用于 Gazebo 可视化和 TF 冒烟，不参与 task1 导航链路。 -->
+    <link name="piper_mount_link">
+      <visual>
+        <origin xyz="0 0 0.02" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.20 0.18 0.04"/>
+        </geometry>
+        <material name="piper_mount_gray">
+          <color rgba="0.25 0.27 0.30 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0.02" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.20 0.18 0.04"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="0.45" x="0.20" y="0.18" z="0.04"/>
+    </link>
+
+    <joint name="piper_mount_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="piper_mount_link"/>
+      <origin xyz="${piper_mount_x} 0.0 ${piper_mount_z}" rpy="0 0 0"/>
+    </joint>
+
+    <link name="piper_base_link">
+      <visual>
+        <origin xyz="0 0 0.035" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="0.055" length="0.07"/>
+        </geometry>
+        <material name="piper_base_black">
+          <color rgba="0.02 0.02 0.025 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0.035" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="0.055" length="0.07"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertial mass="0.80" radius="0.055" length="0.07"/>
+    </link>
+
+    <joint name="piper_base_joint" type="fixed">
+      <parent link="piper_mount_link"/>
+      <child link="piper_base_link"/>
+      <origin xyz="0 0 0.04" rpy="0 0 0"/>
+    </joint>
+
+    <link name="piper_link1">
+      <visual>
+        <origin xyz="0 0 0.075" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="0.035" length="0.15"/>
+        </geometry>
+        <material name="piper_link_silver">
+          <color rgba="0.70 0.73 0.76 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0.075" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="0.035" length="0.15"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertial mass="0.35" radius="0.035" length="0.15"/>
+    </link>
+
+    <joint name="piper_joint1_placeholder" type="fixed">
+      <parent link="piper_base_link"/>
+      <child link="piper_link1"/>
+      <origin xyz="0 0 0.07" rpy="0 0 0"/>
+    </joint>
+
+    <link name="piper_link2">
+      <visual>
+        <origin xyz="0.075 0 0.055" rpy="0 ${PI / 2.0} 0"/>
+        <geometry>
+          <cylinder radius="0.026" length="0.18"/>
+        </geometry>
+        <material name="piper_link_silver"/>
+      </visual>
+      <collision>
+        <origin xyz="0.075 0 0.055" rpy="0 ${PI / 2.0} 0"/>
+        <geometry>
+          <cylinder radius="0.026" length="0.18"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertial mass="0.28" radius="0.026" length="0.18"/>
+    </link>
+
+    <joint name="piper_joint2_placeholder" type="fixed">
+      <parent link="piper_link1"/>
+      <child link="piper_link2"/>
+      <origin xyz="0.02 0 0.15" rpy="0 0 0"/>
+    </joint>
+
+    <link name="piper_link3">
+      <visual>
+        <origin xyz="0.065 0 0.025" rpy="0 ${PI / 2.0} 0"/>
+        <geometry>
+          <cylinder radius="0.022" length="0.15"/>
+        </geometry>
+        <material name="piper_link_silver"/>
+      </visual>
+      <collision>
+        <origin xyz="0.065 0 0.025" rpy="0 ${PI / 2.0} 0"/>
+        <geometry>
+          <cylinder radius="0.022" length="0.15"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertial mass="0.22" radius="0.022" length="0.15"/>
+    </link>
+
+    <joint name="piper_joint3_placeholder" type="fixed">
+      <parent link="piper_link2"/>
+      <child link="piper_link3"/>
+      <origin xyz="0.15 0 0.10" rpy="0 0 0"/>
+    </joint>
+
+    <link name="piper_flange">
+      <visual>
+        <origin xyz="0.02 0 0" rpy="0 ${PI / 2.0} 0"/>
+        <geometry>
+          <cylinder radius="0.025" length="0.04"/>
+        </geometry>
+        <material name="piper_joint_dark">
+          <color rgba="0.12 0.12 0.13 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0.02 0 0" rpy="0 ${PI / 2.0} 0"/>
+        <geometry>
+          <cylinder radius="0.025" length="0.04"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertial mass="0.12" radius="0.025" length="0.04"/>
+    </link>
+
+    <joint name="piper_flange_joint_placeholder" type="fixed">
+      <parent link="piper_link3"/>
+      <child link="piper_flange"/>
+      <origin xyz="0.14 0 0.04" rpy="0 0 0"/>
+    </joint>
+
+    <link name="piper_tcp">
+      <visual>
+        <origin xyz="0.025 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.05 0.012 0.012"/>
+        </geometry>
+        <material name="piper_tcp_green">
+          <color rgba="0.05 0.70 0.34 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0.025 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.05 0.012 0.012"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="0.03" x="0.05" y="0.012" z="0.012"/>
+    </link>
+
+    <joint name="piper_tcp_joint" type="fixed">
+      <parent link="piper_flange"/>
+      <child link="piper_tcp"/>
+      <origin xyz="0.05 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <link name="piper_arm_camera_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.055 0.075 0.035"/>
+        </geometry>
+        <material name="piper_camera_black">
+          <color rgba="0.01 0.01 0.01 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.055 0.075 0.035"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="0.10" x="0.055" y="0.075" z="0.035"/>
+    </link>
+
+    <joint name="piper_arm_camera_joint" type="fixed">
+      <parent link="piper_tcp"/>
+      <child link="piper_arm_camera_link"/>
+      <origin xyz="0.04 0 0.04" rpy="0 0 0"/>
+    </joint>
+
+    <link name="piper_arm_camera_optical_frame"/>
+
+    <joint name="piper_arm_camera_optical_joint" type="fixed">
+      <parent link="piper_arm_camera_link"/>
+      <child link="piper_arm_camera_optical_frame"/>
+      <!-- ROS 相机光学坐标系：x 向右，y 向下，z 向前。 -->
+      <origin xyz="0 0 0" rpy="${-PI / 2.0} 0 ${-PI / 2.0}"/>
+    </joint>
+
+    <gazebo reference="piper_mount_link">
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="piper_base_link">
+      <material>Gazebo/Black</material>
+    </gazebo>
+    <gazebo reference="piper_link1">
+      <material>Gazebo/Grey</material>
+    </gazebo>
+    <gazebo reference="piper_link2">
+      <material>Gazebo/Grey</material>
+    </gazebo>
+    <gazebo reference="piper_link3">
+      <material>Gazebo/Grey</material>
+    </gazebo>
+    <gazebo reference="piper_flange">
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="piper_tcp">
+      <material>Gazebo/Green</material>
+    </gazebo>
+    <gazebo reference="piper_arm_camera_link">
+      <material>Gazebo/Black</material>
     </gazebo>
   </xacro:if>
 </robot>

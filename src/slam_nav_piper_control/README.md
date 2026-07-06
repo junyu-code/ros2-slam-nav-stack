@@ -47,3 +47,20 @@ ros2 topic pub --once /piper/control/owner_request std_msgs/msg/String "{data: m
 ```
 
 当前节点是后端边界占位实现，不直接控制真实机械臂。接入 AgileX `agx_arm_ros` 或 MoveIt2 后，应在本包内部适配，保持 `/piper/task/*` 上层接口不变。
+
+## 已预留参数
+
+`config/piper_control.yaml` 已预留：
+
+```text
+moveit_config_package
+moveit_planning_group
+moveit_tcp_frame
+sdk_driver_package
+sdk_driver_namespace
+allow_real_motion
+velocity_scaling
+workspace_min_xyz / workspace_max_xyz
+```
+
+默认 `allow_real_motion=false`、`auto_enable=false`、`initial_owner=disabled`。后续即使接入 MoveIt2 或 SDK，也应先在控制桥内部完成限速、工作空间、急停和 owner 检查。

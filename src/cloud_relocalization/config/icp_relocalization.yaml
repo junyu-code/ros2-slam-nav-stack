@@ -12,6 +12,7 @@ icp_relocalization_node:
     publish_tf: false
     auto_align: false
     use_last_transform_as_guess: true
+    registration_method: icp
 
     map_leaf_size: 0.12
     scan_leaf_size: 0.10
@@ -20,6 +21,8 @@ icp_relocalization_node:
     euclidean_fitness_epsilon: 0.0001
     fitness_score_threshold: 0.45
     max_iterations: 45
+    ndt_resolution: 1.0
+    ndt_step_size: 0.1
     min_scan_points: 120
     min_map_points: 300
     min_interval_sec: 2.0

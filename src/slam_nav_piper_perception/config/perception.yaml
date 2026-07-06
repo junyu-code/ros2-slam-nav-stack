@@ -1,4 +1,16 @@
 piper:
+  arm_camera_fake_node:
+    ros__parameters:
+      # 假相机只服务 Piper 冒烟测试，不能 remap 到 /nav_camera。
+      frame_id: piper_arm_camera_optical_frame
+      width: 320
+      height: 240
+      depth_mm: 900
+      publish_hz: 10.0
+      color_image_topic: /piper/arm_camera/color/image_raw
+      depth_image_topic: /piper/arm_camera/depth/image_raw
+      color_camera_info_topic: /piper/arm_camera/color/camera_info
+      depth_camera_info_topic: /piper/arm_camera/depth/camera_info
   target_pose_estimator_node:
     ros__parameters:
       # 机械臂相机必须保持在 /piper/arm_camera 下，不能 remap 到 /nav_camera。
@@ -12,3 +24,4 @@ piper:
       sample_window_px: 12
       min_depth_m: 0.15
       max_depth_m: 2.5
+      publish_empty_detections: true

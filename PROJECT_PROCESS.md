@@ -51,6 +51,27 @@ Gazebo
   -> save_map.sh
 ```
 
+为减少手动键盘探索成本，新增 `auto_explore_mapper` 作为建图阶段的可选自动巡航节点：
+
+```text
+/scan + /Odometry
+  -> auto_explore_mapper
+  -> /cmd_vel
+  -> Gazebo robot
+```
+
+它不依赖 Nav2，也不要求已有地图；逻辑是基于 `/scan` 的保守反应式覆盖巡航：安全时慢速前进，前方过近时后退并向更空方向转向，周期性原地旋转补全 Livox 点云视角。该入口适合自动扫静态仿真地图和累计 FAST-LIO PCD 地图，但它不是完整 frontier planner；如果某些角落覆盖不足，仍可用 `teleop.sh` 手动补扫。
+
+对应入口：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh auto-mapping
+./run.sh save-pcd nav_test_static
+```
+
+`save_pcd_map.sh` 调用 FAST-LIO 的 `/map_save` 服务，默认更新 `src/FAST_LIO/PCD/scan.pcd`，传入名称时会额外复制一份命名 PCD，方便后续重定位或报告截图使用。
+
 ### 3.2 导航链路
 
 导航阶段加载已保存地图，不再运行 slam_toolbox 建图。
@@ -96,7 +117,7 @@ Gazebo / real LiDAR
 
 ```bash
 cd ~/slam_nav_ws
-./start_navigation_3d.sh
+./run.sh nav-3d
 ```
 
 对应文件：
@@ -113,6 +134,14 @@ src/pb_nav2_plugins/
 
 `adaptive_cloud_filter` 仍保留为松耦合感知适配和可视化诊断入口，但默认 3D costmap 不再直接订阅 `/cloud_nav_filtered`。当前结构的目标是让系统从“2D 投影避障”逐步升级为“2D 稳定兜底 + 3D 地形代价地图”的感知结构。该链路主要面向导航部署阶段，不参与首次建图主流程。
 
+
+2026-07-06 验证记录：
+
+- `navigation_3d.launch.py` 默认使用非组合模式启动 Nav2。原因是当前 ROS2 Humble 官方组合启动路径下，costmap 子节点参数容易回落到默认插件；非组合模式可以稳定加载 `nav2_params_3d.yaml` 中的 `IntensityVoxelLayer`。
+- `params_file` 仍保留兼容；新增的 `nav2_params_file` / `navigation_params_file` 默认继承 `params_file`，避免后续传自定义参数文件时被嵌套 launch 忽略。
+- 已验证 local costmap 插件为 `["intensity_voxel_layer", "obstacle_layer", "inflation_layer"]`，global costmap 插件为 `["static_layer", "intensity_voxel_layer", "obstacle_layer", "inflation_layer"]`。
+- 启用 `enable_nav_rgbd_camera:=true` 和 `start_navigation_rgbd.sh` 时，`/visual_obstacles` 会作为 local costmap `ObstacleLayer` 的 PointCloud2 观察源。该链路是松耦合近场补盲，只影响局部代价地图，不写入 global costmap。
+- 若终端自动 source 了其他 ROS2 工作区，可能会通过 `LD_LIBRARY_PATH` 误加载旧插件库，表现为 local costmap 配置失败、`local_costmap/clear_entirely_local_costmap` 服务缺失、RViz goal 被拒。已新增 `scripts/setup_workspace_env.sh`，各启动脚本会先清理旧 overlay 再 source 当前工作区。
 
 ### 3.4 部署阶段速度安全桥链路
 
@@ -162,6 +191,32 @@ start_localization_guard.sh
 
 这个模块不等同于 ICP/GICP 重定位。它是后续重定位触发、安全停车、任务层恢复的状态入口，先解决“系统什么时候应该怀疑定位不可信”的问题。
 
+### 3.5.1 PCD 地图辅助重定位链路
+
+`cloud_relocalization` 是面向部署阶段的先验点云地图辅助重定位模块，不参与首次建图，也不默认接管主导航 TF。它订阅当前注册点云，加载离线 PCD 地图，并在手动触发或自动触发时执行点云配准：
+
+```text
+/cloud_registered + PCD map
+  -> cloud_relocalization
+  -> ICP/GICP/NDT
+  -> /relocalization/status
+  -> /relocalization/pose
+  -> /relocalization/aligned_cloud
+  -> 可选 map -> odom
+```
+
+当前实现支持三种后端：
+
+```text
+ICP：速度快、参数少，适合初值较准时快速校验。
+GICP：考虑局部几何协方差，配准稳定性通常优于普通 ICP，但计算更重。
+NDT：基于体素正态分布，适合较粗粒度地图匹配，需要调体素分辨率。
+```
+
+为了避免错误匹配直接拉偏导航坐标系，默认 `publish_tf:=false`，并加入局部 PCD 子图裁剪、fitness 门限、局部地图点数检查和位姿跳变门限。推荐调试顺序是：先观察 `/relocalization/aligned_cloud` 与 `/relocalization/pose`，确认多次触发结果稳定后，再考虑是否允许它发布 `map -> odom`。
+
+这个模块和 `localization_guard` 的关系是：`localization_guard` 判断定位是否可疑，`cloud_relocalization` 提供地图辅助校准手段。当前版本暂不把二者自动闭环，避免在仿真或实机中因为一次误匹配造成更大跳变。
+
 
 ### 3.6 统一鲁棒导航入口
 
@@ -178,7 +233,7 @@ robust_navigation.launch.py
 
 ```bash
 cd ~/slam_nav_ws
-./start_robust_navigation.sh
+./run.sh robust-nav
 ```
 
 默认配置保持保守：
@@ -190,7 +245,7 @@ cd ~/slam_nav_ws
 进入真实底盘部署阶段后，可以逐步开启故障停车和 UDP 输出：
 
 ```bash
-./start_robust_navigation.sh \
+./run.sh robust-nav \
   publish_zero_on_fault:=true \
   safe_enable_fault_stop:=true \
   safe_enable_udp_output:=true \
@@ -220,7 +275,7 @@ mission_behavior
 
 ```bash
 cd ~/slam_nav_ws
-./build.sh
+./run.sh build
 source install/setup.bash
 ```
 
@@ -228,51 +283,51 @@ source install/setup.bash
 
 ```bash
 cd ~/slam_nav_ws
-./clean.sh
-./start_simulation.sh
+./run.sh clean
+./run.sh sim
 ```
 
 另开终端：
 
 ```bash
 cd ~/slam_nav_ws
-./start_mapping.sh
+./run.sh mapping
 ```
 
 另开终端控制探索：
 
 ```bash
 cd ~/slam_nav_ws
-./teleop.sh
+./run.sh teleop
 ```
 
 保存地图：
 
 ```bash
 cd ~/slam_nav_ws
-./save_map.sh nav_test_map
+./run.sh save-map nav_test_map
 ```
 
 导航：
 
 ```bash
 cd ~/slam_nav_ws
-./clean.sh
-./start_simulation.sh
+./run.sh clean
+./run.sh sim
 ```
 
 另开终端：
 
 ```bash
 cd ~/slam_nav_ws
-./start_navigation.sh
+./run.sh nav
 ```
 
 导航启动后建议先做一次统一诊断：
 
 ```bash
 cd ~/slam_nav_ws
-./diagnose_runtime.sh --duration 5
+./run.sh diagnose --duration 5
 ```
 
 该诊断用于确认仿真时间、传感器话题、Nav2 输入输出和 TF 链路是否正常，重点关注 `/clock`、`/livox/lidar`、`/cloud_registered`、`/scan`、`/Odometry`、`/map`、`/cmd_vel`、`map -> odom` 和 `map -> base_footprint`。它主要服务于实验复现和故障定位，不改变建图或导航算法流程。
@@ -281,7 +336,7 @@ cd ~/slam_nav_ws
 
 ```bash
 cd ~/slam_nav_ws
-./start_navigation_3d.sh
+./run.sh nav-3d
 ```
 
 第一次测试 3D 增强链路时，建议重点观察：
@@ -297,7 +352,7 @@ ros2 topic hz /global_costmap/voxel_grid
 
 ```bash
 cd ~/slam_nav_ws
-./start_robust_navigation.sh
+./run.sh robust-nav
 ```
 
 它会同时启动 3D 点云代价地图、定位健康监控和速度安全桥。默认适合观察，不会主动改变 Gazebo 底盘控制链。
@@ -316,7 +371,7 @@ ros2 launch mission_behavior mission_behavior.launch.py auto_start:=true goal_x:
 
 ```bash
 cd ~/slam_nav_ws
-./start_safe_cmd_bridge.sh
+./run.sh safe-bridge
 ```
 
 默认输入 `/cmd_vel`，输出 `/cmd_vel_safe`，用于单独验证限速和超时停车。当前作业演示仍可保持默认 `/cmd_vel -> Gazebo robot` 链路；等进入实机部署阶段，再把 Nav2 输出重映射到安全桥输入。
@@ -325,7 +380,7 @@ cd ~/slam_nav_ws
 
 ```bash
 cd ~/slam_nav_ws
-./start_localization_guard.sh
+./run.sh guard
 ```
 
 常用检查：
@@ -339,7 +394,7 @@ ros2 topic echo /diagnostics
 默认只监控不干预；实机保守模式可使用：
 
 ```bash
-./start_localization_guard.sh publish_zero_on_fault:=true
+./run.sh guard publish_zero_on_fault:=true
 ```
 
 当前仿真出生点固定，导航启动文件会运行 `publish_initial_pose.py`，等待 `/map`、`/scan`、`/Odometry` 和 AMCL 订阅者就绪后，向 AMCL 发布默认初始位姿 `(0, 0, 0)`。一般直接使用 `2D Goal Pose` 即可；如果 RViz 中机器人位姿明显不准，再使用 `2D Pose Estimate` 手动校正。
@@ -496,5 +551,10 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-06：为导航启动增加 `localization_mode` 参数，支持 `amcl` 与 `static` 两种定位模式。`amcl` 保留 `/scan` 与静态地图匹配后的重定位能力，但初始位姿不准或场景局部相似时可能把 `map->odom` 拉偏；`static` 模式只启动 `map_server` 并发布固定 `map->odom`，适合同一仿真地图、同一起点的短程导航对齐测试。`start_navigation_3d.sh` 与 `start_robust_navigation.sh` 默认改为 `localization_mode:=static`，用于先排除 AMCL 对地图/点云对齐的干扰。
 - 2026-07-06：新增 `cloud_relocalization` 点云地图辅助重定位包，提供 `/relocalization/trigger` 触发服务、`/relocalization/status`、`/relocalization/pose` 和 `/relocalization/aligned_cloud` 输出；默认不发布 `map -> odom`，先用于观测和验证。
 - 2026-07-06：增强 `cloud_relocalization` 的可靠性：启动时缓存初始位姿，避免运行时重复声明参数；ICP 目标从全图改为围绕初值裁剪局部 PCD 子图，并加入局部地图点数、fitness 和位姿跳变门限。
+- 2026-07-06：将 `cloud_relocalization` 从单一 ICP 升级为可选 `icp/gicp/ndt` 三后端配准入口，新增 `registration_method`、`ndt_resolution`、`ndt_step_size` 参数和 `start_relocalization_gicp.sh` 便捷脚本；默认仍保持 `publish_tf:=false`，不接管主导航坐标链。
 - 2026-07-06：增强 `perception_adapter` 点云预处理链路，新增局部网格地面参考估计，在 `/cloud_nav_filtered` 之外稳定输出 `/nav_obstacle_cloud` 与 `/nav_ground_cloud`，降低简单高度阈值在起伏地形下的误分割概率。
 - 2026-07-06：增强 `safe_cmd_bridge` 实机底盘闭环入口，新增可选反馈看门狗；接入底盘里程计后可检测速度指令有输出但反馈速度过低、反馈断流等情况，并发布 `/base_feedback_fault` 与 `/base_feedback_health`。
+- 2026-07-06：修正 RGB-D 松耦合避障链路：`depth_obstacle_projector` 不再直接发布相机光学坐标系下的整张深度视锥点云，而是先通过 TF 转到 `base_footprint`，再按前向距离、横向范围和障碍物高度过滤后发布 `/visual_obstacles`；同时将 RGB-D costmap 观察源与 RViz 显示 topic 对齐到 `/nav_camera/depth/image_raw` 和 `/visual_obstacles`，避免空旷前方被误判为扇形障碍。
+- 2026-07-06：新增顶配仿真/导航入口 `start_simulation_dynamic_rgbd.sh` 与 `start_navigation_full.sh`，用于组合动态障碍物场景、导航 RGB-D 相机、3D 地形代价地图、RGB-D 近场补盲、全向路径跟踪、行为树恢复、定位健康监控与速度安全桥观测。该组合仍保持动态障碍只进入局部实时避障链路，不写入全局静态地图。
+- 2026-07-06：新增 `auto_explore_mapper` 自动探索建图节点和 `start_auto_mapping.sh` 入口，用 `/scan` 做保守巡航、避障、周期旋转补扫，用于减少手动键盘建图成本；新增 `save_pcd_map.sh` 调用 FAST-LIO `/map_save` 服务保存并命名 PCD 地图。
+- 2026-07-06：优化静态/动态仿真场地中的斜坡模型，将原单个倾斜长方体改为入口引导板、缓坡和顶部平台组合，降低入口硬边缘和坡度突变对底盘运动、点云建图和地形分析的干扰。
