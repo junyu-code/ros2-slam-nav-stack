@@ -24,17 +24,27 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=official
 ./run.sh piper-moveit-plan
 ```
 
-该入口来自 `slam_nav_piper_moveit_config`，使用 `piper_*` frame/joint/group/controller 命名和假关节状态发布器。默认 `allow_trajectory_execution=false`，不接 SDK、不执行轨迹。当前机器缺 `ros-humble-moveit-planners-ompl` 时，预检会失败，安装后再跑该入口：
+该入口来自 `slam_nav_piper_moveit_config`，使用 `piper_*` frame/joint/group/controller 命名和假关节状态发布器。默认 `allow_trajectory_execution=false`，不接 SDK、不执行轨迹。推荐系统安装：
 
 ```bash
-sudo apt-get install ros-humble-moveit-planners-ompl
+sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-controller-manager
+```
+
+没有 sudo 时可用 Piper 专用本地 overlay：
+
+```bash
+./run.sh setup-piper-moveit
+./run.sh piper-preflight
 ```
 
 ## 预检
 
 ```bash
 ros2 run slam_nav_piper_bringup piper_preflight_check.py
+./run.sh piper-preflight
 ```
+
+`./run.sh piper-preflight` 会自动加载 `external/ros_humble_debs/overlay` 中的本地 MoveIt2 插件。
 
 要求官方 AgileX Piper 包也必须存在时：
 

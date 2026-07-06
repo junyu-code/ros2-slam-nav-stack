@@ -571,11 +571,12 @@ cd ~/slam_nav_ws
 
 `src/slam_nav_piper_*` 是 task2 长期扩展中的 Piper 机械臂方向。它保持独立 `/piper` 命名空间，不修改 task1 的 FAST-LIO2 + Nav2 主链路，也不把机械臂 RGB-D 相机 remap 到 `/nav_camera/*`。
 
-当前 MoveIt2 核心规划接口已经安装，但项目侧 plan-only 还需要 OMPL planner 插件：
+当前 MoveIt2 核心规划接口已经安装；项目侧 plan-only 还需要 OMPL planner 和 simple controller manager 插件：
 
 ```text
 ros-humble-moveit-ros-planning-interface 2.5.9
-ros-humble-moveit-planners-ompl              # 当前机器缺失，需要 sudo 安装
+ros-humble-moveit-planners-ompl
+ros-humble-moveit-simple-controller-manager
 ```
 
 可用下面命令确认：
@@ -585,12 +586,20 @@ ros2 pkg prefix moveit_ros_planning_interface
 ros2 pkg prefix moveit_ros_move_group
 ros2 pkg prefix moveit_core
 ros2 pkg prefix moveit_planners_ompl
+ros2 pkg prefix moveit_simple_controller_manager
 ```
 
-缺 OMPL 时安装：
+推荐系统安装：
 
 ```bash
-sudo apt-get install ros-humble-moveit-planners-ompl
+sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-controller-manager
+```
+
+如果当前终端不能 sudo，可以使用 Piper 专用本地 overlay；它只把 deb 解到 `external/`，不会改系统，也不会影响 task1 默认环境：
+
+```bash
+./run.sh setup-piper-moveit
+./run.sh piper-preflight
 ```
 
 先看 Gazebo 里的底盘 + Piper 臂：
@@ -629,7 +638,7 @@ source install/setup.bash
 ./run.sh piper-moveit-plan
 ```
 
-该入口使用项目侧 `piper_base_link/piper_joint*/piper_tcp` 配置和假关节状态发布器。当前机器缺 `ros-humble-moveit-planners-ompl` 时，`move_group` 会在加载 OMPL pipeline 处退出；安装 OMPL 后再跑该入口做规划冒烟。
+该入口使用项目侧 `piper_base_link/piper_joint*/piper_tcp` 配置和假关节状态发布器，并会自动加载 `external/ros_humble_debs/overlay` 里的 Piper 专用本地 MoveIt2 插件。当前已验证 `move_group` 能加载 OMPL，并输出 `You can start planning now!`。
 
 想同时看 Gazebo 模型并跑 Piper 假感知/假执行，可以先开 `./run.sh sim enable_piper_arm:=true`，再另开终端运行：
 
@@ -672,11 +681,14 @@ PIPER_OPEN_CLASS_WAIT_RATE_LIMIT=1 ./run.sh setup-piper
 Piper 预检：
 
 ```bash
+./run.sh piper-preflight
 ros2 run slam_nav_piper_bringup piper_preflight_check.py
 ros2 run slam_nav_piper_bringup piper_preflight_check.py --require-official
 ros2 run slam_nav_piper_bringup piper_official_frame_audit.py
 ros2 run slam_nav_piper_bringup piper_official_frame_audit.py --check-project-adapter
 ```
+
+`./run.sh piper-preflight` 会自动加载 Piper 本地 MoveIt overlay；直接 `ros2 run` 时只检查当前 shell 已 source 的环境。
 
 导入并构建官方包后，可以单独跑官方 demo wrapper：
 
