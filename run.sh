@@ -74,6 +74,7 @@ show_help() {
   piper-real-dry-run    一键验证 Piper 实机入口默认安全拒绝真实执行
   piper-learning-smoke  一键验证 Piper 学习层抓取候选排序旁路
   piper-ranked-gate     验证任务层显式打开后才消费 ranked 抓取候选
+  piper-launch-defaults 检查 Piper launch 安全默认值和 plan-only 默认边界
   piper-size-check      检查 Piper 外部依赖/数据/权重没有进入 Git 跟踪
   piper-static-check    Piper 静态配置验收（不启动 Gazebo/MoveIt2/真实硬件）
   piper-full-smoke      顺序运行 Piper 安全、边界、体积、手眼、TF、Gazebo、任务、可视化、学习、ranked、MoveIt2 门禁烟测
@@ -125,6 +126,7 @@ show_help() {
   ./run.sh piper-real-dry-run
   ./run.sh piper-learning-smoke
   ./run.sh piper-ranked-gate
+  ./run.sh piper-launch-defaults
   ./run.sh piper-size-check
   ./run.sh piper-static-check
   ./run.sh piper-full-smoke
@@ -196,6 +198,7 @@ script_for_command() {
     piper-real-dry-run|piper-real-dry|piper-real-smoke) echo "piper_real_dry_run.sh" ;;
     piper-learning-smoke|piper-learning) echo "piper_learning_smoke.sh" ;;
     piper-ranked-gate|piper-ranked-candidate|piper-ranked-smoke) echo "piper_ranked_candidate_gate_smoke.sh" ;;
+    piper-launch-defaults|piper-launch-check|piper-launch-guard) echo "piper_launch_defaults_check.sh" ;;
     piper-size-check|piper-size|piper-repo-size) echo "piper_repo_size_check.sh" ;;
     piper-static-check|piper-static|piper-config-check|piper-acceptance) echo "piper_static_acceptance.sh" ;;
     piper-full-smoke|piper-full|piper-all-smoke) echo "piper_full_smoke.sh" ;;

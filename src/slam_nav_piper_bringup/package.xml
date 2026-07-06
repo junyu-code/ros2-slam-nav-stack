@@ -14,8 +14,10 @@
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>rviz2</exec_depend>
+  <exec_depend>slam_nav_piper_calibration</exec_depend>
   <exec_depend>slam_nav_piper_control</exec_depend>
   <exec_depend>slam_nav_piper_description</exec_depend>
+  <exec_depend>slam_nav_piper_learning</exec_depend>
   <exec_depend>slam_nav_piper_manipulation</exec_depend>
   <exec_depend>slam_nav_piper_moveit_config</exec_depend>
   <exec_depend>slam_nav_piper_perception</exec_depend>

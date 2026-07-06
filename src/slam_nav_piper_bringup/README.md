@@ -10,7 +10,7 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 ./run.sh piper-full-smoke
 ```
 
-该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-size-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-hand-eye-gate`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-viz-smoke`、`piper-mobile-sequence`、`piper-mission-demo`、`piper-learning-smoke`、`piper-ranked-gate`、`piper-task-moveit-gate-fail`、`piper-task-moveit-gate` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、仓库体积边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、真实 pick 标定门禁、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、可视化入口、移动操作组合入口、mission 行为层 action 边界、学习排序、任务层 ranked 候选显式消费、任务层 MoveIt2 plan-only 正反门禁到 MoveIt2 plan-only 都是通的。
+该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-size-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-hand-eye-gate`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-viz-smoke`、`piper-mobile-sequence`、`piper-mission-demo`、`piper-learning-smoke`、`piper-ranked-gate`、`piper-launch-defaults`、`piper-task-moveit-gate-fail`、`piper-task-moveit-gate` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、仓库体积边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、真实 pick 标定门禁、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、可视化入口、移动操作组合入口、mission 行为层 action 边界、学习排序、任务层 ranked 候选显式消费、launch 默认安全值、任务层 MoveIt2 plan-only 正反门禁到 MoveIt2 plan-only 都是通的。
 
 只检查安全默认值，不启动 ROS 节点：
 
@@ -200,6 +200,14 @@ sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-co
 ```
 
 该入口不启动学习模型或真实后端，只验证 `use_ranked_grasp_candidates:=true` 时任务层会使用 ranked pre-grasp。默认 launch 和配置仍保持关闭。
+
+launch 默认安全值检查：
+
+```bash
+./run.sh piper-launch-defaults
+```
+
+该入口只展开 launch 参数，不启动 ROS 节点。它检查 `piper_real.launch.py` 默认 `real_backend_connected=false`、`auto_enable=false`、`owner=disabled`，`piper_mobile_manipulation.launch.py` 默认不启动 description、不消费 ranked 候选、不强依赖 MoveIt2 plan-only，以及项目侧 MoveIt2 默认 `allow_trajectory_execution=false`。这用于防止后续维护时把实机后端、学习层或轨迹执行误设为默认开启。
 
 仓库体积边界检查：
 

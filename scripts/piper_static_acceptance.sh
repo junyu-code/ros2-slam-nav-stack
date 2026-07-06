@@ -21,43 +21,47 @@ done
 
 set -u
 
-echo "[Piper Static] 1/10 安全默认值检查..."
+echo "[Piper Static] 1/11 安全默认值检查..."
 "${SCRIPT_DIR}/piper_safety_check.sh"
 
 echo
-echo "[Piper Static] 2/10 task1/Nav2 隔离边界检查..."
+echo "[Piper Static] 2/11 task1/Nav2 隔离边界检查..."
 "${SCRIPT_DIR}/piper_boundary_check.sh"
 
 echo
-echo "[Piper Static] 3/10 GitHub 体积和数据产物边界检查..."
+echo "[Piper Static] 3/11 GitHub 体积和数据产物边界检查..."
 "${SCRIPT_DIR}/piper_repo_size_check.sh"
 
 echo
-echo "[Piper Static] 4/10 依赖和官方 Piper 包预检..."
+echo "[Piper Static] 4/11 依赖和官方 Piper 包预检..."
 "${SCRIPT_DIR}/piper_preflight.sh" --require-official
 
 echo
-echo "[Piper Static] 5/10 官方 URDF 到项目侧 piper_* frame 审计..."
+echo "[Piper Static] 5/11 官方 URDF 到项目侧 piper_* frame 审计..."
 "${SCRIPT_DIR}/piper_official_frame_audit.sh"
 
 echo
-echo "[Piper Static] 6/10 项目侧 MoveIt2 配置映射审计..."
+echo "[Piper Static] 6/11 项目侧 MoveIt2 配置映射审计..."
 "${SCRIPT_DIR}/piper_moveit_config_audit.sh"
 
 echo
-echo "[Piper Static] 7/10 手眼标定配置边界检查..."
+echo "[Piper Static] 7/11 手眼标定配置边界检查..."
 "${SCRIPT_DIR}/piper_hand_eye_check.sh"
 
 echo
-echo "[Piper Static] 8/10 实机接入前状态报告..."
+echo "[Piper Static] 8/11 实机接入前状态报告..."
 "${SCRIPT_DIR}/piper_real_readiness.sh"
 
 echo
-echo "[Piper Static] 9/10 Piper RViz 可视化配置烟测..."
+echo "[Piper Static] 9/11 Piper RViz 可视化配置烟测..."
 "${SCRIPT_DIR}/piper_visualization_smoke.sh"
 
 echo
-echo "[Piper Static] 10/10 实机 dry-run launch 参数展开检查..."
+echo "[Piper Static] 10/11 Piper launch 默认安全值检查..."
+"${SCRIPT_DIR}/piper_launch_defaults_check.sh"
+
+echo
+echo "[Piper Static] 11/11 实机 dry-run launch 参数展开检查..."
 ros2 launch slam_nav_piper_bringup piper_real.launch.py --show-args >/dev/null
 
 echo

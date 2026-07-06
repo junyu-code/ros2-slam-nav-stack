@@ -17,6 +17,7 @@ PROJECT_PACKAGES = [
     'slam_nav_piper_moveit_config',
     'slam_nav_piper_manipulation',
     'slam_nav_piper_calibration',
+    'slam_nav_piper_learning',
     'slam_nav_piper_bringup',
 ]
 
@@ -170,6 +171,8 @@ def check_config(report, workspace_root, args):
     control = params_from_yaml(package_file('slam_nav_piper_control', 'config/piper_control.yaml'))
     task = params_from_yaml(package_file('slam_nav_piper_manipulation', 'config/piper_manipulation.yaml'))
     hand_eye = params_from_yaml(package_file('slam_nav_piper_calibration', 'config/hand_eye_calibration.yaml'))
+    learning = params_from_yaml(package_file('slam_nav_piper_learning', 'config/piper_learning.yaml'))
+    moveit_boundary = params_from_yaml(package_file('slam_nav_piper_bringup', 'config/piper_moveit2_boundary.yaml'))
 
     report.expect(not as_bool(safety.get('auto_enable')), '安全默认 auto_enable=false。', '安全默认 auto_enable 不应为 true。')
     report.expect(not as_bool(safety.get('allow_real_motion')), '安全默认 allow_real_motion=false。', '配置阶段 allow_real_motion 不应默认 true。')
@@ -234,6 +237,11 @@ def check_config(report, workspace_root, args):
         '厂家 SDK/驱动后端已标记就绪。',
         '厂家 SDK/驱动后端仍未接入，仅保留适配边界。',
     )
+    report.wait_until(
+        bool(mobile.get('learning_ready')),
+        '学习/RL 候选排序链路已标记就绪。',
+        '学习/RL 候选排序仍是可选旁路，任务层默认不消费 ranked 输出。',
+    )
 
     report.expect(control.get('backend') == 'moveit', '控制桥默认后端为 moveit。', '控制桥默认后端不是 moveit。')
     report.expect(control.get('initial_owner') == 'disabled', '控制桥初始 owner=disabled。', '控制桥初始 owner 不是 disabled。')
@@ -248,6 +256,21 @@ def check_config(report, workspace_root, args):
     report.expect(bool(task.get('require_base_stop_before_motion')), '真实运动前要求底盘停止确认。', '真实运动前未要求底盘停止确认。')
     report.expect(bool(task.get('require_hand_eye_calibration_before_pick')), '真实 pick 前要求手眼标定验收。', '真实 pick 前未要求手眼标定验收。')
     report.expect(not as_bool(task.get('use_ranked_grasp_candidates')), '任务层默认不消费学习排序结果。', '任务层不应默认消费学习排序结果。')
+    report.expect(
+        not as_bool(task.get('require_moveit_plan_before_fake_execution')),
+        '任务层默认不强依赖 MoveIt2 plan-only，专门验收时再显式打开。',
+        '任务层不应默认要求 MoveIt2 plan-only 才能 fake 成功。',
+    )
+    report.expect(
+        task.get('moveit_plan_service') == '/piper/plan_kinematic_path',
+        '任务层 MoveIt2 plan-only 服务指向 /piper/plan_kinematic_path。',
+        '任务层 MoveIt2 plan-only 服务名不正确。',
+    )
+    report.expect(
+        task.get('moveit_planning_group') == 'piper_arm',
+        '任务层 MoveIt2 planning group 为 piper_arm。',
+        '任务层 MoveIt2 planning group 不正确。',
+    )
 
     report.wait_until(
         bool(task.get('real_backend_connected')),
@@ -286,6 +309,45 @@ def check_config(report, workspace_root, args):
         not as_bool(hand_eye.get('allow_write_to_robot_description')),
         '手眼标定默认不写 robot_description。',
         '手眼标定不应默认写 robot_description。',
+    )
+
+    report.expect(
+        learning.get('policy_backend') == 'disabled',
+        '学习层默认 policy_backend=disabled。',
+        '学习层默认后端不应启用。',
+    )
+    report.expect(
+        not as_bool(learning.get('publish_passthrough_when_disabled')),
+        '学习层 disabled 时默认不发布 passthrough ranked 候选。',
+        '学习层 disabled 时不应默认发布 passthrough ranked 候选。',
+    )
+    report.expect(
+        learning.get('output_candidates_topic') == '/piper/learning/grasp_candidates_ranked',
+        '学习层 ranked 输出固定在 /piper/learning/grasp_candidates_ranked。',
+        '学习层 ranked 输出话题不正确。',
+    )
+
+    project_side = moveit_boundary.get('project_side_config', {})
+    report.expect(
+        not as_bool(moveit_boundary.get('enabled')),
+        'MoveIt2 边界配置默认 enabled=false，不自动启动 move_group。',
+        'MoveIt2 边界配置不应默认 enabled=true。',
+    )
+    report.expect(
+        bool(moveit_boundary.get('plan_only_default')),
+        'MoveIt2 边界默认 plan-only。',
+        'MoveIt2 边界默认应为 plan-only。',
+    )
+    report.expect(
+        not as_bool(project_side.get('default_allow_trajectory_execution')),
+        '项目侧 MoveIt2 默认 allow_trajectory_execution=false。',
+        '项目侧 MoveIt2 不应默认允许轨迹执行。',
+    )
+    report.expect(
+        moveit_boundary.get('planning_group') == 'piper_arm'
+        and moveit_boundary.get('tcp_frame') == 'piper_tcp',
+        'MoveIt2 边界使用 piper_arm 和 piper_tcp。',
+        'MoveIt2 边界 planning group 或 TCP frame 不正确。',
     )
 
 
