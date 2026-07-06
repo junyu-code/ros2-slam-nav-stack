@@ -88,9 +88,9 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'piper_arm_model',
-            default_value='placeholder',
-            choices=['placeholder', 'official'],
-            description='Choose placeholder arm or AgileX official Piper URDF adapter.',
+            default_value='official',
+            choices=['official', 'placeholder'],
+            description='Choose AgileX official Piper URDF adapter or placeholder fallback.',
         ),
         DeclareLaunchArgument(
             'piper_mount_xyz',

@@ -12,7 +12,7 @@ cd ~/slam_nav_ws
 也可以直接带命令运行：
 
 ```bash
-./run.sh sim
+./run.sh sim-static
 ./run.sh mapping
 ./run.sh auto-mapping
 ./run.sh nav
@@ -78,11 +78,11 @@ source install/setup.bash
 
 建图阶段只使用原始稳定链路，不接入 `perception_adapter`。
 
-终端 1 启动仿真：
+终端 1 启动静态验收场地仿真：
 
 ```bash
 cd ~/slam_nav_ws
-./run.sh sim
+./run.sh sim-static
 ```
 
 WSL 中 Gazebo Classic 有时启动较慢，看到下面日志后再继续启动建图或导航更稳：
@@ -105,7 +105,7 @@ cd ~/slam_nav_ws
 ./run.sh teleop
 ```
 
-如果不想手动键盘探索，可以用自动探索建图入口替代 `start_mapping.sh`：
+如果不想手动键盘探索，可以用自动探索建图入口替代手动 `mapping + teleop`：
 
 ```bash
 cd ~/slam_nav_ws
@@ -144,14 +144,14 @@ src/slam_nav_bringup/map/nav_test_map.pgm
 
 ## 主流程 2：加载地图导航
 
-导航阶段不需要继续运行 `start_mapping.sh`。先清理旧进程，再启动仿真和导航。
+导航阶段不需要继续运行建图链路。先清理旧进程，再启动同一张静态验收场地和导航。
 
 终端 1：
 
 ```bash
 cd ~/slam_nav_ws
 ./run.sh clean
-./run.sh sim
+./run.sh sim-static
 ```
 
 终端 2：
@@ -173,18 +173,18 @@ RViz
 ```
 
 
-当前 Nav2 规划链路：
+当前默认 `nav` 规划链路：
 
 ```text
 全局规划：planner_server / GridBased / SmacPlanner2D
-局部路径跟踪：controller_server / FollowPath / OmniPidPursuitController
+局部路径跟踪：controller_server / FollowPath / DWBLocalPlanner
 局部障碍物输入：local_costmap / obstacle_layer / /scan
 全局静态地图与障碍物输入：global_costmap / static_layer + obstacle_layer
 速度平滑：velocity_smoother
 恢复行为：behavior_server + 行为树 BackUp/ClearCostmap/Spin
 ```
 
-由于仿真底盘使用 `libgazebo_ros_planar_move.so`，它支持平面全向速度。当前 3D 导航参数已从通用 DWB 轨迹采样切换为泛化后的 `pb_omni_pid_pursuit_controller::OmniPidPursuitController`：控制器根据全局路径前瞻点输出 x/y 平面速度，保留接近目标减速、曲率限速，并在“命令速度较大但里程计实际速度很小”时短时后退脱困。该控制器已经整理为通用全向底盘路径跟踪模块。
+增强入口 `nav-3d` 和 `nav-full` 会切换到 `pb_omni_pid_pursuit_controller::OmniPidPursuitController`，并叠加 LiDAR 地形分析、强度体素代价地图、RGB-D 近场障碍物或安全桥等扩展能力。课程验收主线优先使用默认 `nav`，增强入口用于创新展示和后续实机调试。
 导航行为树已经加入拥挤场景恢复策略：
 
 ```text
@@ -215,7 +215,7 @@ ros2 pkg prefix nav2_planner
 
 若 RViz 中发送目标点后出现 `Planning algorithm GridBased failed to generate a valid path`，优先确认机器人当前位置和目标点都在白色空旷区域内，并与障碍物黑边或灰色膨胀区保持一定距离。机器人贴近障碍物时，起点可能已经落入代价地图膨胀区，规划器会合理地拒绝生成路径。
 
-Livox Mid-360 传感器已设置为 `always_on`，无 GUI 模式也可以发布 `/livox/lidar`。作业截图和交互调试仍建议使用 `./run.sh sim` 的默认 GUI 模式。
+Livox Mid-360 传感器已设置为 `always_on`，无 GUI 模式也可以发布 `/livox/lidar`。作业截图和交互调试建议使用 `./run.sh sim-static`，动态障碍物扩展示范再使用 `./run.sh sim-dynamic`。
 
 静态测试场地中的斜坡已经从单个倾斜长方体调整为“入口引导板 + 缓坡 + 顶部平台”的组合，坡度更缓，入口碰撞边缘更低。这样更适合自动探索和 PCD 建图，也方便后续观察 3D 地形代价地图对坡面/平台的响应。
 
@@ -356,7 +356,7 @@ safe_cmd_bridge.launch.py
   safe_udp_host:=192.168.123.22
 ```
 
-当前作业演示仍建议优先使用 `start_navigation.sh` 或 `start_navigation_3d.sh`，`start_robust_navigation.sh` 更适合后续实机级鲁棒性测试。
+当前作业演示仍建议优先使用 `./run.sh nav` 或 `./run.sh nav-3d`，`./run.sh robust-nav` 更适合后续实机级鲁棒性测试。
 
 
 ## 可选流程：任务层行为树
@@ -611,12 +611,12 @@ source install/setup.bash
 ./run.sh sim enable_piper_arm:=true
 ```
 
-这个开关默认关闭；不传 `enable_piper_arm:=true` 时，现有仿真机器人保持 task1 默认形态。默认 `piper_arm_model:=placeholder` 仍使用固定关节占位模型，用来检查安装位置、外形尺度和 TF 链，不发布机械臂相机数据，也不接入 Nav2 costmap。
+这个开关默认关闭；不传 `enable_piper_arm:=true` 时，现有仿真机器人保持 task1 默认形态。显式打开 Piper 时，默认 `piper_arm_model:=official`，会使用 AgileX 官方 Piper URDF 适配链；缺少官方包、只做接口冒烟时可传 `piper_arm_model:=placeholder` 临时退回占位模型。
 
-导入并构建 AgileX open class 的 `piper_description` 后，可以显式把仿真里的占位关节链替换成官方 Piper URDF 适配链：
+占位 fallback：
 
 ```bash
-./run.sh sim enable_piper_arm:=true piper_arm_model:=official
+./run.sh sim enable_piper_arm:=true piper_arm_model:=placeholder
 ```
 
 官方适配链会把 AgileX 原始 `base_link/link1...` 重命名为项目侧 `piper_base_link/piper_link1...`，避免和移动底盘 `base_link` 冲突；官方 MoveIt2 v4/v5 demo 仍作为独立 wrapper 启动，不会自动接入 task1。
@@ -630,7 +630,7 @@ source install/setup.bash
 ./run.sh piper-sim
 ```
 
-该入口只启动 Piper TF、假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake pick/place action。默认 TF 使用占位模型；需要对照官方 URDF 时可加 `arm_model:=official`。项目侧上层接口保持 `/piper/task/pick_object` 和 `/piper/task/place_object`。
+该入口只启动 Piper TF、假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake pick/place action。默认 TF 使用官方 Piper URDF 适配链；缺少官方包时可加 `arm_model:=placeholder` 做占位冒烟。项目侧上层接口保持 `/piper/task/pick_object` 和 `/piper/task/place_object`。
 
 项目侧 MoveIt2 plan-only 配置已经独立放在 `slam_nav_piper_moveit_config`，默认不接入 task1、不执行轨迹、不连接 SDK：
 
@@ -639,6 +639,20 @@ source install/setup.bash
 ```
 
 该入口使用项目侧 `piper_base_link/piper_joint*/piper_tcp` 配置和假关节状态发布器，并会自动加载 `external/ros_humble_debs/overlay` 里的 Piper 专用本地 MoveIt2 插件。当前已验证 `move_group` 能加载 OMPL，并输出 `You can start planning now!`。
+
+另开终端可以发送一次 plan-only 规划请求，用于确认 `/piper/plan_kinematic_path` 服务、`piper_arm` planning group、关节目标约束和 OMPL pipeline 是连通的：
+
+```bash
+./run.sh piper-plan-test
+```
+
+该测试只检查 MoveIt2 是否能返回非空轨迹，不执行轨迹、不连接 SDK，也不接入 task1 默认导航链路。
+
+一键启动 MoveIt2 plan-only、等待服务、发送规划请求并清理本次测试进程：
+
+```bash
+./run.sh piper-moveit-smoke
+```
 
 想同时看 Gazebo 模型并跑 Piper 假感知/假执行，可以先开 `./run.sh sim enable_piper_arm:=true`，再另开终端运行：
 
@@ -661,7 +675,7 @@ AgileX Piper 课程参考已记录在外部清单里：
 https://github.com/agilexrobotics/agilex_open_class/tree/master/piper
 ```
 
-它里面的 `piper_description`、`piper_moveit_config_v4`、`piper_moveit_config_v5` 作为官方模型和 MoveIt2 示例来源。当前仓库只记录来源和配置边界，没有把这些包接入 task1，也没有默认启动 MoveIt2 控制器。
+它里面的 `piper_description`、`piper_moveit_config_v4`、`piper_moveit_config_v5` 作为官方模型和 MoveIt2 示例来源。Piper 项目侧入口默认读取官方 `piper_description`，但没有把官方 demo 接入 task1，也没有默认启动 MoveIt2 执行控制器。
 
 只准备官方 Piper open class 包时，可以使用：
 

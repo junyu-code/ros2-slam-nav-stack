@@ -23,7 +23,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
-        DeclareLaunchArgument('arm_model', default_value='placeholder', choices=['placeholder', 'official']),
+        DeclareLaunchArgument('arm_model', default_value='official', choices=['official', 'placeholder']),
         include(
             'slam_nav_piper_description',
             'launch/piper_description.launch.py',

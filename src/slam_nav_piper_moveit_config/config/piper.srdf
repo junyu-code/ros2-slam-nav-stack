@@ -67,6 +67,7 @@
   <disable_collisions link1="piper_link6" link2="piper_link7" reason="Adjacent"/>
   <disable_collisions link1="piper_link6" link2="piper_link8" reason="Adjacent"/>
   <disable_collisions link1="piper_link6" link2="piper_tcp" reason="Adjacent"/>
+  <disable_collisions link1="piper_link6" link2="piper_arm_camera_link" reason="Adjacent"/>
   <disable_collisions link1="piper_link7" link2="piper_link8" reason="Default"/>
   <disable_collisions link1="piper_tcp" link2="piper_arm_camera_link" reason="Adjacent"/>
 </robot>

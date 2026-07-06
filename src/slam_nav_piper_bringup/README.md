@@ -8,12 +8,12 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `star
 ros2 launch slam_nav_piper_bringup piper_sim.launch.py
 ```
 
-该入口启动占位 TF、假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake 抓取/放置 action。
+该入口默认使用 AgileX 官方 Piper URDF 适配链，并启动假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake 抓取/放置 action。
 
-安装并构建 AgileX 官方 `piper_description` 后，可以显式用官方 URDF 适配链替换占位 TF：
+缺少官方包、只想先检查 `/piper` 话题/action 边界时，可以显式退回占位 TF：
 
 ```bash
-ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=official
+ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=placeholder
 ```
 
 注意：MoveIt2 规划接口已经安装，但当前 `piper_sim.launch.py` 仍默认使用 fake 执行后端。这样可以先验证 `/piper` 命名空间、TF、相机和 action 链路，不会误动真实机械臂。
@@ -24,7 +24,9 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=official
 ./run.sh piper-moveit-plan
 ```
 
-该入口来自 `slam_nav_piper_moveit_config`，使用 `piper_*` frame/joint/group/controller 命名和假关节状态发布器。默认 `allow_trajectory_execution=false`，不接 SDK、不执行轨迹。推荐系统安装：
+该入口来自 `slam_nav_piper_moveit_config`，使用 `piper_*` frame/joint/group/controller 命名和假关节状态发布器。默认 `allow_trajectory_execution=false`，不接 SDK、不执行轨迹。
+
+推荐系统安装：
 
 ```bash
 sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-controller-manager
@@ -36,6 +38,14 @@ sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-co
 ./run.sh setup-piper-moveit
 ./run.sh piper-preflight
 ```
+
+一键启动 MoveIt2 plan-only 并发送一次规划请求：
+
+```bash
+./run.sh piper-moveit-smoke
+```
+
+该测试只验证 `/piper/plan_kinematic_path`、`piper_arm` planning group 和 OMPL 规划链路能返回非空轨迹，不执行轨迹、不连接 SDK。
 
 ## 预检
 
@@ -108,7 +118,7 @@ vcs import external < piper_external.repos
 https://github.com/agilexrobotics/agilex_open_class/tree/master/piper
 ```
 
-该目录里的 `piper_description`、`piper_moveit_config_v4`、`piper_moveit_config_v5` 作为官方模型和 MoveIt2 示例来源；当前 bringup 不会默认启动它们。
+该目录里的 `piper_description`、`piper_moveit_config_v4`、`piper_moveit_config_v5` 作为官方模型和 MoveIt2 示例来源；Piper 项目侧入口默认读取官方 `piper_description`，但仍不会把官方 demo、MoveIt2 执行控制器或 Gazebo 控制器接入 task1。
 
 导入并构建官方包后，可以单独跑官方 demo wrapper：
 
@@ -137,8 +147,10 @@ ros2 launch slam_nav_piper_bringup piper_official_gazebo_demo.launch.py start_mo
 底盘组合仿真中使用官方 URDF 适配链：
 
 ```bash
-./run.sh sim enable_piper_arm:=true piper_arm_model:=official
+./run.sh sim enable_piper_arm:=true
 ```
+
+`enable_piper_arm` 默认仍是 `false`，因此 task1 默认仿真不变。只有显式打开 Piper 时，默认才使用官方适配链；需要占位模型时可传 `piper_arm_model:=placeholder`。
 
 ## 学习层预留
 

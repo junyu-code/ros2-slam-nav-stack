@@ -14,6 +14,7 @@ show_help() {
   build                 编译工作区
   clean                 清理 ROS/Gazebo/RViz/Nav2 残留进程
   sim                   启动默认仿真（当前默认动态场地）
+  sim-static            启动静态验收场地仿真
   sim-dynamic           启动动态障碍仿真
   sim-dynamic-rgbd      启动动态障碍 + RGB-D 仿真
   mapping               手动建图链路
@@ -36,16 +37,20 @@ show_help() {
   piper-preflight       Piper 依赖预检（自动加载本地 MoveIt overlay）
   piper-sim             单独启动 Piper 假感知/假执行冒烟链路
   piper-moveit-plan     启动 Piper 项目侧 MoveIt2 plan-only 配置
+  piper-plan-test       向 MoveIt2 发送一次 Piper plan-only 规划请求
+  piper-moveit-smoke    一键启动 MoveIt2 plan-only 并发送规划冒烟请求
 
 示例：
-  ./run.sh sim
+  ./run.sh sim-static
   ./run.sh auto-mapping
   ./run.sh save-pcd nav_test_static
   ./run.sh nav-full
   ./run.sh setup-piper-moveit
   ./run.sh piper-preflight
-  ./run.sh piper-sim arm_model:=official
+  ./run.sh piper-sim
   ./run.sh piper-moveit-plan
+  ./run.sh piper-plan-test
+  ./run.sh piper-moveit-smoke
 EOF
 }
 
@@ -54,6 +59,7 @@ script_for_command() {
     build) echo "build.sh" ;;
     clean) echo "clean.sh" ;;
     sim|simulation) echo "start_simulation.sh" ;;
+    sim-static|static-sim) echo "start_simulation_static.sh" ;;
     sim-dynamic) echo "start_simulation_dynamic.sh" ;;
     sim-dynamic-rgbd) echo "start_simulation_dynamic_rgbd.sh" ;;
     mapping|map) echo "start_mapping.sh" ;;
@@ -76,6 +82,8 @@ script_for_command() {
     piper-preflight|piper-check) echo "piper_preflight.sh" ;;
     piper-sim) echo "start_piper_sim.sh" ;;
     piper-moveit-plan|piper-moveit) echo "start_piper_moveit_plan.sh" ;;
+    piper-plan-test|piper-plan-smoke) echo "piper_plan_smoke_test.sh" ;;
+    piper-moveit-smoke|piper-smoke) echo "piper_moveit_smoke.sh" ;;
     help|-h|--help) echo "__help__" ;;
     *) return 1 ;;
   esac
@@ -112,16 +120,17 @@ show_menu() {
 请选择要运行的流程：
   1) clean              清理残留
   2) sim                启动默认仿真（当前默认动态场地）
-  3) mapping            手动建图
-  4) auto-mapping       自动探索建图
-  5) teleop             键盘控制
-  6) save-map           保存 2D 栅格地图
-  7) save-pcd           保存 PCD 地图
-  8) nav                默认导航
-  9) nav-3d             3D 地形增强导航
- 10) nav-full           完整增强导航
- 11) diagnose           运行时诊断
- 12) build              编译工作区
+  3) sim-static         启动静态验收场地
+  4) mapping            手动建图
+  5) auto-mapping       自动探索建图
+  6) teleop             键盘控制
+  7) save-map           保存 2D 栅格地图
+  8) save-pcd           保存 PCD 地图
+  9) nav                默认导航
+ 10) nav-3d             3D 地形增强导航
+ 11) nav-full           完整增强导航
+ 12) diagnose           运行时诊断
+ 13) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 EOF
@@ -138,22 +147,23 @@ read -r choice
 case "${choice}" in
   1) run_command clean ;;
   2) run_command sim ;;
-  3) run_command mapping ;;
-  4) run_command auto-mapping ;;
-  5) run_command teleop ;;
-  6)
+  3) run_command sim-static ;;
+  4) run_command mapping ;;
+  5) run_command auto-mapping ;;
+  6) run_command teleop ;;
+  7)
     read -r -p "地图名 [nav_test_map]：" map_name
     run_command save-map "${map_name:-nav_test_map}"
     ;;
-  7)
+  8)
     read -r -p "PCD 名 [nav_test_static]：" pcd_name
     run_command save-pcd "${pcd_name:-nav_test_static}"
     ;;
-  8) run_command nav ;;
-  9) run_command nav-3d ;;
-  10) run_command nav-full ;;
-  11) run_command diagnose ;;
-  12) run_command build ;;
+  9) run_command nav ;;
+  10) run_command nav-3d ;;
+  11) run_command nav-full ;;
+  12) run_command diagnose ;;
+  13) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

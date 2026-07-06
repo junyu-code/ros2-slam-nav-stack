@@ -48,7 +48,7 @@ Gazebo
   -> /scan
   -> slam_toolbox
   -> /map
-  -> save_map.sh
+  -> ./run.sh save-map nav_test_map
 ```
 
 为减少手动键盘探索成本，新增 `auto_explore_mapper` 作为建图阶段的可选自动巡航节点：
@@ -60,7 +60,7 @@ Gazebo
   -> Gazebo robot
 ```
 
-它不依赖 Nav2，也不要求已有地图；逻辑是基于 `/scan` 的保守反应式覆盖巡航：安全时慢速前进，前方过近时后退并向更空方向转向，周期性原地旋转补全 Livox 点云视角。该入口适合自动扫静态仿真地图和累计 FAST-LIO PCD 地图，但它不是完整 frontier planner；如果某些角落覆盖不足，仍可用 `teleop.sh` 手动补扫。
+它不依赖 Nav2，也不要求已有地图；逻辑是基于 `/scan` 的保守反应式覆盖巡航：安全时慢速前进，前方过近时后退并向更空方向转向，周期性原地旋转补全 Livox 点云视角。该入口适合自动扫静态仿真地图和累计 FAST-LIO PCD 地图，但它不是完整 frontier planner；如果某些角落覆盖不足，仍可用 `./run.sh teleop` 手动补扫。
 
 对应入口：
 
@@ -85,7 +85,7 @@ Gazebo
   -> Gazebo robot
 ```
 
-当前 `start_navigation.sh` 已调整为启动 FAST-LIO2、`pointcloud_to_laserscan`、Nav2 bringup 和初始位姿发布器，并默认加载 `nav_test_map.yaml`。
+当前 `./run.sh nav` 会调用 `scripts/start_navigation.sh`，启动 FAST-LIO2、`pointcloud_to_laserscan`、Nav2 bringup 和初始位姿发布器，并默认加载 `nav_test_map.yaml`。
 
 导航鲁棒性排查后，当前默认链路先做“底层稳定性优先”的修复，而不是立即替换整套控制器：
 
@@ -284,7 +284,7 @@ source install/setup.bash
 ```bash
 cd ~/slam_nav_ws
 ./run.sh clean
-./run.sh sim
+./run.sh sim-static
 ```
 
 另开终端：
@@ -313,7 +313,7 @@ cd ~/slam_nav_ws
 ```bash
 cd ~/slam_nav_ws
 ./run.sh clean
-./run.sh sim
+./run.sh sim-static
 ```
 
 另开终端：
@@ -559,3 +559,6 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-06：新增 `auto_explore_mapper` 自动探索建图节点和 `start_auto_mapping.sh` 入口，用 `/scan` 做保守巡航、避障、周期旋转补扫，用于减少手动键盘建图成本；新增 `save_pcd_map.sh` 调用 FAST-LIO `/map_save` 服务保存并命名 PCD 地图。
 - 2026-07-06：优化静态/动态仿真场地中的斜坡模型，将原单个倾斜长方体改为入口引导板、缓坡和顶部平台组合，降低入口硬边缘和坡度突变对底盘运动、点云建图和地形分析的干扰。
 - 2026-07-06：新增 `tasks/task1/TASK1_FINAL_RUNBOOK.md` 作为 task1 权威运行与交付流程，明确静态场地用于课程验收、动态障碍物用于扩展演示，并修复 `start_simulation_dynamic.sh` / `start_simulation_dynamic_rgbd.sh` 中 `SCRIPT_DIR` 未定义导致 `./run.sh sim-dynamic` 入口失效的问题。
+- 2026-07-07：新增 `./run.sh sim-static` 静态验收场地快捷入口，保留 `./run.sh sim` 当前默认动态场地用于扩展示范；同步 README、task1 Runbook、实验记录、Markdown 报告草稿和 LaTeX 报告中的建图/导航命令，避免动态障碍物混入静态避障成功率统计。
+- 2026-07-07：修正 task1 报告中的 Nav2 算法描述：默认验收链路为 `SmacPlanner2D + DWBLocalPlanner + BackUp/ClearCostmap/Spin` 恢复行为树，`nav-3d/nav-full` 才使用地形分析、强度体素代价地图和全向 PID 控制器作为增强展示。
+- 2026-07-07：为 Piper MoveIt2 plan-only 增加 `./run.sh piper-plan-test` 冒烟测试入口，向 `/piper/plan_kinematic_path` 发送一次关节目标规划请求，只验证返回轨迹是否非空，不执行轨迹、不连接 SDK，也不接入 task1 默认导航链路。

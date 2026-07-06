@@ -20,7 +20,7 @@ ros2 launch slam_nav_piper_moveit_config piper_project_moveit_plan.launch.py
 `publish_robot_state:=false`，避免重复发布 robot_state_publisher：
 
 ```bash
-./run.sh sim enable_piper_arm:=true piper_arm_model:=official
+./run.sh sim enable_piper_arm:=true
 ros2 launch slam_nav_piper_moveit_config piper_project_moveit_plan.launch.py publish_robot_state:=false
 ```
 
@@ -62,6 +62,20 @@ sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-co
 ./run.sh setup-piper-moveit
 ./run.sh piper-preflight
 ./run.sh piper-moveit-plan
+```
+
+启动 `piper-moveit-plan` 后，可另开终端做一次规划服务冒烟测试：
+
+```bash
+./run.sh piper-plan-test
+```
+
+该测试调用 `/piper/plan_kinematic_path`，只验证 `piper_arm` 关节目标规划能返回非空轨迹；默认不执行轨迹，也不连接 SDK。
+
+也可以一条命令完成启动、等待服务、发送规划请求和清理本次测试进程：
+
+```bash
+./run.sh piper-moveit-smoke
 ```
 
 AgileX 官方 `piper_moveit_config_v4/v5` demo wrapper 还需要：

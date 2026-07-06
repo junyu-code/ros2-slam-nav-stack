@@ -27,7 +27,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
-        DeclareLaunchArgument('arm_model', default_value='placeholder', choices=['placeholder', 'official']),
+        DeclareLaunchArgument('arm_model', default_value='official', choices=['official', 'placeholder']),
         DeclareLaunchArgument('fake_camera', default_value='false'),
         DeclareLaunchArgument('fake_execution', default_value='true'),
         DeclareLaunchArgument('real_backend_connected', default_value='false'),

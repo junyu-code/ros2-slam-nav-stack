@@ -53,7 +53,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
-        DeclareLaunchArgument('arm_model', default_value='placeholder', choices=['placeholder', 'official']),
+        DeclareLaunchArgument('arm_model', default_value='official', choices=['official', 'placeholder']),
         DeclareLaunchArgument('official_description_package', default_value='piper_description'),
         DeclareLaunchArgument('official_description_xacro', default_value='urdf/piper_description.xacro'),
         DeclareLaunchArgument('mount_xyz', default_value='0.16 0.0 0.22'),

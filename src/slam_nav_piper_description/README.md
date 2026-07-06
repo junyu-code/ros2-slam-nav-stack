@@ -1,6 +1,6 @@
 # slam_nav_piper_description
 
-Piper 机械臂扩展的 TF/描述包。当前仓库不复制厂家 URDF；默认提供轻量占位模型，也可以在安装 AgileX 官方 `piper_description` 后显式生成官方 URDF 适配链。
+Piper 机械臂扩展的 TF/描述包。当前仓库不复制厂家 URDF；默认读取 AgileX 官方 `piper_description` 并生成项目侧 `piper_*` 适配链，轻量占位模型只作为缺少官方包时的显式 fallback。
 
 ## TF 约定
 
@@ -22,25 +22,25 @@ base_link
 ros2 launch slam_nav_piper_description piper_description.launch.py
 ```
 
-该 launch 只发布 Piper 相关 TF，不启动 FAST-LIO2、Nav2 或 task1 主流程。
+该 launch 默认使用官方 Piper URDF 关节链，只发布 Piper 相关 TF，不启动 FAST-LIO2、Nav2 或 task1 主流程。
 
-显式使用官方 URDF 适配链：
+缺少官方包、只想做接口冒烟时可以显式退回占位模型：
 
 ```bash
-ros2 launch slam_nav_piper_description piper_description.launch.py arm_model:=official
+ros2 launch slam_nav_piper_description piper_description.launch.py arm_model:=placeholder
 ```
 
 ## 官方模型后端
 
-默认 launch 仍使用项目侧轻量占位模型。导入 AgileX open class 并构建后，可以显式启动官方 Piper 描述：
+导入 AgileX open class 并构建后，可以用专用入口显式启动官方 Piper 描述：
 
 ```bash
 ros2 launch slam_nav_piper_description piper_official_description.launch.py
 ```
 
-该入口会读取官方 `piper_description/urdf/piper_description.xacro`，生成项目侧 `piper_*` frame 的适配 URDF，并补充移动底盘挂载、`piper_tcp` 和腕部相机 TF。官方包未安装时会直接退出并提示缺失，不会影响默认 `piper_description.launch.py`。
+该入口会读取官方 `piper_description/urdf/piper_description.xacro`，生成项目侧 `piper_*` frame 的适配 URDF，并补充移动底盘挂载、`piper_tcp` 和腕部相机 TF。官方包未安装时会直接退出并提示缺失；此时可临时使用 `arm_model:=placeholder` 做非运动学接口检查。
 
-这个入口首先用于对照官方关节链和 frame。官方 MoveIt2 配置原生仍引用 `base_link/link1.../joint1...`；后续要把 MoveIt2 和移动底盘组合成同一规划场景时，需要生成或维护一份对应 `piper_*` 名称的 SRDF、controller 和 kinematics 配置。
+官方 MoveIt2 配置原生仍引用 `base_link/link1.../joint1...`；项目侧已经维护 `slam_nav_piper_moveit_config`，把官方关节链映射为 `piper_base_link/piper_link*/piper_joint*`，用于移动底盘组合场景的 plan-only 验证。
 
 注意：如果官方 URDF 的末端 frame 不是 `piper_tcp`，启动时需要显式指定：
 
