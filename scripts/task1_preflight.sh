@@ -122,8 +122,10 @@ check_file "src/slam_nav_simulation/world/nav_test_world/nav_test_world_dynamic.
 
 # task1 文档链路。
 for doc in \
+  tasks/task1/STUDENT_INFO.md \
   tasks/task1/TASK1_FINAL_RUNBOOK.md \
   tasks/task1/TASK1_EVIDENCE_TODO.md \
+  tasks/task1/PROJECT_DELIVERY_GUIDE.md \
   tasks/task1/RUN_AND_SCREENSHOT_STEPS.md \
   tasks/task1/EXPERIMENT_RECORD.md \
   tasks/task1/DELIVERY_CHECKLIST.md \

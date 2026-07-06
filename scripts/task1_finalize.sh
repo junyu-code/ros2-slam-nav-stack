@@ -85,7 +85,7 @@ run_check task1_snapshot.sh
 step "3/9 同步静态避障实验表到报告片段"
 run_check task1_sync_report.sh
 
-experiment_args=()
+experiment_args=(--show-rows --next)
 if [[ "${ALLOW_WARNINGS}" != "true" ]]; then
   experiment_args+=(--strict)
 fi

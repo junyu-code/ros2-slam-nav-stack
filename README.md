@@ -22,7 +22,7 @@ cd ~/slam_nav_ws
 ./run.sh task1-snapshot
 ./run.sh task1-check
 ./run.sh task1-runtime-check nav
-./run.sh task1-experiment-check
+./run.sh task1-experiment-check --next
 ./run.sh task1-figures
 ./run.sh task1-sync-report
 ./run.sh task1-delivery-check
@@ -93,13 +93,13 @@ cd ~/slam_nav_ws
 ./run.sh task1-status
 ./run.sh task1-snapshot
 ./run.sh task1-check
-./run.sh task1-experiment-check
+./run.sh task1-experiment-check --next
 ./run.sh task1-sync-report
 ./run.sh task1-report-audit
 ./run.sh task1-delivery-check
 ```
 
-这些命令都不会启动 Gazebo、RViz 或 Nav2。`task1-status` 是最短状态页，会告诉你当前还缺哪些截图、实验记录、报告 PDF 或 Git 提交；`task1-check` 主要检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位；`task1-experiment-check` 会解析 `EXPERIMENT_RECORD.md` 中 10 次静态避障实验表，统计成功次数、碰撞次数和是否达到 80% 成功率；普通模式下，缺截图和待填实验记录只会显示 warning。
+这些命令都不会启动 Gazebo、RViz 或 Nav2。`task1-status` 是最短状态页，会告诉你当前还缺哪些截图、实验记录、报告 PDF 或 Git 提交；`task1-check` 主要检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位；`task1-experiment-check` 会解析 `EXPERIMENT_RECORD.md` 中 10 次静态避障实验表，统计成功次数、碰撞次数和是否达到 80% 成功率；普通模式下，缺截图和待填实验记录只会显示 warning。填表过程中追加 `--next` 可以显示下一条待补实验记录、缺失字段和推荐填写格式。
 
 当仿真、建图或导航已经启动后，可以把运行时检查结果保存成可转写到实验记录的快照：
 
@@ -121,6 +121,8 @@ cd ~/slam_nav_ws
 `task1-figures` 不会启动 GUI，也不会生成假截图；它只负责列出缺图、打印目标路径，或把你已经截好的 PNG 复制到 `tasks/task1/report_latex/figures/`。
 
 `task1-report-audit` 专门审计结课报告侧材料：姓名学号、截图引用、截图文件是否存在、PNG 文件是否有效、报告待填字段、PDF 是否比源文件旧。`task1-delivery-check` 更偏向打包视角：它会列出建议压缩包名、必须包含的源码/文档/报告材料、仍缺的截图、实验记录待填字段，以及 Git 中是否误跟踪了 `build/`、`install/`、`log/`、rosbag、点云或模型权重等重型产物。最终打包前建议执行：
+
+`task1-delivery-check` 和 `task1-finalize` 会在静态避障实验表未填完时自动显示 `--next` 提示，指出下一条该补哪一次、缺哪些字段和推荐填写格式。
 
 ```bash
 ./run.sh task1-check --strict

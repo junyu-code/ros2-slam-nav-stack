@@ -593,7 +593,12 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：新增 `./run.sh task1-status` 无 GUI 状态页，集中显示默认地图、结课报告 PDF、必需截图、可选扩展截图、实验记录待填字段、报告占位和 Git 工作区状态，并根据最早缺失证据给出下一步运行建议，方便每次恢复任务时快速判断该先建图、导航、动态演示还是整理报告。
 - 2026-07-07：将 `./run.sh piper-real-readiness` 纳入 Piper 静态验收链路，形成 OK/WAIT/FAIL 实机前状态报告；默认 WAIT 表示真实执行、SDK、手眼标定或底盘停止确认仍未满足但系统保持安全未接入状态，真正上机前可使用 `--require-ready` 把 WAIT 也作为失败。
 - 2026-07-07：新增 `./run.sh task1-finalize` 最终交付编排入口，按“状态页 -> 静态避障实验记录检查 -> 报告 PDF 编译 -> task1 strict 预检 -> strict 交付检查 -> 压缩包预览/可选创建”的顺序执行；默认不启动 GUI、不创建 zip，材料补齐后使用 `--create` 生成正式包，草稿包可显式使用 `--allow-warnings`。
-- 2026-07-07：新增 `./run.sh task1-experiment-check` 静态避障实验记录检查入口，自动解析 `EXPERIMENT_RECORD.md` 中 10 次静态避障表，统计已填完整行数、成功次数、碰撞次数和成功率；`--strict` 用于最终提交前确认成功率不低于 80%，`--show-rows` 用于填表后逐行核对。该入口已接入 `task1-finalize` 和 `task1-delivery-check`。
+- 2026-07-07：新增 `./run.sh task1-experiment-check` 静态避障实验记录检查入口，自动解析 `EXPERIMENT_RECORD.md` 中 10 次静态避障表，统计已填完整行数、成功次数、碰撞次数和成功率；`--strict` 用于最终提交前确认成功率不低于 80%，`--show-rows` 用于填表后逐行核对，`--next` 用于提示下一条待补记录和推荐填写格式。该入口已接入 `task1-finalize` 和 `task1-delivery-check`。
 - 2026-07-07：新增 `./run.sh task1-figures` 截图文件名辅助入口，可列出必需/可选截图状态、打印指定图号目标路径，并把已截好的 PNG 导入到 `tasks/task1/report_latex/figures/` 的标准文件名；该工具不启动 GUI、不生成假图，只减少后续截图归档和报告插图时的手工命名错误。
 - 2026-07-07：新增 `./run.sh task1-sync-report` 实验记录同步入口，从 `EXPERIMENT_RECORD.md` 解析 10 次静态避障表，生成 `STATIC_TRIALS_TABLE.md` 与 `report_latex/generated_static_trials.tex`；LaTeX 报告改为 `\input{generated_static_trials.tex}`，`task1-build-report` 与 `task1-finalize` 会在编译前自动同步，避免实验记录和报告表格重复手工维护。
 - 2026-07-07：增强 `./run.sh task1-runtime-check --save` 证据保存方式，除继续覆盖 `TASK1_RUNTIME_LAST.md` 作为最新快照外，同时按时间和模式归档到 `tasks/task1/runtime_checks/<时间>_<模式>.md`；`task1-status` 和 `task1-snapshot` 同步显示运行时 latest/历史快照状态，避免建图、导航、动态演示检查结果互相覆盖。
+- 2026-07-07：继续做 task1 无 GUI 交付审计，确认 `task1-check` 结构错误为 0，主要剩余缺口是 9 张真实截图、运行时快照和 10 次静态避障实验记录；清理 `PROJECT_DELIVERY_GUIDE.md` 中旧式“待替换”截图示例，统一改为正式图注 + `taskfigure`/`task1-figures import` 的证据导入流程，减少最终报告中残留草稿痕迹的风险。
+- 2026-07-07：将 `STUDENT_INFO.md` 与 `PROJECT_DELIVERY_GUIDE.md` 纳入 task1 无 GUI 结构预检/交付检查入口，确保个人信息、课程材料理解、报告写作规范和工程脚本检查属于同一条交付门禁链路。
+- 2026-07-07：增强 `task1-experiment-check --next`，在 10 次静态避障表未填完时自动提示下一条待补记录、缺失字段、推荐表格行格式和成功/碰撞判定口径；README、Runbook、证据清单、运行截图步骤和交付清单同步改为填表阶段优先使用 `--next`，降低实测后漏填字段或写法不一致的概率。
+- 2026-07-07：将 `--next` 接入 `task1-delivery-check` 与 `task1-finalize` 的静态避障实验检查调用；最终交付编排失败时会同步输出下一条待补记录和推荐格式，不需要再单独手动追查 `EXPERIMENT_RECORD.md` 的缺口。
+- 2026-07-07：优化 `task1-sync-report` 的生成文件写入策略，只有 Markdown/LaTeX 静态避障表内容发生变化时才替换目标文件；重复运行同步命令不再无意义刷新 mtime，避免 `task1-report-audit` 误报“生成表格比 PDF 新”。

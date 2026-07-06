@@ -50,6 +50,18 @@ log() {
   fi
 }
 
+install_if_changed() {
+  local src="$1"
+  local dst="$2"
+  if [[ -f "${dst}" ]] && cmp -s "${src}" "${dst}"; then
+    rm -f "${src}"
+    log "内容未变化，保留原文件时间: ${dst}"
+  else
+    mv "${src}" "${dst}"
+    log "已更新: ${dst}"
+  fi
+}
+
 trim() {
   local value="$1"
   value="${value#"${value%%[![:space:]]*}"}"
@@ -189,13 +201,11 @@ fi
   echo "说明：最终成功率以人工确认后的“是否成功/是否碰撞”字段为准。"
 } >>"${tmp_md}"
 
-mv "${tmp_md}" "${GENERATED_MD}"
 printf '  \\bottomrule\n' >>"${tmp_tex}"
-mv "${tmp_tex}" "${GENERATED_TEX}"
+install_if_changed "${tmp_md}" "${GENERATED_MD}"
+install_if_changed "${tmp_tex}" "${GENERATED_TEX}"
 trap - EXIT
 
-log "已生成: ${GENERATED_MD}"
-log "已生成: ${GENERATED_TEX}"
 log "解析到静态避障实验 ${rows} 行，当前成功次数 ${success_count}。"
 
 if (( rows < 10 )); then

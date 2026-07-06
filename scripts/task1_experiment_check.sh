@@ -7,13 +7,14 @@ cd "${WORKSPACE_DIR}"
 
 STRICT=false
 SHOW_ROWS=false
+SHOW_NEXT=false
 RECORD_FILE="tasks/task1/EXPERIMENT_RECORD.md"
 FIG_DIR="tasks/task1/report_latex/figures"
 
 usage() {
   cat <<'EOF'
 用法：
-  ./run.sh task1-experiment-check [--strict] [--show-rows]
+  ./run.sh task1-experiment-check [--strict] [--show-rows] [--next]
 
 说明：
   检查 task1 的静态避障 10 次实验记录，不启动 Gazebo、RViz 或 Nav2。
@@ -22,6 +23,7 @@ usage() {
 可选参数：
   --strict     将未填字段、成功率不足、截图文件缺失等 warning 视为未通过。
   --show-rows 逐行输出 10 次静态避障实验的解析结果，方便核对表格。
+  --next      只额外提示下一条最应该补的实验记录和推荐填写格式。
 EOF
 }
 
@@ -32,6 +34,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --show-rows)
       SHOW_ROWS=true
+      ;;
+    --next)
+      SHOW_NEXT=true
       ;;
     -h|--help|help)
       usage
@@ -131,6 +136,8 @@ success_count=0
 failed_count=0
 collision_count=0
 unknown_success_count=0
+first_missing_trial=""
+first_missing_fields=""
 
 while IFS= read -r line; do
   if [[ "${line}" == *"| 编号 | 起点 | 目标点 |"* && "${line}" == *"是否成功"* ]]; then
@@ -185,6 +192,10 @@ while IFS= read -r line; do
     completed_rows=$((completed_rows + 1))
   else
     warn "第 ${num} 次静态避障实验未填完整: ${missing_fields[*]}"
+    if [[ -z "${first_missing_trial}" ]]; then
+      first_missing_trial="${num}"
+      first_missing_fields="${missing_fields[*]}"
+    fi
   fi
 
   if is_negative "${success}"; then
@@ -250,6 +261,18 @@ if (( rows >= 10 && success_count >= 8 )); then
   ok "静态避障成功率满足 >= 80% 的课程要求"
 else
   warn "静态避障成功率尚未证明达到 >= 80%；10 次实验中至少需要 8 次成功"
+fi
+
+if [[ "${SHOW_NEXT}" == "true" ]]; then
+  echo
+  if [[ -n "${first_missing_trial}" ]]; then
+    echo "[task1-experiment] 下一条建议补第 ${first_missing_trial} 次静态避障实验，当前缺字段: ${first_missing_fields}"
+    echo "[task1-experiment] 推荐填写格式:"
+    echo "| ${first_missing_trial} | 起点坐标或区域 | 目标点坐标或区域 | 经过的主要障碍物 | 是/否 | 是/否 | 是/否 | 图8-2/图8-3/图8-4 或补充 PNG | 失败原因或恢复过程 |"
+    echo "[task1-experiment] 判定口径: 到达=停在目标附近；碰撞=碰到障碍物/墙/动态物体；成功=到达且无碰撞、无长期卡死。"
+  else
+    ok "10 次静态避障实验字段已经填完整；下一步运行 ./run.sh task1-experiment-check --strict"
+  fi
 fi
 
 echo "[task1-experiment] 结构错误: ${errors}, 提交前提醒: ${warnings}"

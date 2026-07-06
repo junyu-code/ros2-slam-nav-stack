@@ -71,6 +71,7 @@ check_file "tasks/task1/STUDENT_INFO.md" "个人信息记录"
 check_file "tasks/task1/DELIVERY_CHECKLIST.md" "交付检查清单"
 check_file "tasks/task1/TASK1_FINAL_RUNBOOK.md" "task1 最终 Runbook"
 check_file "tasks/task1/TASK1_EVIDENCE_TODO.md" "task1 剩余证据采集清单"
+check_file "tasks/task1/PROJECT_DELIVERY_GUIDE.md" "task1 报告写作与交付指南"
 check_optional_file "tasks/task1/TASK1_STATUS_SNAPSHOT.md" "task1 当前状态快照"
 check_file "tasks/task1/RUN_AND_SCREENSHOT_STEPS.md" "运行与截图步骤"
 check_file "tasks/task1/EXPERIMENT_RECORD.md" "实验记录表"
@@ -141,7 +142,7 @@ else
 fi
 
 if [[ -x "scripts/task1_experiment_check.sh" ]]; then
-  experiment_args=()
+  experiment_args=(--next)
   if [[ "${STRICT}" == "true" ]]; then
     experiment_args+=(--strict)
   fi
