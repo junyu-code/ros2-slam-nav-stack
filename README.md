@@ -21,6 +21,14 @@ cd ~/slam_nav_ws
 
 实际脚本统一收纳在 `scripts/` 目录，例如 `scripts/start_navigation.sh`。日常建议优先使用 `./run.sh <命令>`，这样根目录更干净，也不需要记住每个脚本文件名。
 
+Task1 课程作业的最终运行、截图、静态/动态场地区分和打包清单已经集中到：
+
+```text
+tasks/task1/TASK1_FINAL_RUNBOOK.md
+```
+
+后续跑验收时优先看这份 Runbook，再回到本文档查系统背景。
+
 这是一个面向 Ubuntu 22.04 + ROS2 Humble + Gazebo Classic 的通用移动机器人 SLAM 与自主导航工作区。当前主目标是稳定完成仿真建图、保存地图、加载地图导航、目标点到达和静态避障验证。
 
 项目长期会继续扩展 RGB-D 深度相机、语义识别、行为树和机械臂。
@@ -563,10 +571,11 @@ cd ~/slam_nav_ws
 
 `src/slam_nav_piper_*` 是 task2 长期扩展中的 Piper 机械臂方向。它保持独立 `/piper` 命名空间，不修改 task1 的 FAST-LIO2 + Nav2 主链路，也不把机械臂 RGB-D 相机 remap 到 `/nav_camera/*`。
 
-当前已安装 MoveIt2 规划接口：
+当前 MoveIt2 核心规划接口已经安装，但项目侧 plan-only 还需要 OMPL planner 插件：
 
 ```text
 ros-humble-moveit-ros-planning-interface 2.5.9
+ros-humble-moveit-planners-ompl              # 当前机器缺失，需要 sudo 安装
 ```
 
 可用下面命令确认：
@@ -575,6 +584,13 @@ ros-humble-moveit-ros-planning-interface 2.5.9
 ros2 pkg prefix moveit_ros_planning_interface
 ros2 pkg prefix moveit_ros_move_group
 ros2 pkg prefix moveit_core
+ros2 pkg prefix moveit_planners_ompl
+```
+
+缺 OMPL 时安装：
+
+```bash
+sudo apt-get install ros-humble-moveit-planners-ompl
 ```
 
 先看 Gazebo 里的底盘 + Piper 臂：
@@ -602,10 +618,18 @@ Piper 冒烟启动：
 cd ~/slam_nav_ws
 source /opt/ros/humble/setup.bash
 source install/setup.bash
-ros2 launch slam_nav_piper_bringup piper_sim.launch.py
+./run.sh piper-sim
 ```
 
 该入口只启动 Piper TF、假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake pick/place action。默认 TF 使用占位模型；需要对照官方 URDF 时可加 `arm_model:=official`。项目侧上层接口保持 `/piper/task/pick_object` 和 `/piper/task/place_object`。
+
+项目侧 MoveIt2 plan-only 配置已经独立放在 `slam_nav_piper_moveit_config`，默认不接入 task1、不执行轨迹、不连接 SDK：
+
+```bash
+./run.sh piper-moveit-plan
+```
+
+该入口使用项目侧 `piper_base_link/piper_joint*/piper_tcp` 配置和假关节状态发布器。当前机器缺 `ros-humble-moveit-planners-ompl` 时，`move_group` 会在加载 OMPL pipeline 处退出；安装 OMPL 后再跑该入口做规划冒烟。
 
 想同时看 Gazebo 模型并跑 Piper 假感知/假执行，可以先开 `./run.sh sim enable_piper_arm:=true`，再另开终端运行：
 
@@ -643,6 +667,8 @@ source install/setup.bash
 PIPER_OPEN_CLASS_WAIT_RATE_LIMIT=1 ./run.sh setup-piper
 ```
 
+当前工作区已补齐官方 `piper_description` 的 `base_link.STL` 和 `link1.STL` 到 `link8.STL`，预检中 AgileX open class 下载目录应显示 66 个文件。
+
 Piper 预检：
 
 ```bash
@@ -657,6 +683,12 @@ ros2 run slam_nav_piper_bringup piper_official_frame_audit.py --check-project-ad
 ```bash
 ros2 launch slam_nav_piper_bringup piper_official_moveit_demo.launch.py
 ros2 launch slam_nav_piper_bringup piper_official_gazebo_demo.launch.py
+```
+
+官方 MoveIt2/RViz demo wrapper 还需要：
+
+```bash
+sudo apt-get install ros-humble-moveit-configs-utils ros-humble-moveit-ros-visualization
 ```
 
 官方描述适配入口：

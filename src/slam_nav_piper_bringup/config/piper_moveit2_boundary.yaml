@@ -31,7 +31,7 @@ piper_moveit2_boundary:
       official_native_frames: base_link/link1/link2/link3/link4/link5/link6
       project_adapted_frames: piper_base_link/piper_link1/piper_link2/piper_link3/piper_link4/piper_link5/piper_link6
       official_tcp_parent_frame_default: piper_link6
-      note: 官方 MoveIt2 demo 仍使用原生命名；移动底盘组合模型需要 piper_* 适配后的 SRDF/controllers。
+      note: 官方 MoveIt2 demo 仍使用原生命名；项目侧 piper_* plan-only 配置已放在 slam_nav_piper_moveit_config，真实执行后端仍需控制桥适配。
     default_planner_id: RRTConnectkConfigDefault
     plan_only_default: true
     allowed_planning_time_s: 5.0

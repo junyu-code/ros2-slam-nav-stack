@@ -558,3 +558,4 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-06：新增顶配仿真/导航入口 `start_simulation_dynamic_rgbd.sh` 与 `start_navigation_full.sh`，用于组合动态障碍物场景、导航 RGB-D 相机、3D 地形代价地图、RGB-D 近场补盲、全向路径跟踪、行为树恢复、定位健康监控与速度安全桥观测。该组合仍保持动态障碍只进入局部实时避障链路，不写入全局静态地图。
 - 2026-07-06：新增 `auto_explore_mapper` 自动探索建图节点和 `start_auto_mapping.sh` 入口，用 `/scan` 做保守巡航、避障、周期旋转补扫，用于减少手动键盘建图成本；新增 `save_pcd_map.sh` 调用 FAST-LIO `/map_save` 服务保存并命名 PCD 地图。
 - 2026-07-06：优化静态/动态仿真场地中的斜坡模型，将原单个倾斜长方体改为入口引导板、缓坡和顶部平台组合，降低入口硬边缘和坡度突变对底盘运动、点云建图和地形分析的干扰。
+- 2026-07-06：新增 `tasks/task1/TASK1_FINAL_RUNBOOK.md` 作为 task1 权威运行与交付流程，明确静态场地用于课程验收、动态障碍物用于扩展演示，并修复 `start_simulation_dynamic.sh` / `start_simulation_dynamic_rgbd.sh` 中 `SCRIPT_DIR` 未定义导致 `./run.sh sim-dynamic` 入口失效的问题。

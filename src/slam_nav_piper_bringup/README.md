@@ -18,6 +18,18 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=official
 
 注意：MoveIt2 规划接口已经安装，但当前 `piper_sim.launch.py` 仍默认使用 fake 执行后端。这样可以先验证 `/piper` 命名空间、TF、相机和 action 链路，不会误动真实机械臂。
 
+项目侧 MoveIt2 plan-only 单独启动：
+
+```bash
+./run.sh piper-moveit-plan
+```
+
+该入口来自 `slam_nav_piper_moveit_config`，使用 `piper_*` frame/joint/group/controller 命名和假关节状态发布器。默认 `allow_trajectory_execution=false`，不接 SDK、不执行轨迹。当前机器缺 `ros-humble-moveit-planners-ompl` 时，预检会失败，安装后再跑该入口：
+
+```bash
+sudo apt-get install ros-humble-moveit-planners-ompl
+```
+
 ## 预检
 
 ```bash
@@ -66,7 +78,7 @@ ros2 launch slam_nav_piper_bringup piper_real.launch.py backend:=moveit
 
 实机默认 `auto_enable=false` 且 `real_backend_connected=false`。启动后需要先验证 CAN/SDK、急停、失能、home 和限速，再把 `real_backend_connected:=true` 作为显式接入声明，逐步执行 MoveIt2 plan-only、低速预抓取、完整 pick/place。
 
-后续接真实 MoveIt2 时，需要确认使用哪套 frame 名：官方 demo 原生使用 `base_link/link1.../joint1...`，移动底盘组合模型使用项目侧 `piper_base_link/piper_link1.../piper_joint1...`。若要在同一规划场景里使用移动底盘组合模型，需要补齐对应的 SRDF、planning groups、controller、kinematics 和 `move_group` 启动文件。`slam_nav_piper_bringup` 只负责组合这些入口，不应把 Piper 相机或抓取结果接入 Nav2 默认 costmap。
+后续接真实 MoveIt2 时，需要确认使用哪套 frame 名：官方 demo 原生使用 `base_link/link1.../joint1...`，移动底盘组合模型使用项目侧 `piper_base_link/piper_link1.../piper_joint1...`。当前已提供项目侧 `slam_nav_piper_moveit_config` 做 plan-only；真实执行后端仍需在 `slam_nav_piper_control` 内部适配。`slam_nav_piper_bringup` 只负责组合这些入口，不应把 Piper 相机或抓取结果接入 Nav2 默认 costmap。
 
 ## 外部依赖
 
@@ -101,6 +113,8 @@ source install/setup.bash
 ```bash
 PIPER_OPEN_CLASS_WAIT_RATE_LIMIT=1 ./run.sh setup-piper
 ```
+
+当前工作区已补齐官方 `piper_description` 的 `base_link.STL` 和 `link1.STL` 到 `link8.STL`；预检应显示 AgileX open class 下载目录 66 个文件。
 
 ```bash
 ros2 launch slam_nav_piper_bringup piper_official_moveit_demo.launch.py
