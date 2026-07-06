@@ -266,7 +266,11 @@
   </xacro:if>
 
   <xacro:if value="$(arg enable_piper_arm)">
-    <!-- Piper 仿真占位模型默认关闭，只用于 Gazebo 可视化和 TF 冒烟，不参与 task1 导航链路。 -->
+    <!--
+      Piper legacy 占位链仅保留给直接 xacro 冒烟或 piper_arm_model:=placeholder。
+      正常仿真入口默认 piper_arm_model:=official，会由 piper_description_builder 关闭此块，
+      再追加 AgileX 官方 Piper URDF 适配后的 piper_* 关节链。
+    -->
     <link name="piper_mount_link">
       <visual>
         <origin xyz="0 0 0.02" rpy="0 0 0"/>

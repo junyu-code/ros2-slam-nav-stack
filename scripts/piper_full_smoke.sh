@@ -19,47 +19,51 @@ done
 
 set -u
 
-echo "[Piper Full] 1/11 边界回归检查..."
+echo "[Piper Full] 1/12 安全配置检查..."
+"${SCRIPT_DIR}/piper_safety_check.sh"
+
+echo
+echo "[Piper Full] 2/12 边界回归检查..."
 "${SCRIPT_DIR}/piper_boundary_check.sh"
 
 echo
-echo "[Piper Full] 2/11 依赖预检和官方包检查..."
+echo "[Piper Full] 3/12 依赖预检和官方包检查..."
 "${SCRIPT_DIR}/piper_preflight.sh" --require-official
 
 echo
-echo "[Piper Full] 3/11 官方 URDF -> 项目侧 piper_* frame 审计..."
+echo "[Piper Full] 4/12 官方 URDF -> 项目侧 piper_* frame 审计..."
 ros2 run slam_nav_piper_bringup piper_official_frame_audit.py --check-project-adapter
 
 echo
-echo "[Piper Full] 4/11 Piper 运行时 TF 链烟测..."
+echo "[Piper Full] 5/12 Piper 运行时 TF 链烟测..."
 "${SCRIPT_DIR}/piper_tf_smoke.sh"
 
 echo
-echo "[Piper Full] 5/11 Piper runtime 命名空间边界烟测..."
+echo "[Piper Full] 6/12 Piper runtime 命名空间边界烟测..."
 "${SCRIPT_DIR}/piper_namespace_smoke.sh"
 
 echo
-echo "[Piper Full] 6/11 Piper 控制桥安全边界烟测..."
+echo "[Piper Full] 7/12 Piper 控制桥安全边界烟测..."
 "${SCRIPT_DIR}/piper_control_smoke.sh"
 
 echo
-echo "[Piper Full] 7/11 Piper 实机入口 dry-run 安全拒绝烟测..."
+echo "[Piper Full] 8/12 Piper 实机入口 dry-run 安全拒绝烟测..."
 "${SCRIPT_DIR}/piper_real_dry_run.sh"
 
 echo
-echo "[Piper Full] 8/11 Headless Gazebo 官方 Piper 组合模型烟测..."
+echo "[Piper Full] 9/12 Headless Gazebo 官方 Piper 组合模型烟测..."
 "${SCRIPT_DIR}/piper_gazebo_smoke.sh"
 
 echo
-echo "[Piper Full] 9/11 Fake RGB-D -> grasp candidates -> pick/place action 烟测..."
+echo "[Piper Full] 10/12 Fake RGB-D -> grasp candidates -> pick/place action 烟测..."
 "${SCRIPT_DIR}/piper_task_smoke.sh"
 
 echo
-echo "[Piper Full] 10/11 Piper 学习层抓取候选排序烟测..."
+echo "[Piper Full] 11/12 Piper 学习层抓取候选排序烟测..."
 "${SCRIPT_DIR}/piper_learning_smoke.sh"
 
 echo
-echo "[Piper Full] 11/11 MoveIt2 plan-only 烟测..."
+echo "[Piper Full] 12/12 MoveIt2 plan-only 烟测..."
 ROS_DOMAIN_ID="${PIPER_FULL_SMOKE_MOVEIT_DOMAIN_ID:-81}" \
   "${SCRIPT_DIR}/piper_moveit_smoke.sh"
 

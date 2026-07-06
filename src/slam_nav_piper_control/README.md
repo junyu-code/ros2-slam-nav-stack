@@ -56,6 +56,14 @@ ros2 topic pub --once /piper/control/owner_request std_msgs/msg/String "{data: m
 
 该脚本会在独立 `ROS_DOMAIN_ID` 下启动控制桥，检查服务发现、enable、owner 切换、estop、clear_estop 和 disable。它不连接 SDK、不执行 MoveIt2 轨迹。
 
+安全配置静态检查：
+
+```bash
+./run.sh piper-safety-check
+```
+
+该脚本会检查 `allow_real_motion=false`、`auto_enable=false`、初始 owner 为 `disabled`、限速比例不超过 `0.10`、workspace 边界有效，并确认 SDK/MoveIt2 真实执行仍未默认打开。
+
 实机入口默认拒绝验收：
 
 ```bash
@@ -79,4 +87,4 @@ velocity_scaling
 workspace_min_xyz / workspace_max_xyz
 ```
 
-默认 `allow_real_motion=false`、`auto_enable=false`、`initial_owner=disabled`。当前 MoveIt2 只配置到项目侧 plan-only 包，控制桥还不会执行真实轨迹。后续即使接入 MoveIt2 或 SDK，也应先在控制桥内部完成限速、工作空间、急停和 owner 检查。
+默认 `allow_real_motion=false`、`auto_enable=false`、`initial_owner=disabled`。当前 MoveIt2 只配置到项目侧 plan-only 包，控制桥还不会执行真实轨迹。后续即使接入 MoveIt2 或 SDK，也应先在控制桥内部完成限速、工作空间、急停和 owner 检查，并保持 `./run.sh piper-safety-check` 通过。

@@ -70,15 +70,21 @@ for stale in start_simulation.sh start_mapping.sh start_navigation.sh start_navi
 done
 
 for script in \
-  build.sh clean.sh start_simulation_static.sh start_simulation_dynamic.sh \
-  start_mapping.sh start_auto_mapping.sh teleop.sh save_map.sh \
-  start_navigation.sh start_navigation_3d.sh start_navigation_full.sh \
+  build.sh clean.sh start_simulation.sh start_simulation_static.sh \
+  start_simulation_dynamic.sh start_simulation_dynamic_rgbd.sh \
+  start_mapping.sh start_auto_mapping.sh teleop.sh save_map.sh save_pcd_map.sh \
+  start_navigation.sh start_navigation_3d.sh start_navigation_rgbd.sh \
+  start_navigation_full.sh start_robust_navigation.sh \
   diagnose_runtime.sh task1_runtime_check.sh; do
   check_executable "scripts/${script}" "脚本"
 done
 
 help_text="$(./run.sh help || true)"
-for command_name in sim-static sim-dynamic mapping auto-mapping teleop save-map nav nav-3d nav-full diagnose task1-check task1-runtime-check; do
+for command_name in \
+  clean build sim sim-static sim-dynamic sim-dynamic-rgbd \
+  mapping auto-mapping teleop save-map save-pcd \
+  nav nav-3d nav-rgbd nav-full robust-nav \
+  diagnose task1-check task1-runtime-check; do
   if grep -q "${command_name}" <<<"${help_text}"; then
     ok "run.sh help 包含命令: ${command_name}"
   else
@@ -132,7 +138,11 @@ fi
 
 # 必需截图由用户 GUI 跑完后补齐，默认作为 warning。
 FIG_DIR="tasks/task1/report_latex/figures"
-mkdir -p "${FIG_DIR}"
+if [[ -d "${FIG_DIR}" ]]; then
+  ok "task1 截图目录存在: ${FIG_DIR}"
+else
+  warn "task1 截图目录尚未创建: ${FIG_DIR}"
+fi
 check_optional_image "${FIG_DIR}/fig_6_1_gazebo_world.png" "图 6-1 Gazebo 静态场地总览"
 check_optional_image "${FIG_DIR}/fig_6_2_robot_model.png" "图 6-2 机器人模型和传感器"
 check_optional_image "${FIG_DIR}/fig_7_1_mapping_rviz.png" "图 7-1 RViz 建图过程"

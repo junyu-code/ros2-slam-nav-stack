@@ -6,4 +6,4 @@ cd "${SCRIPT_DIR}/.."
 source "${SCRIPT_DIR}/setup_workspace_env.sh"
 set -u
 
-exec ros2 launch slam_nav_bringup mapping.launch.py use_sim_time:=true rviz:=true
+exec ros2 launch slam_nav_bringup mapping.launch.py use_sim_time:=true rviz:=true "$@"

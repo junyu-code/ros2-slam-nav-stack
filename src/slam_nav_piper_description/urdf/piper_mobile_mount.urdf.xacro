@@ -7,7 +7,11 @@
 
   <xacro:property name="PI" value="3.141592653589793"/>
 
-  <!-- 当前文件是项目侧 TF 占位模型：真实控制请替换为 AgileX 官方 Piper URDF/MoveIt2 配置。 -->
+  <!--
+    legacy 占位模型只用于缺少官方包时的接口冒烟。
+    默认 piper_description.launch.py 通过 piper_description_builder 读取 AgileX 官方 Piper URDF，
+    并生成项目侧 piper_* 关节链；真实规划/控制不要使用本文件的固定关节链。
+  -->
   <link name="base_link"/>
 
   <link name="piper_mount_link">

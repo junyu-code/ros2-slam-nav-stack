@@ -37,6 +37,7 @@ show_help() {
   task1-runtime-check   task1 运行时链路检查（不启动 GUI）
   setup-piper           准备 Piper 外部参考包
   setup-piper-moveit    准备 Piper 本地 MoveIt2 OMPL overlay（无需 sudo）
+  piper-safety-check    检查 Piper 实机前安全默认值和边界开关
   piper-preflight       Piper 依赖预检（自动加载本地 MoveIt overlay）
   piper-sim             单独启动 Piper 假感知/假执行冒烟链路
   piper-moveit-plan     启动 Piper 项目侧 MoveIt2 plan-only 配置
@@ -49,7 +50,7 @@ show_help() {
   piper-control-smoke   一键验证 Piper 控制桥 owner/enable/estop 边界
   piper-real-dry-run    一键验证 Piper 实机入口默认安全拒绝真实执行
   piper-learning-smoke  一键验证 Piper 学习层抓取候选排序旁路
-  piper-full-smoke      顺序运行 Piper 边界、TF、命名空间、控制、实机 dry-run、Gazebo、任务、学习和 MoveIt2 烟测
+  piper-full-smoke      顺序运行 Piper 安全、边界、TF、命名空间、控制、实机 dry-run、Gazebo、任务、学习和 MoveIt2 烟测
   piper-boundary-check  检查 Piper 未泄漏进 task1/Nav2 或 /nav_camera
 
 示例：
@@ -60,6 +61,7 @@ show_help() {
   ./run.sh task1-check
   ./run.sh task1-runtime-check nav
   ./run.sh real-preflight
+  ./run.sh piper-safety-check
   ./run.sh setup-piper-moveit
   ./run.sh piper-preflight
   ./run.sh piper-sim
@@ -106,6 +108,7 @@ script_for_command() {
     task1-runtime-check|task1-runtime|runtime-check) echo "task1_runtime_check.sh" ;;
     setup-piper) echo "setup_piper_open_class.sh" ;;
     setup-piper-moveit|setup-piper-moveit-overlay) echo "setup_piper_moveit_overlay.sh" ;;
+    piper-safety-check|piper-safety) echo "piper_safety_check.sh" ;;
     piper-preflight|piper-check) echo "piper_preflight.sh" ;;
     piper-sim) echo "start_piper_sim.sh" ;;
     piper-moveit-plan|piper-moveit) echo "start_piper_moveit_plan.sh" ;;

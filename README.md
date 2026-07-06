@@ -32,6 +32,25 @@ tasks/task1/TASK1_FINAL_RUNBOOK.md
 
 后续跑验收时优先看这份 Runbook，再回到本文档查系统背景。
 
+当前最短验收路线是：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh task1-check
+./run.sh clean
+./run.sh sim-static
+# 另开终端：./run.sh mapping
+# 另开终端：./run.sh teleop
+# 建图确认：./run.sh task1-runtime-check mapping
+./run.sh save-map nav_test_map
+./run.sh clean
+./run.sh sim-static
+# 另开终端：./run.sh nav
+# 导航确认：./run.sh task1-runtime-check nav
+```
+
+随后在 RViz 中完成 10 次静态目标点导航测试，把结果写入 `tasks/task1/EXPERIMENT_RECORD.md`，截图放到 `tasks/task1/report_latex/figures/`。动态障碍物、RGB-D 和 3D 地形链路只作为扩展演示，不计入静态避障 80% 成功率。
+
 跑完截图或准备打包前，可以先执行无 GUI 交付预检：
 
 ```bash
@@ -635,7 +654,15 @@ Piper 全链路烟测：
 ./run.sh piper-full-smoke
 ```
 
-它会顺序运行边界检查、依赖预检、官方 frame 审计、运行时 TF 链、runtime 命名空间图、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
+它会顺序运行安全配置检查、边界检查、依赖预检、官方 frame 审计、运行时 TF 链、runtime 命名空间图、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
+
+只检查实机前安全默认值：
+
+```bash
+./run.sh piper-safety-check
+```
+
+该检查会确认 `auto_enable=false`、`allow_real_motion=false`、`real_backend_connected=false`、`sdk_driver_ready=false`、`moveit_execution_ready=false`、初始限速比例不超过 `0.10`、workspace 上下界有效，并确认默认 Nav2 costmap 禁止接入 Piper 感知/学习话题。
 
 只检查 Piper 是否保持在独立边界内：
 
