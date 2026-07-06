@@ -5,6 +5,7 @@ find_package(ament_cmake REQUIRED)
 
 install(PROGRAMS
   scripts/piper_fake_joint_state_publisher.py
+  scripts/piper_moveit_config_audit.py
   scripts/piper_plan_smoke_test.py
   DESTINATION lib/${PROJECT_NAME}
 )

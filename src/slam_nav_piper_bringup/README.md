@@ -10,7 +10,7 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 ./run.sh piper-full-smoke
 ```
 
-该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-preflight --require-official`、官方 frame audit、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、学习排序到 MoveIt2 plan-only 都是通的。
+该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、官方 URDF/MoveIt2 映射、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、学习排序到 MoveIt2 plan-only 都是通的。
 
 只检查安全默认值，不启动 ROS 节点：
 
@@ -85,6 +85,14 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=placeholder
 ```
 
 该入口来自 `slam_nav_piper_moveit_config`，使用 `piper_*` frame/joint/group/controller 命名和假关节状态发布器。默认 `allow_trajectory_execution=false`，不接 SDK、不执行轨迹。
+
+MoveIt2 配置映射审计：
+
+```bash
+./run.sh piper-moveit-config
+```
+
+该入口不启动 ROS 节点，只检查官方 Piper URDF 适配链、项目侧 SRDF/YAML 和 AgileX 官方 `piper_moveit_config_v5` 的映射一致性，防止后续维护时误回退到占位关节或官方原生 `base_link/link*/joint*` 名称。
 
 推荐系统安装：
 

@@ -64,6 +64,16 @@ sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-co
 ./run.sh piper-moveit-plan
 ```
 
+## 静态审计
+
+在启动 MoveIt2 前，可以先检查项目侧配置是否仍与 AgileX 官方 v5 配置保持映射一致：
+
+```bash
+./run.sh piper-moveit-config
+```
+
+该脚本会读取官方 `piper_description` 渲染项目侧 `piper_*` URDF，确认没有退回占位关节；随后检查 `piper.srdf`、`joint_limits.yaml`、`ros2_controllers.yaml`、`moveit_controllers.yaml`、`initial_positions.yaml` 和假关节状态发布器。默认会对照 `piper_moveit_config_v5`，确保官方 `arm/gripper`、`joint1...joint8`、`arm_controller/gripper_controller` 已正确映射为项目侧 `piper_arm/piper_gripper`、`piper_joint1...piper_joint8`、`piper_arm_controller/piper_gripper_controller`。
+
 启动 `piper-moveit-plan` 后，可另开终端做一次规划服务冒烟测试：
 
 ```bash

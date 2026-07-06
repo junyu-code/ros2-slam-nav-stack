@@ -41,6 +41,7 @@ show_help() {
   piper-preflight       Piper 依赖预检（自动加载本地 MoveIt overlay）
   piper-sim             单独启动 Piper 假感知/假执行冒烟链路
   piper-moveit-plan     启动 Piper 项目侧 MoveIt2 plan-only 配置
+  piper-moveit-config   审计 Piper 项目侧 MoveIt2 配置和官方 AgileX 映射
   piper-plan-test       向 MoveIt2 发送一次 Piper plan-only 规划请求
   piper-moveit-smoke    一键启动 MoveIt2 plan-only 并发送规划冒烟请求
   piper-tf-smoke        一键验证 Piper 运行时 TF 链和 task1 TF 隔离边界
@@ -66,6 +67,7 @@ show_help() {
   ./run.sh piper-preflight
   ./run.sh piper-sim
   ./run.sh piper-moveit-plan
+  ./run.sh piper-moveit-config
   ./run.sh piper-plan-test
   ./run.sh piper-moveit-smoke
   ./run.sh piper-tf-smoke
@@ -112,6 +114,7 @@ script_for_command() {
     piper-preflight|piper-check) echo "piper_preflight.sh" ;;
     piper-sim) echo "start_piper_sim.sh" ;;
     piper-moveit-plan|piper-moveit) echo "start_piper_moveit_plan.sh" ;;
+    piper-moveit-config|piper-moveit-config-audit) echo "piper_moveit_config_audit.sh" ;;
     piper-plan-test|piper-plan-smoke) echo "piper_plan_smoke_test.sh" ;;
     piper-moveit-smoke|piper-smoke) echo "piper_moveit_smoke.sh" ;;
     piper-tf-smoke|piper-tf) echo "piper_tf_smoke.sh" ;;

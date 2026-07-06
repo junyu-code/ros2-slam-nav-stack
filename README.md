@@ -758,6 +758,14 @@ source install/setup.bash
 
 该入口使用项目侧 `piper_base_link/piper_joint*/piper_tcp` 配置和假关节状态发布器，并会自动加载 `external/ros_humble_debs/overlay` 里的 Piper 专用本地 MoveIt2 插件。当前已验证 `move_group` 能加载 OMPL，并输出 `You can start planning now!`。
 
+只审计 MoveIt2 配置和官方 AgileX 映射，不启动 ROS 节点：
+
+```bash
+./run.sh piper-moveit-config
+```
+
+该检查会渲染官方 Piper URDF 适配链，确认 `piper_joint1` 到 `piper_joint8`、`piper_tcp` 和腕部相机 frame 存在，并核对项目侧 SRDF、`joint_limits.yaml`、`ros2_controllers.yaml`、`moveit_controllers.yaml` 与 AgileX 官方 `piper_moveit_config_v5` 的映射一致。
+
 另开终端可以发送一次 plan-only 规划请求，用于确认 `/piper/plan_kinematic_path` 服务、`piper_arm` planning group、关节目标约束和 OMPL pipeline 是连通的：
 
 ```bash
