@@ -60,8 +60,8 @@ def _create_nodes(context):
     start_joint_state_publisher = _as_bool(
         context.perform_substitution(LaunchConfiguration('start_joint_state_publisher'))
     )
-    allow_trajectory_execution = context.perform_substitution(
-        LaunchConfiguration('allow_trajectory_execution')
+    allow_trajectory_execution = _as_bool(
+        context.perform_substitution(LaunchConfiguration('allow_trajectory_execution'))
     )
     joint_states_topic = LaunchConfiguration('joint_states_topic')
 
@@ -83,7 +83,7 @@ def _create_nodes(context):
         'publish_transforms_updates': True,
         'publish_robot_description': False,
         'publish_robot_description_semantic': True,
-        'allow_trajectory_execution': ParameterValue(allow_trajectory_execution, value_type=bool),
+        'allow_trajectory_execution': allow_trajectory_execution,
         'monitor_dynamics': False,
         # 当前入口只做项目侧 MoveIt2 plan-only 验证，不连接 ros2_control/SDK 执行后端。
         'capabilities': '',
