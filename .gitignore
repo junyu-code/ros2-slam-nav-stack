@@ -1,6 +1,7 @@
 build/
 install/
 log/
+dist/
 .vscode/
 *.pyc
 __pycache__/
@@ -8,6 +9,7 @@ __pycache__/
 *.db3
 *.mcap
 *.log
+*.zip
 
 # task 目录只跟踪轻量 Markdown、LaTeX 源文件和图示源文件；Word/PDF/截图/数据产物先不进仓库。
 tasks/*

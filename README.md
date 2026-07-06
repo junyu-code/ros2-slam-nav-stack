@@ -21,6 +21,7 @@ cd ~/slam_nav_ws
 ./run.sh task1-check
 ./run.sh task1-runtime-check nav
 ./run.sh task1-delivery-check
+./run.sh task1-package-preview
 ./run.sh real-preflight
 ```
 
@@ -70,6 +71,19 @@ cd ~/slam_nav_ws
 ```bash
 ./run.sh task1-check --strict
 ./run.sh task1-delivery-check --strict
+```
+
+如果只想预览最终压缩包会包含什么，不创建文件：
+
+```bash
+./run.sh task1-package-preview
+./run.sh task1-package-preview --list
+```
+
+材料全部补齐后，可用下面命令创建压缩包到 `dist/`；`dist/` 和 `*.zip` 已加入 `.gitignore`，不会误提交：
+
+```bash
+./run.sh task1-package-preview --create
 ```
 
 这是一个面向 Ubuntu 22.04 + ROS2 Humble + Gazebo Classic 的通用移动机器人 SLAM 与自主导航工作区。当前主目标是稳定完成仿真建图、保存地图、加载地图导航、目标点到达和静态避障验证。
@@ -667,7 +681,7 @@ Piper 全链路烟测：
 ./run.sh piper-full-smoke
 ```
 
-它会顺序运行安全配置检查、边界检查、依赖预检、官方 frame 审计、MoveIt2 配置映射审计、手眼标定配置检查、运行时 TF 链、runtime 命名空间图、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
+它会顺序运行安全配置检查、边界检查、依赖预检、官方 frame 审计、MoveIt2 配置映射审计、手眼标定配置检查、运行时 TF 链、runtime 命名空间图、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、移动操作组合入口、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
 
 只检查实机前安全默认值：
 
@@ -746,6 +760,14 @@ source install/setup.bash
 ```
 
 该入口会在独立 `ROS_DOMAIN_ID` 下启动 `piper_sim`，等待 `/piper/arm_camera/*`、`/piper/perception/target_pose`、`/piper/grasp_candidates`，然后向 `/piper/task/pick_object` 和 `/piper/task/place_object` 各发送一次 fake goal。它已经完成无 GUI 冒烟验证，只检查项目侧任务边界，不启动 Nav2、不连接真实 SDK。
+
+一键验证移动操作组合入口：
+
+```bash
+./run.sh piper-mobile-sequence
+```
+
+该入口会在独立 `ROS_DOMAIN_ID` 下启动 `piper_mobile_manipulation.launch.py start_description:=true fake_camera:=true fake_execution:=true publish_base_stop:=true`，等待假相机、目标位姿、抓取候选和 action server，然后调用 pick/place，并确认任务层发布过零速度 `/cmd_vel` 停车意图。它不启动 Nav2、不连接 SDK，也不改变 task1 默认入口。
 
 一键验证控制桥安全服务和 owner 边界：
 

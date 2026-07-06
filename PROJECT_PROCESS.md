@@ -576,3 +576,4 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：新增 `./run.sh task1-delivery-check` 打包交付前自查入口，独立于运行时 ROS 检查，聚焦结课提交材料：建议压缩包名、源码/脚本/文档/报告材料、截图缺口、实验记录待填字段、报告占位和 Git 中是否误跟踪 build/install/log/rosbag/点云/模型权重等重型产物。
 - 2026-07-07：为 Piper pick 任务层增加手眼标定门禁：当 `fake_execution=false` 且声明真实 MoveIt2/SDK 后端接入时，若 `hand_eye_calibrated=false` 或标定结果文件不存在，`/piper/task/pick_object` 必须安全 ABORT；新增 `./run.sh piper-hand-eye-gate` 在独立 ROS domain 下验证该安全拒绝路径，不接入 task1 默认导航链路。
 - 2026-07-07：为 Piper 真实机械臂动作增加底盘停止门禁：当 `fake_execution=false` 且声明真实后端接入时，若未显式确认 `base_stop_confirmed=true` 且任务层也没有 `publish_base_stop=true` 主动停车，pick/place 必须安全 ABORT；新增 `./run.sh piper-base-stop-gate` 验证该拒绝路径，防止后续机械臂真实执行与底盘运动互相干扰。
+- 2026-07-07：新增 `./run.sh task1-package-preview`，用于预览 task1 最终压缩包的包含文件、估算体积和排除规则；默认不创建文件，材料补齐后可用 `--create` 输出到 `dist/3232072072234+佘俊谕.zip`，同时将 `dist/` 和 `*.zip` 加入 `.gitignore`，避免打包产物误提交。

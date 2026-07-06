@@ -10,7 +10,7 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 ./run.sh piper-full-smoke
 ```
 
-该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-hand-eye-gate`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、真实 pick 标定门禁、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、学习排序到 MoveIt2 plan-only 都是通的。
+该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-hand-eye-gate`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-mobile-sequence`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、真实 pick 标定门禁、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、移动操作组合入口、学习排序到 MoveIt2 plan-only 都是通的。
 
 只检查安全默认值，不启动 ROS 节点：
 
@@ -61,6 +61,14 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=placeholder
 ```
 
 该入口会等待 Piper 假 RGB-D、目标位姿、抓取候选和 `/piper/task/*` action server，然后发送一次 fake pick/place goal。它不启动 Nav2、不执行真实轨迹、不连接 SDK。当前无 GUI 冒烟已验证通过。
+
+移动操作组合入口烟测：
+
+```bash
+./run.sh piper-mobile-sequence
+```
+
+该入口启动 `piper_mobile_manipulation.launch.py` 的独立 fake runtime，显式打开 `publish_base_stop:=true`，确认假相机、目标位姿、抓取候选、停车零速度 `/cmd_vel`、pick/place action 和控制 owner 切换都能按顺序工作。它不启动 Nav2，也不连接真实 MoveIt2 执行器或 SDK。
 
 控制桥安全边界烟测：
 

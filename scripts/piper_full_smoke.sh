@@ -19,67 +19,71 @@ done
 
 set -u
 
-echo "[Piper Full] 1/16 安全配置检查..."
+echo "[Piper Full] 1/17 安全配置检查..."
 "${SCRIPT_DIR}/piper_safety_check.sh"
 
 echo
-echo "[Piper Full] 2/16 边界回归检查..."
+echo "[Piper Full] 2/17 边界回归检查..."
 "${SCRIPT_DIR}/piper_boundary_check.sh"
 
 echo
-echo "[Piper Full] 3/16 依赖预检和官方包检查..."
+echo "[Piper Full] 3/17 依赖预检和官方包检查..."
 "${SCRIPT_DIR}/piper_preflight.sh" --require-official
 
 echo
-echo "[Piper Full] 4/16 官方 URDF -> 项目侧 piper_* frame 审计..."
+echo "[Piper Full] 4/17 官方 URDF -> 项目侧 piper_* frame 审计..."
 "${SCRIPT_DIR}/piper_official_frame_audit.sh"
 
 echo
-echo "[Piper Full] 5/16 项目侧 MoveIt2 配置映射审计..."
+echo "[Piper Full] 5/17 项目侧 MoveIt2 配置映射审计..."
 "${SCRIPT_DIR}/piper_moveit_config_audit.sh"
 
 echo
-echo "[Piper Full] 6/16 Piper 手眼标定配置边界检查..."
+echo "[Piper Full] 6/17 Piper 手眼标定配置边界检查..."
 "${SCRIPT_DIR}/piper_hand_eye_check.sh"
 
 echo
-echo "[Piper Full] 7/16 Piper 真实 pick 手眼标定门禁烟测..."
+echo "[Piper Full] 7/17 Piper 真实 pick 手眼标定门禁烟测..."
 "${SCRIPT_DIR}/piper_hand_eye_gate_smoke.sh"
 
 echo
-echo "[Piper Full] 8/16 Piper 真实运动底盘停止门禁烟测..."
+echo "[Piper Full] 8/17 Piper 真实运动底盘停止门禁烟测..."
 "${SCRIPT_DIR}/piper_base_stop_gate_smoke.sh"
 
 echo
-echo "[Piper Full] 9/16 Piper 运行时 TF 链烟测..."
+echo "[Piper Full] 9/17 Piper 运行时 TF 链烟测..."
 "${SCRIPT_DIR}/piper_tf_smoke.sh"
 
 echo
-echo "[Piper Full] 10/16 Piper runtime 命名空间边界烟测..."
+echo "[Piper Full] 10/17 Piper runtime 命名空间边界烟测..."
 "${SCRIPT_DIR}/piper_namespace_smoke.sh"
 
 echo
-echo "[Piper Full] 11/16 Piper 控制桥安全边界烟测..."
+echo "[Piper Full] 11/17 Piper 控制桥安全边界烟测..."
 "${SCRIPT_DIR}/piper_control_smoke.sh"
 
 echo
-echo "[Piper Full] 12/16 Piper 实机入口 dry-run 安全拒绝烟测..."
+echo "[Piper Full] 12/17 Piper 实机入口 dry-run 安全拒绝烟测..."
 "${SCRIPT_DIR}/piper_real_dry_run.sh"
 
 echo
-echo "[Piper Full] 13/16 Headless Gazebo 官方 Piper 组合模型烟测..."
+echo "[Piper Full] 13/17 Headless Gazebo 官方 Piper 组合模型烟测..."
 "${SCRIPT_DIR}/piper_gazebo_smoke.sh"
 
 echo
-echo "[Piper Full] 14/16 Fake RGB-D -> grasp candidates -> pick/place action 烟测..."
+echo "[Piper Full] 14/17 Fake RGB-D -> grasp candidates -> pick/place action 烟测..."
 "${SCRIPT_DIR}/piper_task_smoke.sh"
 
 echo
-echo "[Piper Full] 15/16 Piper 学习层抓取候选排序烟测..."
+echo "[Piper Full] 15/17 Piper 移动操作组合入口烟测..."
+"${SCRIPT_DIR}/piper_mobile_sequence_smoke.sh"
+
+echo
+echo "[Piper Full] 16/17 Piper 学习层抓取候选排序烟测..."
 "${SCRIPT_DIR}/piper_learning_smoke.sh"
 
 echo
-echo "[Piper Full] 16/16 MoveIt2 plan-only 烟测..."
+echo "[Piper Full] 17/17 MoveIt2 plan-only 烟测..."
 ROS_DOMAIN_ID="${PIPER_FULL_SMOKE_MOVEIT_DOMAIN_ID:-81}" \
   "${SCRIPT_DIR}/piper_moveit_smoke.sh"
 

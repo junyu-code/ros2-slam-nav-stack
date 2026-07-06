@@ -36,6 +36,7 @@ show_help() {
   task1-check           task1 交付材料预检（不启动 GUI）
   task1-runtime-check   task1 运行时链路检查（不启动 GUI）
   task1-delivery-check  task1 打包交付前自查（不启动 GUI）
+  task1-package-preview task1 最终压缩包预览/可选创建
   setup-piper           准备 Piper 外部参考包
   setup-piper-moveit    准备 Piper 本地 MoveIt2 OMPL overlay（无需 sudo）
   piper-safety-check    检查 Piper 实机前安全默认值和边界开关
@@ -54,6 +55,7 @@ show_help() {
   piper-namespace-smoke 一键验证 Piper runtime topic/action 不污染 Nav2 或 /nav_camera
   piper-gazebo-smoke    一键启动 headless Gazebo 并检查官方 Piper 适配链
   piper-task-smoke      一键验证 Piper 假感知、抓取候选和 pick/place action
+  piper-mobile-sequence 一键验证移动操作组合入口的假相机、停车、pick/place 顺序
   piper-control-smoke   一键验证 Piper 控制桥 owner/enable/estop 边界
   piper-real-dry-run    一键验证 Piper 实机入口默认安全拒绝真实执行
   piper-learning-smoke  一键验证 Piper 学习层抓取候选排序旁路
@@ -68,6 +70,7 @@ show_help() {
   ./run.sh task1-check
   ./run.sh task1-runtime-check nav
   ./run.sh task1-delivery-check
+  ./run.sh task1-package-preview
   ./run.sh real-preflight
   ./run.sh piper-safety-check
   ./run.sh piper-frame-audit
@@ -86,6 +89,7 @@ show_help() {
   ./run.sh piper-namespace-smoke
   ./run.sh piper-gazebo-smoke
   ./run.sh piper-task-smoke
+  ./run.sh piper-mobile-sequence
   ./run.sh piper-control-smoke
   ./run.sh piper-real-dry-run
   ./run.sh piper-learning-smoke
@@ -121,6 +125,7 @@ script_for_command() {
     task1-check|task1-preflight|task1) echo "task1_preflight.sh" ;;
     task1-runtime-check|task1-runtime|runtime-check) echo "task1_runtime_check.sh" ;;
     task1-delivery-check|task1-delivery|delivery-check) echo "task1_delivery_check.sh" ;;
+    task1-package-preview|task1-package|package-preview) echo "task1_package_preview.sh" ;;
     setup-piper) echo "setup_piper_open_class.sh" ;;
     setup-piper-moveit|setup-piper-moveit-overlay) echo "setup_piper_moveit_overlay.sh" ;;
     piper-safety-check|piper-safety) echo "piper_safety_check.sh" ;;
@@ -139,6 +144,7 @@ script_for_command() {
     piper-namespace-smoke|piper-namespace|piper-ns) echo "piper_namespace_smoke.sh" ;;
     piper-gazebo-smoke|piper-gazebo) echo "piper_gazebo_smoke.sh" ;;
     piper-task-smoke|piper-task) echo "piper_task_smoke.sh" ;;
+    piper-mobile-sequence|piper-mobile-sequence-smoke|piper-mobile-task) echo "piper_mobile_sequence_smoke.sh" ;;
     piper-control-smoke|piper-control) echo "piper_control_smoke.sh" ;;
     piper-real-dry-run|piper-real-dry|piper-real-smoke) echo "piper_real_dry_run.sh" ;;
     piper-learning-smoke|piper-learning) echo "piper_learning_smoke.sh" ;;
@@ -197,8 +203,9 @@ show_menu() {
  17) diagnose           运行时诊断
  18) task1-check        task1 交付材料预检
  19) task1-delivery     task1 打包交付前自查
- 20) real-preflight     实机部署前预检
- 21) build              编译工作区
+ 20) package-preview    task1 压缩包预览
+ 21) real-preflight     实机部署前预检
+ 22) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 
@@ -240,8 +247,9 @@ case "${choice}" in
   17) run_command diagnose ;;
   18) run_command task1-check ;;
   19) run_command task1-delivery-check ;;
-  20) run_command real-preflight ;;
-  21) run_command build ;;
+  20) run_command task1-package-preview ;;
+  21) run_command real-preflight ;;
+  22) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;
