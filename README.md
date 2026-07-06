@@ -90,6 +90,7 @@ slam_nav_ws/
     slam_nav_piper_perception/  # Piper 独立 RGB-D 感知，使用 /piper/arm_camera/*
     slam_nav_piper_control/     # Piper MoveIt2/SDK 控制边界和安全 owner 管理
     slam_nav_piper_manipulation/# Piper pick/place 任务 action server
+    slam_nav_piper_calibration/ # Piper 腕部 RGB-D 手眼标定配置和安全检查
     slam_nav_piper_learning/    # Piper 后续学习/强化学习策略层，默认不接入
     slam_nav_piper_bringup/     # Piper 独立启动入口，不参与 task1 默认链路
     safe_cmd_bridge/           # 通用速度安全桥，用于限速、限加速度、超时停车、反馈看门狗和可选 UDP 转发
@@ -657,7 +658,7 @@ Piper 全链路烟测：
 ./run.sh piper-full-smoke
 ```
 
-它会顺序运行安全配置检查、边界检查、依赖预检、官方 frame 审计、运行时 TF 链、runtime 命名空间图、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
+它会顺序运行安全配置检查、边界检查、依赖预检、官方 frame 审计、MoveIt2 配置映射审计、手眼标定配置检查、运行时 TF 链、runtime 命名空间图、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
 
 只检查实机前安全默认值：
 
@@ -768,6 +769,14 @@ source install/setup.bash
 ```
 
 该检查会渲染官方 Piper URDF 适配链，确认 `piper_joint1` 到 `piper_joint8`、`piper_tcp` 和腕部相机 frame 存在，并核对项目侧 SRDF、`joint_limits.yaml`、`ros2_controllers.yaml`、`moveit_controllers.yaml` 与 AgileX 官方 `piper_moveit_config_v5` 的映射一致。
+
+只检查腕部 RGB-D 手眼标定配置边界，不启动相机或移动机械臂：
+
+```bash
+./run.sh piper-hand-eye-check
+```
+
+该检查确认标定输入只来自 `/piper/arm_camera/*`，标定服务/结果留在 `/piper/calibration/*`，frame 使用 `piper_base_link`、`piper_tcp`、`piper_arm_camera_optical_frame`，默认不允许 live motion、不发布最终 TF、不写 URDF，样本和结果默认放入已忽略的 `datasets/piper_hand_eye/`。
 
 另开终端可以发送一次 plan-only 规划请求，用于确认 `/piper/plan_kinematic_path` 服务、`piper_arm` planning group、关节目标约束和 OMPL pipeline 是连通的：
 

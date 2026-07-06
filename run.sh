@@ -42,6 +42,7 @@ show_help() {
   piper-sim             单独启动 Piper 假感知/假执行冒烟链路
   piper-moveit-plan     启动 Piper 项目侧 MoveIt2 plan-only 配置
   piper-moveit-config   审计 Piper 项目侧 MoveIt2 配置和官方 AgileX 映射
+  piper-hand-eye-check   检查 Piper 腕部 RGB-D 手眼标定配置边界
   piper-plan-test       向 MoveIt2 发送一次 Piper plan-only 规划请求
   piper-moveit-smoke    一键启动 MoveIt2 plan-only 并发送规划冒烟请求
   piper-tf-smoke        一键验证 Piper 运行时 TF 链和 task1 TF 隔离边界
@@ -51,7 +52,7 @@ show_help() {
   piper-control-smoke   一键验证 Piper 控制桥 owner/enable/estop 边界
   piper-real-dry-run    一键验证 Piper 实机入口默认安全拒绝真实执行
   piper-learning-smoke  一键验证 Piper 学习层抓取候选排序旁路
-  piper-full-smoke      顺序运行 Piper 安全、边界、TF、命名空间、控制、实机 dry-run、Gazebo、任务、学习和 MoveIt2 烟测
+  piper-full-smoke      顺序运行 Piper 安全、边界、MoveIt2 配置、手眼、TF、命名空间、控制、Gazebo、任务、学习烟测
   piper-boundary-check  检查 Piper 未泄漏进 task1/Nav2 或 /nav_camera
 
 示例：
@@ -68,6 +69,7 @@ show_help() {
   ./run.sh piper-sim
   ./run.sh piper-moveit-plan
   ./run.sh piper-moveit-config
+  ./run.sh piper-hand-eye-check
   ./run.sh piper-plan-test
   ./run.sh piper-moveit-smoke
   ./run.sh piper-tf-smoke
@@ -115,6 +117,7 @@ script_for_command() {
     piper-sim) echo "start_piper_sim.sh" ;;
     piper-moveit-plan|piper-moveit) echo "start_piper_moveit_plan.sh" ;;
     piper-moveit-config|piper-moveit-config-audit) echo "piper_moveit_config_audit.sh" ;;
+    piper-hand-eye-check|piper-hand-eye|piper-calibration-check) echo "piper_hand_eye_check.sh" ;;
     piper-plan-test|piper-plan-smoke) echo "piper_plan_smoke_test.sh" ;;
     piper-moveit-smoke|piper-smoke) echo "piper_moveit_smoke.sh" ;;
     piper-tf-smoke|piper-tf) echo "piper_tf_smoke.sh" ;;

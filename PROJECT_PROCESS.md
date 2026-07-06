@@ -572,3 +572,4 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：新增 `./run.sh real-preflight` 无 GUI/无硬件实机部署前预检入口，检查 `safe_cmd_bridge` 默认关闭 UDP 输出、保留定位故障停车和速度超时，检查 `localization_guard`、`cloud_relocalization`、RGB-D 松耦合链路、Piper/task1 隔离边界和网络信息；`--strict` 用于上车前把 warning 也视为未通过。
 - 2026-07-07：补强 task1 最短验收路线和现场记录口径：`README.md` 与 `TASK1_FINAL_RUNBOOK.md` 增加从 `task1-check`、静态建图、保存地图、静态导航到 10 次静态避障测试的最短闭环；`RUN_AND_SCREENSHOT_STEPS.md` 增加 `task1-runtime-check` 输出如何转写到实验记录；`EXPERIMENT_RECORD.md` 增加 10 个目标区域建议、失败判定和动态障碍物不计入静态成功率的记录边界。
 - 2026-07-07：为 `./run.sh clean` 增加 `--dry-run` 安全预览模式，并把交互菜单补齐到静态/动态/RGB-D 仿真、RGB-D 导航、完整增强导航和 task1 runtime 检查；task1 文档同步建议在正式清理前先预览将被终止的进程和 FastDDS/FastRTPS 共享内存残留，降低多终端调试时误关当前流程的风险。
+- 2026-07-07：新增 `slam_nav_piper_calibration` 手眼标定配置包和 `./run.sh piper-hand-eye-check` 静态检查入口，先固定 Piper 腕部 RGB-D eye-in-hand 的 frame、topic、输出目录和安全开关；默认不启用真实采样、不运动机械臂、不发布最终 TF、不写入 URDF，只作为 task2 后续实机标定前的边界检查。

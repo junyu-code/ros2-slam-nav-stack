@@ -122,6 +122,10 @@ learning = load_params(
     'piper',
     'grasp_candidate_ranker_node',
 )
+hand_eye = load_params(
+    'src/slam_nav_piper_calibration/config/hand_eye_calibration.yaml',
+    'piper_hand_eye_calibration',
+)
 
 expect_false(safety, 'auto_enable', '安全限制')
 expect_false(safety, 'allow_real_motion', '安全限制')
@@ -150,6 +154,8 @@ expect_false(mobile, 'sdk_driver_ready', '移动操作边界')
 expect_false(mobile, 'learning_ready', '移动操作边界')
 expect_equal(mobile, 'sdk_driver_namespace', '/piper', '移动操作边界')
 expect_equal(mobile, 'learning_ranked_candidates_topic', '/piper/learning/grasp_candidates_ranked', '移动操作边界')
+expect_false(mobile, 'hand_eye_calibration_ready', '移动操作边界')
+expect_equal(mobile, 'hand_eye_calibration_package', 'slam_nav_piper_calibration', '移动操作边界')
 
 expect_equal(control, 'backend', 'moveit', '控制桥')
 expect_equal(control, 'initial_owner', 'disabled', '控制桥')
@@ -179,6 +185,19 @@ expect_equal(learning, 'policy_backend', 'disabled', '学习层')
 expect_false(learning, 'publish_passthrough_when_disabled', '学习层')
 expect_equal(learning, 'input_candidates_topic', '/piper/grasp_candidates', '学习层')
 expect_equal(learning, 'output_candidates_topic', '/piper/learning/grasp_candidates_ranked', '学习层')
+
+expect_false(hand_eye, 'enabled', '手眼标定')
+expect_equal(hand_eye, 'calibration_type', 'eye_in_hand', '手眼标定')
+expect_equal(hand_eye, 'camera_namespace', '/piper/arm_camera', '手眼标定')
+expect_equal(hand_eye, 'robot_base_frame', 'piper_base_link', '手眼标定')
+expect_equal(hand_eye, 'tcp_frame', 'piper_tcp', '手眼标定')
+expect_equal(hand_eye, 'camera_frame', 'piper_arm_camera_optical_frame', '手眼标定')
+expect_false(hand_eye, 'allow_live_motion', '手眼标定')
+expect_true(hand_eye, 'require_base_stopped', '手眼标定')
+expect_true(hand_eye, 'require_estop_available', '手眼标定')
+expect_true(hand_eye, 'require_manual_result_review', '手眼标定')
+expect_false(hand_eye, 'publish_calibrated_tf_by_default', '手眼标定')
+expect_false(hand_eye, 'allow_write_to_robot_description', '手眼标定')
 
 if failures:
     print()

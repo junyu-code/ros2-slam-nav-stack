@@ -16,6 +16,7 @@ REQUIRED_PROJECT_PACKAGES = [
     'slam_nav_piper_control',
     'slam_nav_piper_moveit_config',
     'slam_nav_piper_manipulation',
+    'slam_nav_piper_calibration',
     'slam_nav_piper_bringup',
     'slam_nav_piper_learning',
 ]

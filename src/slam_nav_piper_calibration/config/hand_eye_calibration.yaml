@@ -1,0 +1,56 @@
+piper_hand_eye_calibration:
+  ros__parameters:
+    # 默认只配置和检查，不启动真实标定采样或 TF 写入。
+    enabled: false
+    calibration_type: eye_in_hand
+    camera_mount: wrist
+    namespace: /piper
+    camera_namespace: /piper/arm_camera
+
+    # 腕部 RGB-D 相机输入必须固定在 /piper/arm_camera 下，不能复用 /nav_camera。
+    color_image_topic: /piper/arm_camera/color/image_raw
+    color_camera_info_topic: /piper/arm_camera/color/camera_info
+    depth_image_topic: /piper/arm_camera/depth/image_raw
+    depth_camera_info_topic: /piper/arm_camera/depth/camera_info
+
+    # 后续标定节点/采样工具统一放在 /piper/calibration 下，不进入 Nav2 costmap。
+    marker_observation_topic: /piper/calibration/marker_observation
+    sample_pose_topic: /piper/calibration/sample_pose
+    result_transform_topic: /piper/calibration/hand_eye_transform
+    capture_sample_service: /piper/calibration/capture_sample
+    solve_service: /piper/calibration/solve
+
+    # eye-in-hand 标定使用的稳定 frame 约定。
+    robot_base_frame: piper_base_link
+    tcp_frame: piper_tcp
+    camera_link_frame: piper_arm_camera_link
+    camera_frame: piper_arm_camera_optical_frame
+    calibration_target_frame: piper_calibration_target
+
+    # 标定板参数先给安全默认值，实物板尺寸必须按实际测量修正。
+    board_type: charuco
+    board_squares_x: 7
+    board_squares_y: 5
+    board_square_size_m: 0.035
+    board_marker_size_m: 0.026
+
+    # 采样覆盖要求：真实执行前至少满足这些阈值，再人工验收结果。
+    min_sample_count: 20
+    min_translation_span_m: 0.12
+    min_rotation_span_deg: 25.0
+    max_reprojection_error_px: 1.5
+
+    # 数据和结果默认放进已忽略目录，避免 rosbag/图片/标定结果塞进 Git。
+    output_directory: datasets/piper_hand_eye
+    result_yaml_path: datasets/piper_hand_eye/piper_eye_in_hand.yaml
+    sample_bag_directory: datasets/piper_hand_eye/rosbags
+
+    # 安全开关：配置阶段绝不自动动臂、写 URDF 或发布最终 TF。
+    allow_live_motion: false
+    require_base_stopped: true
+    require_estop_available: true
+    require_control_owner_disabled_after_collection: true
+    require_moveit_plan_only_before_collection: true
+    require_manual_result_review: true
+    publish_calibrated_tf_by_default: false
+    allow_write_to_robot_description: false

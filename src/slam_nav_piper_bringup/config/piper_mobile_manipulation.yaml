@@ -26,3 +26,6 @@ piper_mobile_manipulation:
     learning_enable_arg: enable_learning
     learning_policy_backend_default: disabled
     learning_ranked_candidates_topic: /piper/learning/grasp_candidates_ranked
+    hand_eye_calibration_ready: false
+    hand_eye_calibration_package: slam_nav_piper_calibration
+    hand_eye_calibration_check_command: ./run.sh piper-hand-eye-check
