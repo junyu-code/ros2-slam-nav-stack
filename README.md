@@ -30,6 +30,7 @@ cd ~/slam_nav_ws
 ./run.sh task1-report-audit
 ./run.sh task1-build-report
 ./run.sh task1-finalize
+./run.sh task2-status
 ./run.sh real-preflight
 ```
 
@@ -569,6 +570,8 @@ ros2 topic echo /cmd_vel_safe
 ```
 
 后续接真实底盘时，可以把 Nav2 的速度输出重映射到安全桥输入，再由安全桥输出给底盘控制接口；如果底盘侧需要独立控制进程，也可以打开 UDP 输出。当前作业主流程不强制启用这一层，以免影响已经验证过的仿真导航链路。
+
+真实底盘联调前，先按 `tasks/task2/REAL_ROBOT_DEPLOYMENT_CHECKLIST.md` 的顺序执行无硬件预检、低速 topic 输出、UDP 输出和反馈看门狗测试。不要直接把仿真导航速度接到真实底盘。
 
 如果底盘能提供实际里程计反馈，可以打开反馈看门狗，检查“持续发送速度但底盘没有响应”或“底盘反馈断流”的情况：
 
@@ -1118,13 +1121,25 @@ cd ~/slam_nav_ws
 
 ```text
 tasks/task2/FUTURE_ROADMAP.md
+tasks/task2/REAL_ROBOT_DEPLOYMENT_CHECKLIST.md
 tasks/task2/ROBUST_NAVIGATION_UPGRADE_PLAN.md
 tasks/task2/PIPER_MOBILE_MANIPULATION.md
 ```
 
+恢复后续开发状态时，先看无 GUI 状态页：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh task2-status
+./run.sh task2-status --with-preflight
+```
+
+它会检查长期文档、实机/鲁棒导航入口、RGB-D/重定位/安全桥/机械臂边界，并提醒 task1 真实证据是否还没补齐。
+
 包括：
 
 - 鲁棒导航升级路线；
+- 实机部署前 UDP、传感器、TF、外参、重定位和安全桥检查；
 - RGB-D 深度相机近场感知；
 - 本地语义任务理解；
 - 行为树任务决策；

@@ -45,6 +45,7 @@ show_help() {
   task1-report-audit   task1 结课报告源文件/截图/PDF 审计（不启动 GUI）
   task1-build-report    编译 task1 LaTeX 结课报告 PDF
   task1-finalize        task1 最终交付编排（编译报告/strict 检查/可选打包）
+  task2-status          task2 后续实机/毕设扩展状态页（不启动 GUI/硬件）
   setup-piper           准备 Piper 外部参考包
   setup-piper-moveit    准备 Piper 本地 MoveIt2 OMPL overlay（无需 sudo）
   piper-safety-check    检查 Piper 实机前安全默认值和边界开关
@@ -97,6 +98,7 @@ show_help() {
   ./run.sh task1-report-audit
   ./run.sh task1-build-report
   ./run.sh task1-finalize
+  ./run.sh task2-status
   ./run.sh real-preflight
   ./run.sh piper-safety-check
   ./run.sh piper-frame-audit
@@ -170,6 +172,7 @@ script_for_command() {
     task1-report-audit|task1-report-check|report-audit) echo "task1_report_audit.sh" ;;
     task1-build-report|task1-report|build-report|report-build) echo "build_task1_report.sh" ;;
     task1-finalize|task1-final|finalize-task1|task1-submit-check) echo "task1_finalize.sh" ;;
+    task2-status|task2|task2-check|future-status|deploy-status) echo "task2_status.sh" ;;
     setup-piper) echo "setup_piper_open_class.sh" ;;
     setup-piper-moveit|setup-piper-moveit-overlay) echo "setup_piper_moveit_overlay.sh" ;;
     piper-safety-check|piper-safety) echo "piper_safety_check.sh" ;;
@@ -265,8 +268,9 @@ show_menu() {
  26) report-audit       task1 结课报告源文件/截图/PDF 审计
  27) build-report       编译 task1 结课报告 PDF
  28) task1-finalize     task1 最终交付编排
- 29) real-preflight     实机部署前预检
- 30) build              编译工作区
+ 29) task2-status       task2 实机/毕设扩展状态页
+ 30) real-preflight     实机部署前预检
+ 31) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 
@@ -317,8 +321,9 @@ case "${choice}" in
   26) run_command task1-report-audit ;;
   27) run_command task1-build-report ;;
   28) run_command task1-finalize ;;
-  29) run_command real-preflight ;;
-  30) run_command build ;;
+ 29) run_command task2-status ;;
+ 30) run_command real-preflight ;;
+ 31) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

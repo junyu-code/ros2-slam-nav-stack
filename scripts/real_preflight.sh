@@ -300,6 +300,7 @@ for doc in [
     'README.md',
     'PROJECT_PROCESS.md',
     'tasks/task2/FUTURE_ROADMAP.md',
+    'tasks/task2/REAL_ROBOT_DEPLOYMENT_CHECKLIST.md',
     'tasks/task2/ROBUST_NAVIGATION_UPGRADE_PLAN.md',
     'tasks/task2/PIPER_MOBILE_MANIPULATION.md',
 ]:
@@ -308,6 +309,11 @@ check_file_contains(
     'tasks/task2/ROBUST_NAVIGATION_UPGRADE_PLAN.md',
     ['safe_cmd_bridge', 'localization_guard', 'cloud_relocalization'],
     '鲁棒导航路线图',
+)
+check_file_contains(
+    'tasks/task2/REAL_ROBOT_DEPLOYMENT_CHECKLIST.md',
+    ['enable_udp_output', '/cmd_vel_safe', 'map -> odom', '/nav_camera'],
+    '实机部署检查清单',
 )
 
 print('\n[real-preflight] 7/7 网络和 Piper 边界')

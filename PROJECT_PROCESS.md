@@ -602,3 +602,7 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：增强 `task1-experiment-check --next`，在 10 次静态避障表未填完时自动提示下一条待补记录、缺失字段、推荐表格行格式和成功/碰撞判定口径；README、Runbook、证据清单、运行截图步骤和交付清单同步改为填表阶段优先使用 `--next`，降低实测后漏填字段或写法不一致的概率。
 - 2026-07-07：将 `--next` 接入 `task1-delivery-check` 与 `task1-finalize` 的静态避障实验检查调用；最终交付编排失败时会同步输出下一条待补记录和推荐格式，不需要再单独手动追查 `EXPERIMENT_RECORD.md` 的缺口。
 - 2026-07-07：优化 `task1-sync-report` 的生成文件写入策略，只有 Markdown/LaTeX 静态避障表内容发生变化时才替换目标文件；重复运行同步命令不再无意义刷新 mtime，避免 `task1-report-audit` 误报“生成表格比 PDF 新”。
+- 2026-07-07：增强 `task1-runtime-check` 与实验记录的对应关系，新增 `/cloud_registered` 发布者和频率检查，并在 mapping/nav/dynamic 三种模式结束时输出应填写到 `EXPERIMENT_RECORD.md` 的记录建议；`--save` 快照也会保留这些建议，方便真实运行后转写建图检查、导航检查和动态障碍物扩展示范说明。
+- 2026-07-07：删除未被当前启动链路引用的旧场景地图文件，保留通用 `nav_test_map` 作为 task1 默认导航地图，减少源码层遗留场景命名对泛用项目定位的干扰。
+- 2026-07-07：新增 `tasks/task2/REAL_ROBOT_DEPLOYMENT_CHECKLIST.md`，把后续实机部署拆成无硬件预检、UDP 底盘通信、传感器/TF/外参、定位健康监控、PCD 辅助重定位、低速上车流程和实地记录模板；`real-preflight` 已把该文档纳入长期维护文档检查。
+- 2026-07-07：新增 `./run.sh task2-status` 无 GUI/无硬件状态页，用于检查 task2 长期文档、实机/鲁棒导航入口、扩展包目录、安全默认值、RGB-D/重定位/机械臂隔离边界，并把 task1 真实证据未完成项标成 WAIT；可追加 `--with-preflight` 顺带运行 `real-preflight`。

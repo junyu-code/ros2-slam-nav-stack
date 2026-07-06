@@ -95,6 +95,34 @@ sample_topic_hz() {
   fi
 }
 
+print_record_guidance() {
+  echo
+  echo "[task1-runtime] 记录填写建议"
+  case "${mode}" in
+    mapping)
+      cat <<'EOF'
+- 若上方 FAIL=0，可在 `tasks/task1/EXPERIMENT_RECORD.md` 的“2.2 运行检查”中把已通过项填写为“通过”。
+- `/livox/lidar`、`/livox/imu`、`/Odometry`、`/cloud_registered`、`/scan` 和 `/map` 分别对应 LiDAR、IMU、里程计、注册点云、二维激光和地图输出。
+- 使用 `--save` 保存的快照可作为文字证据；RViz/Gazebo 截图仍需另存为图 7-1 和图 7-2。
+EOF
+      ;;
+    nav)
+      cat <<'EOF'
+- 若上方 FAIL=0，可在 `tasks/task1/EXPERIMENT_RECORD.md` 的“3.2 导航检查”中把地图、里程计、激光、TF、速度指令和 Nav2 状态填写为“通过”。
+- 若 `map -> base_footprint` 可用且 `/bt_navigator` 为 active，下一步可以在 RViz 中发送目标点并采集图 8-1 至图 8-4。
+- 若出现 TF 或 lifecycle FAIL，先不要截图验收；优先重新执行 `./run.sh clean && ./run.sh sim-static`，再另开终端运行 `./run.sh nav`。
+EOF
+      ;;
+    dynamic)
+      cat <<'EOF'
+- 动态障碍物只作为扩展示范，不计入 10 次静态避障成功率。
+- 若 `/terrain_map`、`/terrain_map_ext` 或 `/visual_obstacles` 只有 WARN，可先截图记录为“扩展链路仍需调参”，不要写成稳定闭环能力。
+- 图 9-1 应同时展示动态障碍物、机器人/路径和局部代价地图或终端运行状态。
+EOF
+      ;;
+  esac
+}
+
 check_tf() {
   local target="$1"
   local source="$2"
@@ -254,9 +282,11 @@ require_topic_pub "/clock" "Gazebo 仿真时钟"
 require_topic_pub "/livox/lidar" "Livox 点云"
 warn_topic_pub "/livox/imu" "Livox IMU"
 require_topic_pub "/Odometry" "FAST-LIO 里程计"
+require_topic_pub "/cloud_registered" "FAST-LIO 注册点云"
 require_topic_pub "/scan" "2D LaserScan 投影"
 sample_topic_hz "/scan" "LaserScan"
 sample_topic_hz "/Odometry" "Odometry"
+sample_topic_hz "/cloud_registered" "注册点云"
 
 echo
 echo "[task1-runtime] 2/4 TF 连通性"
@@ -304,3 +334,5 @@ if (( warnings > 0 )); then
 else
   echo "[task1-runtime] 结论: 当前主链路状态良好，可以继续下一步。"
 fi
+
+print_record_guidance
