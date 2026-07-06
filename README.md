@@ -688,6 +688,8 @@ source ~/slam_nav_ws/install/setup.bash
 ros2 launch slam_nav_piper_bringup piper_mobile_manipulation.launch.py use_sim_time:=true fake_camera:=true fake_execution:=true
 ```
 
+这个组合入口默认 `start_description:=false`，会复用已启动的整车仿真/实机 TF，避免重复发布 `robot_state_publisher`。脱离 Gazebo 单独跑时再显式加 `start_description:=true publish_joint_states:=true`。
+
 外部依赖先只记录在 `piper_external.repos`，不并入主仓库：
 
 ```bash

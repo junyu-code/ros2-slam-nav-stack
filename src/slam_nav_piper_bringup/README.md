@@ -96,6 +96,12 @@ config/piper_learning_boundary.yaml     # 后续强化学习旁路策略边界
 ros2 launch slam_nav_piper_bringup piper_mobile_manipulation.launch.py fake_camera:=true
 ```
 
+该组合入口默认 `start_description:=false`，假设整车仿真或真实机器人已经在发布 `robot_state_publisher`，避免重复 TF。若要脱离 Gazebo 单独冒烟，可显式打开：
+
+```bash
+ros2 launch slam_nav_piper_bringup piper_mobile_manipulation.launch.py start_description:=true publish_joint_states:=true fake_camera:=true
+```
+
 Piper 相机保持在 `/piper/arm_camera/*`，不会 remap 到 `/nav_camera/*`。
 
 ## 实机边界
