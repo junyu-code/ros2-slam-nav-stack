@@ -79,8 +79,12 @@ class PiperTaskSmoke(Node):
     def depth_cb(self, _msg):
         self.depth_seen = True
 
-    def debug_image_cb(self, _msg):
-        self.debug_image_seen = True
+    def debug_image_cb(self, msg):
+        if msg.encoding not in ('rgb8', 'bgr8'):
+            return
+        # 假检测调试图必须包含画框颜色，避免只发布原始彩色图也误判通过。
+        expected = bytes([255, 80, 0]) if msg.encoding == 'rgb8' else bytes([0, 80, 255])
+        self.debug_image_seen = expected in bytes(msg.data)
 
     def detections_2d_cb(self, msg):
         if msg.detections:
