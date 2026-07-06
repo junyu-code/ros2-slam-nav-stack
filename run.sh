@@ -39,6 +39,7 @@ show_help() {
   task1-delivery-check  task1 打包交付前自查（不启动 GUI）
   task1-package-preview task1 最终压缩包预览/可选创建
   task1-build-report    编译 task1 LaTeX 结课报告 PDF
+  task1-finalize        task1 最终交付编排（编译报告/strict 检查/可选打包）
   setup-piper           准备 Piper 外部参考包
   setup-piper-moveit    准备 Piper 本地 MoveIt2 OMPL overlay（无需 sudo）
   piper-safety-check    检查 Piper 实机前安全默认值和边界开关
@@ -80,6 +81,7 @@ show_help() {
   ./run.sh task1-delivery-check
   ./run.sh task1-package-preview
   ./run.sh task1-build-report
+  ./run.sh task1-finalize
   ./run.sh real-preflight
   ./run.sh piper-safety-check
   ./run.sh piper-frame-audit
@@ -142,6 +144,7 @@ script_for_command() {
     task1-delivery-check|task1-delivery|delivery-check) echo "task1_delivery_check.sh" ;;
     task1-package-preview|task1-package|package-preview) echo "task1_package_preview.sh" ;;
     task1-build-report|task1-report|build-report|report-build) echo "build_task1_report.sh" ;;
+    task1-finalize|task1-final|finalize-task1|task1-submit-check) echo "task1_finalize.sh" ;;
     setup-piper) echo "setup_piper_open_class.sh" ;;
     setup-piper-moveit|setup-piper-moveit-overlay) echo "setup_piper_moveit_overlay.sh" ;;
     piper-safety-check|piper-safety) echo "piper_safety_check.sh" ;;
@@ -227,8 +230,9 @@ show_menu() {
  20) task1-delivery     task1 打包交付前自查
  21) package-preview    task1 压缩包预览
  22) build-report       编译 task1 结课报告 PDF
- 23) real-preflight     实机部署前预检
- 24) build              编译工作区
+ 23) task1-finalize     task1 最终交付编排
+ 24) real-preflight     实机部署前预检
+ 25) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 
@@ -273,8 +277,9 @@ case "${choice}" in
   20) run_command task1-delivery-check ;;
   21) run_command task1-package-preview ;;
   22) run_command task1-build-report ;;
-  23) run_command real-preflight ;;
-  24) run_command build ;;
+  23) run_command task1-finalize ;;
+  24) run_command real-preflight ;;
+  25) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

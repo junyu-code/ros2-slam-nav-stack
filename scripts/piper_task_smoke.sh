@@ -45,6 +45,7 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseStamped
+from vision_msgs.msg import Detection2DArray, Detection3DArray
 
 from slam_nav_piper_interfaces.action import PickObject, PlaceObject
 from slam_nav_piper_interfaces.msg import GraspCandidateArray
@@ -57,12 +58,18 @@ class PiperTaskSmoke(Node):
         super().__init__('piper_task_smoke_client')
         self.color_seen = False
         self.depth_seen = False
+        self.debug_image_seen = False
+        self.detections_2d = None
+        self.detections_3d = None
         self.target_pose = None
         self.grasp_candidates = None
         self.pick_client = ActionClient(self, PickObject, '/piper/task/pick_object')
         self.place_client = ActionClient(self, PlaceObject, '/piper/task/place_object')
         self.create_subscription(Image, '/piper/arm_camera/color/image_raw', self.color_cb, 10)
         self.create_subscription(Image, '/piper/arm_camera/depth/image_raw', self.depth_cb, 10)
+        self.create_subscription(Image, '/piper/perception/debug_image', self.debug_image_cb, 10)
+        self.create_subscription(Detection2DArray, '/piper/perception/detections_2d', self.detections_2d_cb, 10)
+        self.create_subscription(Detection3DArray, '/piper/perception/detections_3d', self.detections_3d_cb, 10)
         self.create_subscription(PoseStamped, '/piper/perception/target_pose', self.target_cb, 10)
         self.create_subscription(GraspCandidateArray, '/piper/grasp_candidates', self.grasp_cb, 10)
 
@@ -71,6 +78,17 @@ class PiperTaskSmoke(Node):
 
     def depth_cb(self, _msg):
         self.depth_seen = True
+
+    def debug_image_cb(self, _msg):
+        self.debug_image_seen = True
+
+    def detections_2d_cb(self, msg):
+        if msg.detections:
+            self.detections_2d = msg
+
+    def detections_3d_cb(self, msg):
+        if msg.detections:
+            self.detections_3d = msg
 
     def target_cb(self, msg):
         self.target_pose = msg
@@ -93,6 +111,9 @@ class PiperTaskSmoke(Node):
         checks = [
             ('Piper 彩色图像 /piper/arm_camera/color/image_raw', lambda: self.color_seen),
             ('Piper 深度图像 /piper/arm_camera/depth/image_raw', lambda: self.depth_seen),
+            ('Piper 2D 检测 /piper/perception/detections_2d', lambda: self.detections_2d is not None),
+            ('Piper 3D 检测 /piper/perception/detections_3d', lambda: self.detections_3d is not None),
+            ('Piper 调试图像 /piper/perception/debug_image', lambda: self.debug_image_seen),
             ('Piper 目标位姿 /piper/perception/target_pose', lambda: self.target_pose is not None),
             ('Piper 抓取候选 /piper/grasp_candidates', lambda: self.grasp_candidates is not None),
         ]

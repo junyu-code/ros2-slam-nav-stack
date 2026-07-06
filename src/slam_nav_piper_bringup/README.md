@@ -52,7 +52,7 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py
 ./run.sh piper-viz
 ```
 
-该入口默认启动 `piper_sim.launch.py` 并打开 `config/piper_visualization.rviz`，可查看官方 Piper 适配链 RobotModel、TF、假腕部 RGB 图和 `/piper/perception/target_pose`。它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹。需要同时看 MoveIt2 plan-only 服务时可显式加：
+该入口默认启动 `piper_sim.launch.py` 并打开 `config/piper_visualization.rviz`，可查看官方 Piper 适配链 RobotModel、TF、假腕部 RGB 图、带检测框的 `/piper/perception/debug_image` 和 `/piper/perception/target_pose`。它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹。需要同时看 MoveIt2 plan-only 服务时可显式加：
 
 ```bash
 ./run.sh piper-viz start_moveit_plan:=true
@@ -74,7 +74,7 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=placeholder
 ./run.sh piper-task-smoke
 ```
 
-该入口会等待 Piper 假 RGB-D、目标位姿、抓取候选和 `/piper/task/*` action server，然后发送一次 fake pick/place goal。它不启动 Nav2、不执行真实轨迹、不连接 SDK。当前无 GUI 冒烟已验证通过。
+该入口会等待 Piper 假 RGB-D、非空 `/piper/perception/detections_2d`、非空 `/piper/perception/detections_3d`、`/piper/perception/debug_image`、目标位姿、抓取候选和 `/piper/task/*` action server，然后发送一次 fake pick/place goal。它不启动 Nav2、不执行真实轨迹、不连接 SDK。当前无 GUI 冒烟已验证通过。
 
 移动操作组合入口烟测：
 

@@ -24,6 +24,7 @@ cd ~/slam_nav_ws
 ./run.sh task1-delivery-check
 ./run.sh task1-package-preview
 ./run.sh task1-build-report
+./run.sh task1-finalize
 ./run.sh real-preflight
 ```
 
@@ -95,6 +96,20 @@ cd ~/slam_nav_ws
 ./run.sh task1-build-report
 ./run.sh task1-package-preview --create
 ```
+
+也可以使用最终交付编排入口自动串起状态检查、报告编译、strict 检查和压缩包预览：
+
+```bash
+./run.sh task1-finalize
+```
+
+材料全部补齐后创建正式压缩包：
+
+```bash
+./run.sh task1-finalize --create
+```
+
+如果只是想提前生成草稿包，可使用 `./run.sh task1-finalize --allow-warnings --create`；正式提交前仍应回到不带 `--allow-warnings` 的严格流程。
 
 这是一个面向 Ubuntu 22.04 + ROS2 Humble + Gazebo Classic 的通用移动机器人 SLAM 与自主导航工作区。当前主目标是稳定完成仿真建图、保存地图、加载地图导航、目标点到达和静态避障验证。
 
@@ -783,7 +798,7 @@ source install/setup.bash
 ./run.sh piper-task-smoke
 ```
 
-该入口会在独立 `ROS_DOMAIN_ID` 下启动 `piper_sim`，等待 `/piper/arm_camera/*`、`/piper/perception/target_pose`、`/piper/grasp_candidates`，然后向 `/piper/task/pick_object` 和 `/piper/task/place_object` 各发送一次 fake goal。它已经完成无 GUI 冒烟验证，只检查项目侧任务边界，不启动 Nav2、不连接真实 SDK。
+该入口会在独立 `ROS_DOMAIN_ID` 下启动 `piper_sim`，等待 `/piper/arm_camera/*`、`/piper/perception/detections_2d`、`/piper/perception/detections_3d`、`/piper/perception/debug_image`、`/piper/perception/target_pose`、`/piper/grasp_candidates`，然后向 `/piper/task/pick_object` 和 `/piper/task/place_object` 各发送一次 fake goal。它已经完成无 GUI 冒烟验证，只检查项目侧任务边界，不启动 Nav2、不连接真实 SDK。
 
 一键验证移动操作组合入口：
 

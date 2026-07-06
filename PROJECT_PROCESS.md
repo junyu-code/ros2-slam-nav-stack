@@ -584,3 +584,4 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：新增 `./run.sh task1-build-report` 结课报告编译入口，优先使用 WSL `xelatex`，若不可用则自动调用 Windows TeX Live `xelatex.exe` 通过 UNC 路径编译 `tasks/task1/report_latex/main.tex` 两遍；补完截图后可先生成 `main.pdf`，再执行 strict 交付检查和打包。
 - 2026-07-07：新增 `./run.sh task1-status` 无 GUI 状态页，集中显示默认地图、结课报告 PDF、必需截图、可选扩展截图、实验记录待填字段、报告占位和 Git 工作区状态，并根据最早缺失证据给出下一步运行建议，方便每次恢复任务时快速判断该先建图、导航、动态演示还是整理报告。
 - 2026-07-07：将 `./run.sh piper-real-readiness` 纳入 Piper 静态验收链路，形成 OK/WAIT/FAIL 实机前状态报告；默认 WAIT 表示真实执行、SDK、手眼标定或底盘停止确认仍未满足但系统保持安全未接入状态，真正上机前可使用 `--require-ready` 把 WAIT 也作为失败。
+- 2026-07-07：新增 `./run.sh task1-finalize` 最终交付编排入口，按“状态页 -> 报告 PDF 编译 -> task1 strict 预检 -> strict 交付检查 -> 压缩包预览/可选创建”的顺序执行；默认不启动 GUI、不创建 zip，材料补齐后使用 `--create` 生成正式包，草稿包可显式使用 `--allow-warnings`。
