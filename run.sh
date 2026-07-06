@@ -43,6 +43,7 @@ show_help() {
   piper-preflight       Piper 依赖预检（自动加载本地 MoveIt overlay）
   piper-frame-audit     检查 Piper 官方 URDF 到项目 piper_* frame 映射
   piper-sim             单独启动 Piper 假感知/假执行冒烟链路
+  piper-viz             启动 Piper RViz 可视化（官方 URDF + 假腕部相机）
   piper-moveit-plan     启动 Piper 项目侧 MoveIt2 plan-only 配置
   piper-official-frame-audit 审计 AgileX 官方 URDF 到项目侧 piper_* frame 的适配
   piper-moveit-config   审计 Piper 项目侧 MoveIt2 配置和官方 AgileX 映射
@@ -78,6 +79,7 @@ show_help() {
   ./run.sh setup-piper-moveit
   ./run.sh piper-preflight
   ./run.sh piper-sim
+  ./run.sh piper-viz
   ./run.sh piper-moveit-plan
   ./run.sh piper-official-frame-audit
   ./run.sh piper-moveit-config
@@ -134,6 +136,7 @@ script_for_command() {
     piper-preflight|piper-check) echo "piper_preflight.sh" ;;
     piper-frame-audit|piper-official-frame-audit|piper-frame) echo "piper_official_frame_audit.sh" ;;
     piper-sim) echo "start_piper_sim.sh" ;;
+    piper-viz|piper-visualization|piper-rviz) echo "start_piper_visualization.sh" ;;
     piper-moveit-plan|piper-moveit) echo "start_piper_moveit_plan.sh" ;;
     piper-official-frame-audit|piper-official-frame|piper-frame-audit) echo "piper_official_frame_audit.sh" ;;
     piper-moveit-config|piper-moveit-config-audit) echo "piper_moveit_config_audit.sh" ;;

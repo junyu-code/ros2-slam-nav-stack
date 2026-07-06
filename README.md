@@ -758,6 +758,20 @@ source install/setup.bash
 
 该入口只启动 Piper TF、假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake pick/place action。默认 TF 使用官方 Piper URDF 适配链；缺少官方包时可加 `arm_model:=placeholder` 做占位冒烟。项目侧上层接口保持 `/piper/task/pick_object` 和 `/piper/task/place_object`。
 
+想直接看模型、TF、假腕部相机和目标位姿：
+
+```bash
+./run.sh piper-viz
+```
+
+该命令会打开 RViz，并默认同时启动 Piper 独立 fake runtime；它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹。需要把项目侧 MoveIt2 plan-only 也一起开起来观察时，再显式使用：
+
+```bash
+./run.sh piper-viz start_moveit_plan:=true
+```
+
+该模式仍保持 `allow_trajectory_execution=false`。
+
 一键验证 fake 感知和任务 action：
 
 ```bash

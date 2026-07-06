@@ -579,3 +579,5 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：新增 `./run.sh task1-package-preview`，用于预览 task1 最终压缩包的包含文件、估算体积和排除规则；默认不创建文件，材料补齐后可用 `--create` 输出到 `dist/3232072072234+佘俊谕.zip`，同时将 `dist/` 和 `*.zip` 加入 `.gitignore`，避免打包产物误提交。
 - 2026-07-07：新增 `tasks/task1/TASK1_EVIDENCE_TODO.md` 剩余证据采集清单，把必需截图、建图/导航运行检查、10 次静态避障实验字段、动态障碍物扩展示范和最终严格打包命令集中到一处；`task1-check` 与 `task1-delivery-check` 已将该清单纳入必备文档检查。
 - 2026-07-07：修正 `mission_behavior` 的 Piper pick/place demo 自动启动逻辑，`auto_start=true` 时直接顺序调用 `run_once()`，避免依赖一次性 timer 与 `rclpy.spin()` 的退出时机；该 demo 仍只通过 `/piper/task/*` action 调用机械臂任务层，不直接接触 MoveIt2 或 SDK。
+- 2026-07-07：优化 task1 LaTeX 结课报告截图接入方式，新增 `\taskfigure{文件名}{图题}{缺图提示}` 自动插图宏；后续只需按证据清单把 Gazebo/RViz 截图放入 `tasks/task1/report_latex/figures/`，重新编译后 PDF 会自动插入真实截图，缺图时仍保留占位框。
+- 2026-07-07：新增 `./run.sh piper-viz` Piper RViz 可视化入口，默认启动 Piper 独立 fake runtime 并打开 `piper_visualization.rviz`，用于观察官方 URDF 适配链、TF、假腕部相机和目标位姿；可选 `start_moveit_plan:=true` 只启动 MoveIt2 plan-only 服务，仍保持不执行轨迹、不连接 SDK、不接入 task1/Nav2。

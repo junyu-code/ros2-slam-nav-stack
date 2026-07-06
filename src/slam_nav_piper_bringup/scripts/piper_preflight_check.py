@@ -41,6 +41,7 @@ REQUIRED_MOVEIT_PACKAGES = [
 OPTIONAL_MOVEIT_DEMO_PACKAGES = [
     'moveit_configs_utils',
     'moveit_ros_visualization',
+    'rviz2',
 ]
 
 OPTIONAL_OFFICIAL_PACKAGES = [
@@ -164,7 +165,7 @@ def main():
     print('  MoveIt2 plan-only 需要 OMPL 与 simple controller manager：')
     print('    sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-controller-manager')
     print('    或运行 ./run.sh setup-piper-moveit 使用 external/ 下的 Piper 专用本地 overlay。')
-    print('  官方 MoveIt2/RViz demo 可选：sudo apt-get install ros-humble-moveit-configs-utils ros-humble-moveit-ros-visualization')
+    print('  官方 MoveIt2/RViz demo 可选：sudo apt-get install ros-humble-moveit-configs-utils ros-humble-moveit-ros-visualization ros-humble-rviz2')
     print('  实机前必须验证急停、失能、home、限速和工作空间限制。')
 
     if all_ok:

@@ -46,6 +46,20 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py
 
 该入口默认使用 AgileX 官方 Piper URDF 适配链，并启动假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake 抓取/放置 action。独立仿真默认发布 Piper 假关节状态，保证 `piper_base_link -> piper_arm_camera_optical_frame` TF 可用于目标位姿估计；实机入口不启用这个假关节状态发布器。
 
+想直接“看到东西”，使用 RViz 可视化入口：
+
+```bash
+./run.sh piper-viz
+```
+
+该入口默认启动 `piper_sim.launch.py` 并打开 `config/piper_visualization.rviz`，可查看官方 Piper 适配链 RobotModel、TF、假腕部 RGB 图和 `/piper/perception/target_pose`。它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹。需要同时看 MoveIt2 plan-only 服务时可显式加：
+
+```bash
+./run.sh piper-viz start_moveit_plan:=true
+```
+
+此时仍保持 `allow_trajectory_execution=false`，只用于观察规划服务和 RViz 模型。
+
 缺少官方包、只想先检查 `/piper` 话题/action 边界时，可以显式退回占位 TF：
 
 ```bash
