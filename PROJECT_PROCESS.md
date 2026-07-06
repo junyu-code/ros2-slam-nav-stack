@@ -27,7 +27,7 @@
 
 不作为当前主线的内容：
 
-- 比赛专用模块。
+- 特定场景专用模块。
 - 动态障碍物作为主创新。
 - 行为树决策不参与当前建图主流程；已新增 `mission_behavior` 作为后续任务层初版。
 - Fast-LIVO/Fast-LIVO2。
@@ -455,7 +455,7 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 
 ## 8. 维护记录
 
-- 2026-07-03：创建 `~/slam_nav_ws`，抽取通用 SLAM/导航能力，去除比赛专用模块。
+- 2026-07-03：创建 `~/slam_nav_ws`，抽取通用 SLAM/导航能力，去除特定场景专用模块。
 - 2026-07-03：完成基础仿真、建图、导航包整理。
 - 2026-07-03：修正 slam_toolbox 最小激光量程参数，与 `/scan` 的 `range_min` 对齐。
 - 2026-07-04：曾添加动态障碍物场地作为可选扩展，但当前不再作为主创新点。
@@ -487,10 +487,14 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-06：补齐完整 3D 地形导航链路：迁入并泛化 `terrain_analysis` 与 `terrain_analysis_ext` 两级滚动地形分析，默认接 `/cloud_registered_body` 与 `/Odometry`，发布 `/terrain_map` 与 `/terrain_map_ext`。
 - 2026-07-06：迁入 Nav2 强度体素层和自由空间后退行为插件；`nav2_params_3d.yaml` 改为使用 `pb_nav2_costmap_2d::IntensityVoxelLayer`，并将 `backup` 恢复行为替换为 `pb_nav2_behaviors/BackUpFreeSpace`，用于拥挤场景下优先向更空方向脱困。
 - 2026-07-06：`navigation_3d.launch.py` 与 `robust_navigation.launch.py` 默认拉起两级地形分析；`diagnose_runtime.py` 增加 `/terrain_map`、`/terrain_map_ext` 采样和 costmap 订阅检查。
-- 2026-07-06：迁入并泛化全向 PID 路径跟踪控制器 `pb_omni_pid_pursuit_controller`，删除比赛模式、比赛区域坐标和 `rm_decision_interfaces` 依赖；`nav2_params_3d.yaml` 将 `FollowPath` 从 DWB 切换为 `pb_omni_pid_pursuit_controller::OmniPidPursuitController`，保留前瞻点跟踪、接近目标减速、曲率限速和基于里程计的卡住后退脱困逻辑。
+- 2026-07-06：迁入并泛化全向 PID 路径跟踪控制器 `pb_omni_pid_pursuit_controller`，整理为通用全向底盘路径跟踪模块；`nav2_params_3d.yaml` 将 `FollowPath` 从 DWB 切换为 `pb_omni_pid_pursuit_controller::OmniPidPursuitController`，保留前瞻点跟踪、接近目标减速、曲率限速和基于里程计的卡住后退脱困逻辑。
 - 2026-07-06：修复 `IntensityVoxelLayer` 导致 `Navigation inactive` 的插件库冲突：自定义 costmap 插件库原名 `liblayers.so` 与 Nav2 官方 `liblayers.so` 重名，导致 local costmap 首次加载时找不到 `nav2_costmap_2d::ObstacleLayer` 符号。现已改名为 `libpb_intensity_voxel_layer.so`，并显式链接官方 Nav2 costmap layers 库。
 - 2026-07-06：修正行为树插件加载方式：`ReactiveSequence` 是 BehaviorTree.CPP 内置控制节点，不是 Humble 中的 Nav2 动态插件，不能写入 `plugin_lib_names`，否则 `bt_navigator` 会因找不到 `libnav2_reactive_sequence_bt_node.so` 而配置失败。当前保留 XML 中的 `ReactiveSequence`，但不再把它作为动态库加载。
 - 2026-07-06：参考既有工程的 Nav2 启动方式，将 `navigation.launch.py`、`navigation_3d.launch.py` 和 `robust_navigation.launch.py` 默认切换为 composition 模式，启动 `component_container_mt` 并把 Nav2 localization/navigation 组件加载到同一个 `nav2_container`。该调整用于降低 WSL 高负载下 lifecycle service 响应超时的概率，避免 `smoother_server/get_state` 偶发超时后导致 `bt_navigator` 停留在 `unconfigured`。
 - 2026-07-06：新增 Piper 移动操作扩展包族 `slam_nav_piper_*`，包括项目侧 action/msg、Piper 占位 TF、独立 `/piper/arm_camera/*` 感知、MoveIt2/SDK 控制边界、pick/place action server 和独立 bringup。该扩展不接入 task1 默认建图/导航脚本，不复用 `/nav_camera/*`，也不默认进入 Nav2 costmap。
 - 2026-07-06：安装 `ros-humble-moveit-ros-planning-interface` 及 MoveIt2 规划相关依赖，确认 `moveit_ros_planning_interface`、`moveit_ros_move_group` 和 `moveit_core` 均来自 `/opt/ros/humble`。当前 Piper 控制层仍保持安全占位后端，后续接真实 MoveIt2 时在 `slam_nav_piper_control` 内部适配。
 - 2026-07-06：为导航启动增加 `localization_mode` 参数，支持 `amcl` 与 `static` 两种定位模式。`amcl` 保留 `/scan` 与静态地图匹配后的重定位能力，但初始位姿不准或场景局部相似时可能把 `map->odom` 拉偏；`static` 模式只启动 `map_server` 并发布固定 `map->odom`，适合同一仿真地图、同一起点的短程导航对齐测试。`start_navigation_3d.sh` 与 `start_robust_navigation.sh` 默认改为 `localization_mode:=static`，用于先排除 AMCL 对地图/点云对齐的干扰。
+- 2026-07-06：新增 `cloud_relocalization` 点云地图辅助重定位包，提供 `/relocalization/trigger` 触发服务、`/relocalization/status`、`/relocalization/pose` 和 `/relocalization/aligned_cloud` 输出；默认不发布 `map -> odom`，先用于观测和验证。
+- 2026-07-06：增强 `cloud_relocalization` 的可靠性：启动时缓存初始位姿，避免运行时重复声明参数；ICP 目标从全图改为围绕初值裁剪局部 PCD 子图，并加入局部地图点数、fitness 和位姿跳变门限。
+- 2026-07-06：增强 `perception_adapter` 点云预处理链路，新增局部网格地面参考估计，在 `/cloud_nav_filtered` 之外稳定输出 `/nav_obstacle_cloud` 与 `/nav_ground_cloud`，降低简单高度阈值在起伏地形下的误分割概率。
+- 2026-07-06：增强 `safe_cmd_bridge` 实机底盘闭环入口，新增可选反馈看门狗；接入底盘里程计后可检测速度指令有输出但反馈速度过低、反馈断流等情况，并发布 `/base_feedback_fault` 与 `/base_feedback_health`。

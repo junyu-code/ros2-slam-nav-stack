@@ -15,6 +15,8 @@ def generate_launch_description():
     enable_udp_output = LaunchConfiguration('enable_udp_output')
     enable_fault_stop = LaunchConfiguration('enable_fault_stop')
     fault_topic = LaunchConfiguration('fault_topic')
+    enable_feedback_watchdog = LaunchConfiguration('enable_feedback_watchdog')
+    feedback_topic = LaunchConfiguration('feedback_topic')
     udp_host = LaunchConfiguration('udp_host')
     udp_port = LaunchConfiguration('udp_port')
 
@@ -32,6 +34,8 @@ def generate_launch_description():
         DeclareLaunchArgument('enable_udp_output', default_value='false'),
         DeclareLaunchArgument('enable_fault_stop', default_value='true'),
         DeclareLaunchArgument('fault_topic', default_value='/localization_fault'),
+        DeclareLaunchArgument('enable_feedback_watchdog', default_value='false'),
+        DeclareLaunchArgument('feedback_topic', default_value='/base/odom'),
         DeclareLaunchArgument('udp_host', default_value='192.168.123.22'),
         DeclareLaunchArgument('udp_port', default_value='15000'),
         Node(
@@ -48,6 +52,11 @@ def generate_launch_description():
                     'enable_udp_output': ParameterValue(enable_udp_output, value_type=bool),
                     'enable_fault_stop': ParameterValue(enable_fault_stop, value_type=bool),
                     'fault_topic': fault_topic,
+                    'enable_feedback_watchdog': ParameterValue(
+                        enable_feedback_watchdog,
+                        value_type=bool,
+                    ),
+                    'feedback_topic': feedback_topic,
                     'udp_host': udp_host,
                     'udp_port': ParameterValue(udp_port, value_type=int),
                 },

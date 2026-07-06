@@ -115,12 +115,6 @@ float sinVehicleYaw = 0, cosVehicleYaw = 0;
 
 pcl::VoxelGrid<pcl::PointXYZI> downSizeFilter;
 
-// void modeCallback(const rm_decision_interfaces::msg::Mode::SharedPtr msg) {
-//     std::lock_guard<std::mutex> lock(mode_mutex_);
-//     mode_ = *msg;
-//     // RCLCPP_INFO(get_logger(), "云台模式 updated: %d", current_mode_.mode);
-// }
-
 // state estimation callback function
 void odometryHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odom) {
 
@@ -316,12 +310,6 @@ int main(int argc, char **argv) {
 
   auto pubLaserCloud =
       nh->create_publisher<sensor_msgs::msg::PointCloud2>(outputTerrainTopic, 2);
-
-  
-  // auto mode_sub_ = nh->create_subscription<rm_decision_interfaces::msg::Mode>(
-  //       "/mode",  // 确保与发送方的主题一致
-  //       rclcpp::SensorDataQoS(),
-  //       modeCallback);
 
   for (int i = 0; i < kTerrainVoxelNum; i++) {
     terrainVoxelCloud[i].reset(new pcl::PointCloud<pcl::PointXYZI>());

@@ -1,0 +1,36 @@
+icp_relocalization_node:
+  ros__parameters:
+    map_pcd_path: ""
+    input_cloud_topic: /cloud_registered
+    aligned_cloud_topic: /relocalization/aligned_cloud
+    status_topic: /relocalization/status
+    pose_topic: /relocalization/pose
+    trigger_service: /relocalization/trigger
+
+    map_frame: map
+    odom_frame: odom
+    publish_tf: false
+    auto_align: false
+    use_last_transform_as_guess: true
+
+    map_leaf_size: 0.12
+    scan_leaf_size: 0.10
+    max_correspondence_distance: 1.0
+    transformation_epsilon: 0.00001
+    euclidean_fitness_epsilon: 0.0001
+    fitness_score_threshold: 0.45
+    max_iterations: 45
+    min_scan_points: 120
+    min_map_points: 300
+    min_interval_sec: 2.0
+    crop_map_around_guess: true
+    local_map_radius: 8.0
+    max_result_translation_jump: 1.5
+    max_result_yaw_jump: 0.8
+
+    initial_x: 0.0
+    initial_y: 0.0
+    initial_z: 0.0
+    initial_roll: 0.0
+    initial_pitch: 0.0
+    initial_yaw: 0.0

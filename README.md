@@ -13,6 +13,7 @@ slam_nav_ws/
     slam_nav_bringup/          # 建图、导航参数和启动入口
     FAST_LIO/                  # FAST-LIO2 风格 LiDAR-IMU 定位建图前端
     pointcloud_to_laserscan/   # 3D 点云转 2D LaserScan
+    cloud_relocalization/      # PCD 地图辅助重定位，默认只观测不接管 TF
     ros2_livox_simulation/     # Livox Mid-360 仿真插件
     imu_complementary_filter/  # IMU 姿态滤波工具
     perception_adapter/        # 后续部署阶段的松耦合感知适配接口
@@ -27,7 +28,7 @@ slam_nav_ws/
     slam_nav_piper_control/     # Piper MoveIt2/SDK 控制边界和安全 owner 管理
     slam_nav_piper_manipulation/# Piper pick/place 任务 action server
     slam_nav_piper_bringup/     # Piper 独立启动入口，不参与 task1 默认链路
-    safe_cmd_bridge/           # 通用速度安全桥，用于限速、限加速度、超时停车和可选 UDP 转发
+    safe_cmd_bridge/           # 通用速度安全桥，用于限速、限加速度、超时停车、反馈看门狗和可选 UDP 转发
     localization_guard/        # 定位健康监控，用于检测断流、跳变和速度异常
   tasks/
     task0/                     # FAST-LIO2、Point-LIO 等学习笔记
@@ -130,7 +131,7 @@ RViz
 恢复行为：behavior_server + 行为树 BackUp/ClearCostmap/Spin
 ```
 
-由于仿真底盘使用 `libgazebo_ros_planar_move.so`，它支持平面全向速度。当前 3D 导航参数已从通用 DWB 轨迹采样切换为泛化后的 `pb_omni_pid_pursuit_controller::OmniPidPursuitController`：控制器根据全局路径前瞻点输出 x/y 平面速度，保留接近目标减速、曲率限速，并在“命令速度较大但里程计实际速度很小”时短时后退脱困。该包已去除比赛模式、比赛坐标和 `rm_decision_interfaces` 依赖。
+由于仿真底盘使用 `libgazebo_ros_planar_move.so`，它支持平面全向速度。当前 3D 导航参数已从通用 DWB 轨迹采样切换为泛化后的 `pb_omni_pid_pursuit_controller::OmniPidPursuitController`：控制器根据全局路径前瞻点输出 x/y 平面速度，保留接近目标减速、曲率限速，并在“命令速度较大但里程计实际速度很小”时短时后退脱困。该控制器已经整理为通用全向底盘路径跟踪模块。
 导航行为树已经加入拥挤场景恢复策略：
 
 ```text
@@ -292,6 +293,41 @@ ros2 topic echo /cmd_vel_safe
 ```
 
 后续接真实底盘时，可以把 Nav2 的速度输出重映射到安全桥输入，再由安全桥输出给底盘控制接口；如果底盘侧需要独立控制进程，也可以打开 UDP 输出。当前作业主流程不强制启用这一层，以免影响已经验证过的仿真导航链路。
+
+如果底盘能提供实际里程计反馈，可以打开反馈看门狗，检查“持续发送速度但底盘没有响应”或“底盘反馈断流”的情况：
+
+```bash
+./start_robust_navigation.sh \
+  safe_enable_feedback_watchdog:=true \
+  safe_feedback_topic:=/base/odom
+```
+
+反馈异常时安全桥会发布：
+
+```text
+/base_feedback_fault
+/base_feedback_health
+```
+
+## 可选流程：PCD 地图辅助重定位
+
+`src/cloud_relocalization/` 提供一个可触发的 ICP 点云地图重定位入口，用于部署阶段处理初始位姿不准、局部漂移或需要从已保存 PCD 地图恢复的情况。它默认只发布状态、估计位姿和对齐点云，不直接接管 `map -> odom`。
+
+```bash
+cd ~/slam_nav_ws
+./start_relocalization.sh \
+  map_pcd_path:=/home/junyu/slam_nav_ws/src/FAST_LIO/PCD/scan.pcd \
+  input_cloud_topic:=/cloud_registered \
+  publish_tf:=false
+```
+
+触发一次匹配：
+
+```bash
+ros2 service call /relocalization/trigger std_srvs/srv/Trigger {}
+```
+
+建议先在 RViz 中观察 `/relocalization/aligned_cloud` 和 `/relocalization/pose`，确认匹配方向正确后，再显式使用 `publish_tf:=true`。当前实现会围绕初始位姿裁剪局部 PCD 子图，并同时检查 ICP fitness、局部地图点数和位姿跳变门限，避免相似场景下错误匹配把坐标系突然拉偏。
 
 ## 可选流程：定位健康监控
 

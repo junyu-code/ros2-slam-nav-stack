@@ -42,12 +42,40 @@ struct VoxelKeyHash
   }
 };
 
+struct GroundKey
+{
+  int64_t x{};
+  int64_t y{};
+
+  bool operator==(const GroundKey & other) const
+  {
+    return x == other.x && y == other.y;
+  }
+};
+
+struct GroundKeyHash
+{
+  std::size_t operator()(const GroundKey & key) const
+  {
+    const auto hx = std::hash<int64_t>{}(key.x);
+    const auto hy = std::hash<int64_t>{}(key.y);
+    return hx ^ (hy + 0x9e3779b97f4a7c15ULL + (hx << 6) + (hx >> 2));
+  }
+};
+
 struct VoxelAccumulator
 {
   double x{};
   double y{};
   double z{};
   uint32_t count{};
+};
+
+struct CloudPoint
+{
+  float x{};
+  float y{};
+  float z{};
 };
 
 struct FilteredClouds
@@ -114,6 +142,12 @@ public:
     ground_max_height_ = declare_parameter<double>("ground_max_height", 0.06);
     obstacle_min_height_ = declare_parameter<double>("obstacle_min_height", 0.08);
     obstacle_max_height_ = declare_parameter<double>("obstacle_max_height", 1.20);
+    ground_estimation_enabled_ = declare_parameter<bool>("ground_estimation_enabled", true);
+    ground_grid_size_ = declare_parameter<double>("ground_grid_size", 0.35);
+    ground_height_margin_ = declare_parameter<double>("ground_height_margin", 0.08);
+    ground_seed_max_height_ = declare_parameter<double>("ground_seed_max_height", 0.25);
+    obstacle_relative_min_height_ =
+      declare_parameter<double>("obstacle_relative_min_height", 0.12);
 
     obstacle_check_enabled_ = declare_parameter<bool>("obstacle_check_enabled", false);
     front_x_min_ = declare_parameter<double>("front_x_min", 0.20);
@@ -261,7 +295,10 @@ private:
     std::unordered_map<VoxelKey, VoxelAccumulator, VoxelKeyHash> navigation_voxels;
     std::unordered_map<VoxelKey, VoxelAccumulator, VoxelKeyHash> obstacle_voxels;
     std::unordered_map<VoxelKey, VoxelAccumulator, VoxelKeyHash> ground_voxels;
+    std::unordered_map<GroundKey, float, GroundKeyHash> ground_reference;
+    std::vector<CloudPoint> roi_points;
     navigation_voxels.reserve(std::max<std::size_t>(1, cloud.width * cloud.height / 3));
+    roi_points.reserve(std::max<std::size_t>(1, cloud.width * cloud.height / 2));
     if (publish_split_clouds_) {
       obstacle_voxels.reserve(std::max<std::size_t>(1, cloud.width * cloud.height / 6));
       ground_voxels.reserve(std::max<std::size_t>(1, cloud.width * cloud.height / 6));
@@ -278,13 +315,19 @@ private:
       if (!isPointInRoi(x, y, z)) {
         continue;
       }
+      roi_points.push_back({x, y, z});
+      if (ground_estimation_enabled_) {
+        updateGroundReference(ground_reference, x, y, z);
+      }
+    }
 
-      addPointToVoxelMap(navigation_voxels, x, y, z, voxel_size);
+    for (const auto & point : roi_points) {
+      addPointToVoxelMap(navigation_voxels, point.x, point.y, point.z, voxel_size);
       if (publish_split_clouds_) {
-        if (isObstaclePoint(z)) {
-          addPointToVoxelMap(obstacle_voxels, x, y, z, voxel_size);
-        } else if (isGroundPoint(z)) {
-          addPointToVoxelMap(ground_voxels, x, y, z, voxel_size);
+        if (isGroundPoint(point.x, point.y, point.z, ground_reference)) {
+          addPointToVoxelMap(ground_voxels, point.x, point.y, point.z, voxel_size);
+        } else if (isObstaclePoint(point.x, point.y, point.z, ground_reference)) {
+          addPointToVoxelMap(obstacle_voxels, point.x, point.y, point.z, voxel_size);
         }
       }
     }
@@ -296,6 +339,29 @@ private:
       result.ground_points = materializeVoxelMap(ground_voxels);
     }
     return result;
+  }
+
+  void updateGroundReference(
+    std::unordered_map<GroundKey, float, GroundKeyHash> & ground_reference,
+    const float x,
+    const float y,
+    const float z) const
+  {
+    const GroundKey key = groundKeyForPoint(x, y);
+    const auto existing = ground_reference.find(key);
+    if (existing == ground_reference.end()) {
+      ground_reference.emplace(key, z);
+      return;
+    }
+    existing->second = std::min(existing->second, z);
+  }
+
+  GroundKey groundKeyForPoint(const float x, const float y) const
+  {
+    const double grid_size = std::max(ground_grid_size_, 0.05);
+    return {
+      static_cast<int64_t>(std::floor(x / grid_size)),
+      static_cast<int64_t>(std::floor(y / grid_size))};
   }
 
   void addPointToVoxelMap(
@@ -334,15 +400,36 @@ private:
     return points;
   }
 
-  bool isGroundPoint(const float z) const
+  bool isGroundPoint(
+    const float x,
+    const float y,
+    const float z,
+    const std::unordered_map<GroundKey, float, GroundKeyHash> & ground_reference) const
   {
-    // 当前先采用简单高度带分割，适合平地仿真和导航可视化验证；
-    // 后续可替换为地面拟合、法向量或时空体素层中的 marking/clearing 分流。
+    // 默认使用局部网格最低点作为地面参考，比单纯高度带更适合轻微起伏地形。
+    if (ground_estimation_enabled_) {
+      const auto reference = ground_reference.find(groundKeyForPoint(x, y));
+      if (reference != ground_reference.end()) {
+        const float relative_height = z - reference->second;
+        return z <= ground_seed_max_height_ && relative_height <= ground_height_margin_;
+      }
+    }
     return z >= ground_min_height_ && z <= ground_max_height_;
   }
 
-  bool isObstaclePoint(const float z) const
+  bool isObstaclePoint(
+    const float x,
+    const float y,
+    const float z,
+    const std::unordered_map<GroundKey, float, GroundKeyHash> & ground_reference) const
   {
+    if (ground_estimation_enabled_) {
+      const auto reference = ground_reference.find(groundKeyForPoint(x, y));
+      if (reference != ground_reference.end()) {
+        const float relative_height = z - reference->second;
+        return z <= obstacle_max_height_ && relative_height >= obstacle_relative_min_height_;
+      }
+    }
     return z >= obstacle_min_height_ && z <= obstacle_max_height_;
   }
 
@@ -436,6 +523,11 @@ private:
   double ground_max_height_{};
   double obstacle_min_height_{};
   double obstacle_max_height_{};
+  bool ground_estimation_enabled_{};
+  double ground_grid_size_{};
+  double ground_height_margin_{};
+  double ground_seed_max_height_{};
+  double obstacle_relative_min_height_{};
 
   bool obstacle_check_enabled_{};
   double front_x_min_{};

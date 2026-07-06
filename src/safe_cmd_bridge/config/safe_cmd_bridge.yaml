@@ -7,6 +7,10 @@ safe_cmd_bridge_node:
     enable_udp_output: false
     enable_fault_stop: true
     fault_topic: /localization_fault
+    enable_feedback_watchdog: false
+    feedback_topic: /base/odom
+    feedback_fault_topic: /base_feedback_fault
+    feedback_health_topic: /base_feedback_health
     udp_host: 192.168.123.22
     udp_port: 15000
 
@@ -27,6 +31,11 @@ safe_cmd_bridge_node:
     command_timeout_sec: 0.5
     publish_rate_hz: 30.0
     send_zero_on_shutdown: true
+    feedback_timeout_sec: 0.8
+    feedback_startup_grace_sec: 3.0
+    feedback_stall_timeout_sec: 1.0
+    min_command_speed_for_feedback: 0.05
+    min_feedback_speed: 0.02
 
     invert_vx: false
     invert_vy: false

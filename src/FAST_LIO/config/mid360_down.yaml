@@ -35,11 +35,11 @@
         
         #保存
         # 使用 docker 时，应输入 in docker container 的绝对路径
-        map_file_path: "src/rm_localization/FAST_LIO/PCD/scan.pcd" 
+        map_file_path: "src/FAST_LIO/PCD/scan.pcd"
         pcd_save:
             pcd_save_en: true
             interval: -1                 # 每个 pcd 文件中保存了多少个 LiDAR 帧;
                                         # -1 : 所有帧将保存在一个 pcd 文件中，当帧数过多时可能会导致内存崩溃。
         traj_save:
             traj_save_en: false
-            traj_file_path: "src/rm_localization/FAST_LIO/PCD/328.txt"  # 使用 docker 时，应输入 in docker container 的绝对路径
+            traj_file_path: "src/FAST_LIO/PCD/trajectory_down.txt"  # 使用 docker 时，应输入 in docker container 的绝对路径

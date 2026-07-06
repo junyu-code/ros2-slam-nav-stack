@@ -50,6 +50,8 @@ def generate_launch_description():
     safe_enable_udp_output = LaunchConfiguration('safe_enable_udp_output')
     safe_enable_fault_stop = LaunchConfiguration('safe_enable_fault_stop')
     safe_fault_topic = LaunchConfiguration('safe_fault_topic')
+    safe_enable_feedback_watchdog = LaunchConfiguration('safe_enable_feedback_watchdog')
+    safe_feedback_topic = LaunchConfiguration('safe_feedback_topic')
     safe_udp_host = LaunchConfiguration('safe_udp_host')
     safe_udp_port = LaunchConfiguration('safe_udp_port')
 
@@ -107,6 +109,8 @@ def generate_launch_description():
             'enable_udp_output': safe_enable_udp_output,
             'enable_fault_stop': safe_enable_fault_stop,
             'fault_topic': safe_fault_topic,
+            'enable_feedback_watchdog': safe_enable_feedback_watchdog,
+            'feedback_topic': safe_feedback_topic,
             'udp_host': safe_udp_host,
             'udp_port': safe_udp_port,
         }.items(),
@@ -160,6 +164,8 @@ def generate_launch_description():
         DeclareLaunchArgument('safe_enable_udp_output', default_value='false'),
         DeclareLaunchArgument('safe_enable_fault_stop', default_value='true'),
         DeclareLaunchArgument('safe_fault_topic', default_value='/localization_fault'),
+        DeclareLaunchArgument('safe_enable_feedback_watchdog', default_value='false'),
+        DeclareLaunchArgument('safe_feedback_topic', default_value='/base/odom'),
         DeclareLaunchArgument('safe_udp_host', default_value='192.168.123.22'),
         DeclareLaunchArgument('safe_udp_port', default_value='15000'),
         navigation_3d,

@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
+import json
 import math
 import socket
 import time
 
 import rclpy
 from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 
 
 class SafeCmdBridge(Node):
@@ -20,6 +22,16 @@ class SafeCmdBridge(Node):
         self.enable_udp_output = self.declare_parameter('enable_udp_output', False).value
         self.enable_fault_stop = self.declare_parameter('enable_fault_stop', True).value
         self.fault_topic = self.declare_parameter('fault_topic', '/localization_fault').value
+        self.enable_feedback_watchdog = self.declare_parameter(
+            'enable_feedback_watchdog', False
+        ).value
+        self.feedback_topic = self.declare_parameter('feedback_topic', '/base/odom').value
+        self.feedback_fault_topic = self.declare_parameter(
+            'feedback_fault_topic', '/base_feedback_fault'
+        ).value
+        self.feedback_health_topic = self.declare_parameter(
+            'feedback_health_topic', '/base_feedback_health'
+        ).value
         self.udp_host = self.declare_parameter('udp_host', '192.168.123.22').value
         self.udp_port = int(self.declare_parameter('udp_port', 15000).value)
 
@@ -40,6 +52,21 @@ class SafeCmdBridge(Node):
         self.command_timeout_sec = float(self.declare_parameter('command_timeout_sec', 0.5).value)
         self.publish_rate_hz = float(self.declare_parameter('publish_rate_hz', 30.0).value)
         self.send_zero_on_shutdown = self.declare_parameter('send_zero_on_shutdown', True).value
+        self.feedback_timeout_sec = float(
+            self.declare_parameter('feedback_timeout_sec', 0.8).value
+        )
+        self.feedback_startup_grace_sec = float(
+            self.declare_parameter('feedback_startup_grace_sec', 3.0).value
+        )
+        self.feedback_stall_timeout_sec = float(
+            self.declare_parameter('feedback_stall_timeout_sec', 1.0).value
+        )
+        self.min_command_speed_for_feedback = float(
+            self.declare_parameter('min_command_speed_for_feedback', 0.05).value
+        )
+        self.min_feedback_speed = float(
+            self.declare_parameter('min_feedback_speed', 0.02).value
+        )
 
         self.invert_vx = self.declare_parameter('invert_vx', False).value
         self.invert_vy = self.declare_parameter('invert_vy', False).value
@@ -56,6 +83,13 @@ class SafeCmdBridge(Node):
         self._last_timeout_warn = 0.0
         self._fault_active = False
         self._last_fault_warn = 0.0
+        self._start_time = time.monotonic()
+        self._last_feedback_time = None
+        self._feedback_speed = 0.0
+        self._last_nonzero_cmd_time = None
+        self._feedback_fault_active = False
+        self._feedback_fault_reasons = []
+        self._last_feedback_warn = 0.0
 
         self._udp_socket = None
         if self.enable_udp_output:
@@ -80,6 +114,27 @@ class SafeCmdBridge(Node):
                 10,
             )
 
+        self._feedback_fault_pub = None
+        self._feedback_health_pub = None
+        self._feedback_subscription = None
+        if self.enable_feedback_watchdog:
+            self._feedback_fault_pub = self.create_publisher(
+                Bool,
+                self.feedback_fault_topic,
+                10,
+            )
+            self._feedback_health_pub = self.create_publisher(
+                String,
+                self.feedback_health_topic,
+                10,
+            )
+            self._feedback_subscription = self.create_subscription(
+                Odometry,
+                self.feedback_topic,
+                self._on_feedback,
+                10,
+            )
+
         timer_period = 1.0 / max(self.publish_rate_hz, 1.0)
         self._timer = self.create_timer(timer_period, self._on_timer)
 
@@ -88,7 +143,8 @@ class SafeCmdBridge(Node):
             f'{self.input_topic} -> {self.output_topic}, '
             f'topic_output={self.enable_topic_output}, '
             f'udp_output={self.enable_udp_output} udp={self.udp_host}:{self.udp_port}, '
-            f'fault_stop={self.enable_fault_stop} fault_topic={self.fault_topic}'
+            f'fault_stop={self.enable_fault_stop} fault_topic={self.fault_topic}, '
+            f'feedback_watchdog={self.enable_feedback_watchdog} feedback={self.feedback_topic}'
         )
 
     def _on_cmd_vel(self, msg):
@@ -108,12 +164,18 @@ class SafeCmdBridge(Node):
             self._target_vy = 0.0
             self._target_wz = 0.0
 
+    def _on_feedback(self, msg):
+        linear = msg.twist.twist.linear
+        self._feedback_speed = self._linear_command_norm(linear.x, linear.y)
+        self._last_feedback_time = time.monotonic()
+
     def _on_timer(self):
         now = time.monotonic()
         dt = max(now - self._last_update_time, 0.0)
         self._last_update_time = now
 
         target_vx, target_vy, target_wz = self._get_active_target(now)
+        self._update_feedback_watchdog(now, target_vx, target_vy)
 
         self._current_vx = self._limit_step(
             self._current_vx,
@@ -150,6 +212,15 @@ class SafeCmdBridge(Node):
                 self._last_fault_warn = now
             return 0.0, 0.0, 0.0
 
+        if self._feedback_fault_active:
+            if now - self._last_feedback_warn > 2.0:
+                self.get_logger().warn(
+                    'base feedback fault active, forcing safe velocity to zero: '
+                    + ', '.join(self._feedback_fault_reasons)
+                )
+                self._last_feedback_warn = now
+            return 0.0, 0.0, 0.0
+
         if self._last_cmd_time is None:
             return 0.0, 0.0, 0.0
 
@@ -164,6 +235,61 @@ class SafeCmdBridge(Node):
             self._last_timeout_warn = now
         return 0.0, 0.0, 0.0
 
+    def _update_feedback_watchdog(self, now, target_vx, target_vy):
+        if not self.enable_feedback_watchdog:
+            return
+
+        reasons = []
+        command_speed = self._linear_command_norm(target_vx, target_vy)
+        in_startup_grace = now - self._start_time < self.feedback_startup_grace_sec
+
+        if not in_startup_grace and self._last_feedback_time is None:
+            reasons.append('feedback_never_seen')
+
+        if self._last_feedback_time is not None:
+            feedback_age = now - self._last_feedback_time
+            if feedback_age > self.feedback_timeout_sec:
+                reasons.append(f'feedback_timeout:{feedback_age:.2f}s')
+
+        if command_speed >= self.min_command_speed_for_feedback:
+            if self._last_nonzero_cmd_time is None:
+                self._last_nonzero_cmd_time = now
+            command_age = now - self._last_nonzero_cmd_time
+            if (
+                command_age >= self.feedback_stall_timeout_sec
+                and self._feedback_speed < self.min_feedback_speed
+            ):
+                reasons.append(
+                    f'feedback_stall:cmd={command_speed:.2f},fb={self._feedback_speed:.2f}'
+                )
+        else:
+            self._last_nonzero_cmd_time = None
+
+        self._feedback_fault_active = bool(reasons)
+        self._feedback_fault_reasons = reasons
+        self._publish_feedback_status(now, command_speed)
+
+    def _publish_feedback_status(self, now, command_speed):
+        if self._feedback_fault_pub is None or self._feedback_health_pub is None:
+            return
+
+        fault_msg = Bool()
+        fault_msg.data = self._feedback_fault_active
+        self._feedback_fault_pub.publish(fault_msg)
+
+        payload = {
+            'ok': not self._feedback_fault_active,
+            'reasons': self._feedback_fault_reasons,
+            'command_speed': round(command_speed, 3),
+            'feedback_speed': round(self._feedback_speed, 3),
+            'feedback_age_sec': None
+            if self._last_feedback_time is None
+            else round(now - self._last_feedback_time, 3),
+        }
+        health_msg = String()
+        health_msg.data = json.dumps(payload, ensure_ascii=False)
+        self._feedback_health_pub.publish(health_msg)
+
     def _emit(self, msg):
         if self._publisher is not None:
             self._publisher.publish(msg)
@@ -174,6 +300,10 @@ class SafeCmdBridge(Node):
                 self._udp_socket.sendto(payload.encode('ascii'), (self.udp_host, self.udp_port))
             except OSError as exc:
                 self.get_logger().warn(f'UDP velocity send failed: {exc}')
+
+    @staticmethod
+    def _linear_command_norm(vx, vy):
+        return math.sqrt(vx * vx + vy * vy)
 
     def publish_zero(self):
         zero = Twist()
