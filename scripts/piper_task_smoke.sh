@@ -119,11 +119,13 @@ class PiperTaskSmoke(Node):
             ('Piper 3D 检测 /piper/perception/detections_3d', lambda: self.detections_3d is not None),
             ('Piper 调试图像 /piper/perception/debug_image', lambda: self.debug_image_seen),
             ('Piper 目标位姿 /piper/perception/target_pose', lambda: self.target_pose is not None),
-            ('Piper 抓取候选 /piper/grasp_candidates', lambda: self.grasp_candidates is not None),
+            ('Piper 抓取候选 /piper/grasp_candidates', self.grasp_candidate_metadata_ready),
         ]
         for label, predicate in checks:
             if not self.wait_until(label, predicate):
                 return 2
+        if not self.check_grasp_candidate_metadata():
+            return 2
 
         if not self.pick_client.wait_for_server(timeout_sec=10.0):
             self.get_logger().error('等待 /piper/task/pick_object action server 超时。')
@@ -138,6 +140,43 @@ class PiperTaskSmoke(Node):
             return 2
         self.get_logger().info('Piper fake pick/place action 烟测通过。')
         return 0
+
+    def check_grasp_candidate_metadata(self):
+        if self.grasp_candidates is None or not self.grasp_candidates.candidates:
+            self.get_logger().error('尚未收到抓取候选。')
+            return False
+        candidate = self.grasp_candidates.candidates[0]
+        tags = set(candidate.tags)
+        if candidate.object_class != 'center_depth_target':
+            self.get_logger().error(f'抓取候选未继承 3D detection class：{candidate.object_class}')
+            return False
+        if candidate.object_id != 'center_depth_target':
+            self.get_logger().error(f'抓取候选未继承 3D detection id：{candidate.object_id}')
+            return False
+        if 'detection_3d' not in tags or 'class:center_depth_target' not in tags:
+            self.get_logger().error(f'抓取候选缺少 detection_3d 元数据 tag：{candidate.tags}')
+            return False
+        if candidate.score < 0.49:
+            self.get_logger().error(f'抓取候选分数未继承 detection score：{candidate.score}')
+            return False
+        self.get_logger().info(
+            f'抓取候选已继承 3D detection 元数据：id={candidate.object_id}, '
+            f'class={candidate.object_class}, score={candidate.score:.2f}'
+        )
+        return True
+
+    def grasp_candidate_metadata_ready(self):
+        if self.grasp_candidates is None or not self.grasp_candidates.candidates:
+            return False
+        candidate = self.grasp_candidates.candidates[0]
+        tags = set(candidate.tags)
+        return (
+            candidate.object_id == 'center_depth_target'
+            and candidate.object_class == 'center_depth_target'
+            and 'detection_3d' in tags
+            and 'class:center_depth_target' in tags
+            and candidate.score >= 0.49
+        )
 
     def send_pick_goal(self):
         goal = PickObject.Goal()

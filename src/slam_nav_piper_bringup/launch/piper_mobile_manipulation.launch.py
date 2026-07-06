@@ -28,6 +28,7 @@ def generate_launch_description():
     fake_execution = LaunchConfiguration('fake_execution')
     real_backend_connected = LaunchConfiguration('real_backend_connected')
     publish_base_stop = LaunchConfiguration('publish_base_stop')
+    use_ranked_grasp_candidates = LaunchConfiguration('use_ranked_grasp_candidates')
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
@@ -46,6 +47,7 @@ def generate_launch_description():
         DeclareLaunchArgument('fake_execution', default_value='true'),
         DeclareLaunchArgument('real_backend_connected', default_value='false'),
         DeclareLaunchArgument('publish_base_stop', default_value='false'),
+        DeclareLaunchArgument('use_ranked_grasp_candidates', default_value='false'),
         include(
             'slam_nav_piper_description',
             'launch/piper_description.launch.py',
@@ -79,6 +81,7 @@ def generate_launch_description():
                 'fake_execution': fake_execution,
                 'real_backend_connected': real_backend_connected,
                 'publish_base_stop': publish_base_stop,
+                'use_ranked_grasp_candidates': use_ranked_grasp_candidates,
             },
         ),
     ])

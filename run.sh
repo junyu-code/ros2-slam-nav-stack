@@ -36,6 +36,7 @@ show_help() {
   task1-status          task1 当前剩余证据/下一步（不启动 GUI）
   task1-check           task1 交付材料预检（不启动 GUI）
   task1-runtime-check   task1 运行时链路检查（不启动 GUI）
+  task1-experiment-check task1 静态避障实验表/成功率检查（不启动 GUI）
   task1-delivery-check  task1 打包交付前自查（不启动 GUI）
   task1-package-preview task1 最终压缩包预览/可选创建
   task1-build-report    编译 task1 LaTeX 结课报告 PDF
@@ -65,9 +66,10 @@ show_help() {
   piper-real-readiness  Piper 实机接入前状态报告（默认不要求 ready）
   piper-real-dry-run    一键验证 Piper 实机入口默认安全拒绝真实执行
   piper-learning-smoke  一键验证 Piper 学习层抓取候选排序旁路
+  piper-ranked-gate     验证任务层显式打开后才消费 ranked 抓取候选
   piper-size-check      检查 Piper 外部依赖/数据/权重没有进入 Git 跟踪
   piper-static-check    Piper 静态配置验收（不启动 Gazebo/MoveIt2/真实硬件）
-  piper-full-smoke      顺序运行 Piper 安全、边界、体积、MoveIt2、手眼、TF、命名空间、控制、Gazebo、任务、学习烟测
+  piper-full-smoke      顺序运行 Piper 安全、边界、体积、手眼、TF、Gazebo、任务、学习、ranked、MoveIt2 烟测
   piper-boundary-check  检查 Piper 未泄漏进 task1/Nav2 或 /nav_camera
 
 示例：
@@ -78,6 +80,7 @@ show_help() {
   ./run.sh task1-status
   ./run.sh task1-check
   ./run.sh task1-runtime-check nav
+  ./run.sh task1-experiment-check
   ./run.sh task1-delivery-check
   ./run.sh task1-package-preview
   ./run.sh task1-build-report
@@ -107,6 +110,7 @@ show_help() {
   ./run.sh piper-real-readiness
   ./run.sh piper-real-dry-run
   ./run.sh piper-learning-smoke
+  ./run.sh piper-ranked-gate
   ./run.sh piper-size-check
   ./run.sh piper-static-check
   ./run.sh piper-full-smoke
@@ -141,6 +145,7 @@ script_for_command() {
     task1-status|task1-next|task1-todo|status-task1) echo "task1_status.sh" ;;
     task1-check|task1-preflight|task1) echo "task1_preflight.sh" ;;
     task1-runtime-check|task1-runtime|runtime-check) echo "task1_runtime_check.sh" ;;
+    task1-experiment-check|task1-experiment|experiment-check|experiment) echo "task1_experiment_check.sh" ;;
     task1-delivery-check|task1-delivery|delivery-check) echo "task1_delivery_check.sh" ;;
     task1-package-preview|task1-package|package-preview) echo "task1_package_preview.sh" ;;
     task1-build-report|task1-report|build-report|report-build) echo "build_task1_report.sh" ;;
@@ -170,6 +175,7 @@ script_for_command() {
     piper-real-readiness|piper-real-ready|piper-readiness) echo "piper_real_readiness.sh" ;;
     piper-real-dry-run|piper-real-dry|piper-real-smoke) echo "piper_real_dry_run.sh" ;;
     piper-learning-smoke|piper-learning) echo "piper_learning_smoke.sh" ;;
+    piper-ranked-gate|piper-ranked-candidate|piper-ranked-smoke) echo "piper_ranked_candidate_gate_smoke.sh" ;;
     piper-size-check|piper-size|piper-repo-size) echo "piper_repo_size_check.sh" ;;
     piper-static-check|piper-static|piper-config-check|piper-acceptance) echo "piper_static_acceptance.sh" ;;
     piper-full-smoke|piper-full|piper-all-smoke) echo "piper_full_smoke.sh" ;;
@@ -227,12 +233,13 @@ show_menu() {
  17) diagnose           运行时诊断
  18) task1-status       查看 task1 剩余证据和下一步
  19) task1-check        task1 交付材料预检
- 20) task1-delivery     task1 打包交付前自查
- 21) package-preview    task1 压缩包预览
- 22) build-report       编译 task1 结课报告 PDF
- 23) task1-finalize     task1 最终交付编排
- 24) real-preflight     实机部署前预检
- 25) build              编译工作区
+ 20) experiment-check   task1 静态避障实验表检查
+ 21) task1-delivery     task1 打包交付前自查
+ 22) package-preview    task1 压缩包预览
+ 23) build-report       编译 task1 结课报告 PDF
+ 24) task1-finalize     task1 最终交付编排
+ 25) real-preflight     实机部署前预检
+ 26) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 
@@ -274,12 +281,13 @@ case "${choice}" in
   17) run_command diagnose ;;
   18) run_command task1-status ;;
   19) run_command task1-check ;;
-  20) run_command task1-delivery-check ;;
-  21) run_command task1-package-preview ;;
-  22) run_command task1-build-report ;;
-  23) run_command task1-finalize ;;
-  24) run_command real-preflight ;;
-  25) run_command build ;;
+  20) run_command task1-experiment-check ;;
+  21) run_command task1-delivery-check ;;
+  22) run_command task1-package-preview ;;
+  23) run_command task1-build-report ;;
+  24) run_command task1-finalize ;;
+  25) run_command real-preflight ;;
+  26) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

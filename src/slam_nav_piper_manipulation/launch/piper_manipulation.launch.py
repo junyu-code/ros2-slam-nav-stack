@@ -22,6 +22,7 @@ def generate_launch_description():
     hand_eye_calibrated = LaunchConfiguration('hand_eye_calibrated')
     hand_eye_result_must_exist = LaunchConfiguration('hand_eye_result_must_exist')
     hand_eye_result_path = LaunchConfiguration('hand_eye_result_path')
+    use_ranked_grasp_candidates = LaunchConfiguration('use_ranked_grasp_candidates')
     config_file = LaunchConfiguration('config_file')
 
     return LaunchDescription([
@@ -32,6 +33,7 @@ def generate_launch_description():
         DeclareLaunchArgument('base_stop_confirmed', default_value='false'),
         DeclareLaunchArgument('hand_eye_calibrated', default_value='false'),
         DeclareLaunchArgument('hand_eye_result_must_exist', default_value='true'),
+        DeclareLaunchArgument('use_ranked_grasp_candidates', default_value='false'),
         DeclareLaunchArgument(
             'hand_eye_result_path',
             default_value='datasets/piper_hand_eye/piper_eye_in_hand.yaml',
@@ -53,6 +55,7 @@ def generate_launch_description():
                     'hand_eye_calibrated': ParameterValue(hand_eye_calibrated, value_type=bool),
                     'hand_eye_result_must_exist': ParameterValue(hand_eye_result_must_exist, value_type=bool),
                     'hand_eye_result_path': hand_eye_result_path,
+                    'use_ranked_grasp_candidates': ParameterValue(use_ranked_grasp_candidates, value_type=bool),
                 },
             ],
             output='screen',

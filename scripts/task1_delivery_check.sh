@@ -135,6 +135,20 @@ else
   warn "实验记录表仍有 ${experiment_pending} 个待填字段；10 次静态避障实验完成后再清理"
 fi
 
+if [[ -x "scripts/task1_experiment_check.sh" ]]; then
+  experiment_args=()
+  if [[ "${STRICT}" == "true" ]]; then
+    experiment_args+=(--strict)
+  fi
+  if "scripts/task1_experiment_check.sh" "${experiment_args[@]}"; then
+    ok "静态避障实验记录检查已执行"
+  else
+    warn "静态避障实验记录检查未通过；请先补齐 10 次记录并保证成功率 >= 80%"
+  fi
+else
+  fail "缺少静态避障实验记录检查脚本: scripts/task1_experiment_check.sh"
+fi
+
 competition_hits="$(grep -RInE 'RoboMaster|RMUC|哨兵|云台|比赛模式|比赛业务' \
   tasks/task1/SLAM_FINAL_REPORT_DRAFT.md \
   tasks/task1/report_latex/main.tex 2>/dev/null || true)"

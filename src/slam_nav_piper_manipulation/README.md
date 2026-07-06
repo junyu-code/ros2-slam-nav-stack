@@ -9,7 +9,9 @@ Piper 抓取/放置任务层。它暴露项目侧 action，不直接暴露 MoveI
 /piper/task/place_object
 ```
 
-当前实现是安全的占位执行：会读取 `/piper/perception/target_pose`，发布 `/piper/grasp_candidates`，并向 `/piper/control/owner_request` 申请 `moveit` owner。默认 `publish_base_stop=false`，不会主动改写 `/cmd_vel`，避免影响 task1 主流程。
+当前实现是安全的占位执行：会读取 `/piper/perception/target_pose` 和 `/piper/perception/detections_3d`，发布 `/piper/grasp_candidates`，并向 `/piper/control/owner_request` 申请 `moveit` owner。默认 `publish_base_stop=false`，不会主动改写 `/cmd_vel`，避免影响 task1 主流程。
+
+抓取候选会优先继承 3D detection 的 `object_id`、`object_class`、`score` 和 `detection_3d` 标签；若暂时没有 detection，则退回 `target_pose_fallback` 候选。这样后续真实识别网络或学习排序层可以直接消费语义元数据，而不用依赖厂家话题名。
 
 实机移动操作时，应由任务编排层显式暂停导航或打开 `publish_base_stop`。
 
@@ -21,7 +23,7 @@ Piper 抓取/放置任务层。它暴露项目侧 action，不直接暴露 MoveI
 ./run.sh piper-task-smoke
 ```
 
-该脚本会启动 Piper fake 感知链路，等待目标位姿与抓取候选，再向 pick/place action 各发送一次 goal。它只验证任务接口和状态机，不接真实 MoveIt2 执行后端或厂家 SDK。当前已验证 fake pick/place 均返回成功。
+该脚本会启动 Piper fake 感知链路，等待 2D/3D 检测、debug image、目标位姿与带 `detection_3d` 元数据的抓取候选，再向 pick/place action 各发送一次 goal。它只验证任务接口和状态机，不接真实 MoveIt2 执行后端或厂家 SDK。当前已验证 fake pick/place 均返回成功。
 
 实机入口默认安全拒绝烟测：
 

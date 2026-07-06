@@ -2,6 +2,7 @@ piper:
   piper_task_server_node:
     ros__parameters:
       target_pose_topic: /piper/perception/target_pose
+      detections_3d_topic: /piper/perception/detections_3d
       grasp_candidates_topic: /piper/grasp_candidates
       control_state_topic: /piper/control/state
       owner_request_topic: /piper/control/owner_request

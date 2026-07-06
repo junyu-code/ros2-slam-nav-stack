@@ -10,7 +10,7 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 ./run.sh piper-full-smoke
 ```
 
-该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-size-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-hand-eye-gate`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-mobile-sequence`、`piper-mission-demo`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、仓库体积边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、真实 pick 标定门禁、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、移动操作组合入口、mission 行为层 action 边界、学习排序到 MoveIt2 plan-only 都是通的。
+该入口会顺序跑 `piper-safety-check`、`piper-boundary-check`、`piper-size-check`、`piper-preflight --require-official`、官方 frame audit、`piper-moveit-config`、`piper-hand-eye-check`、`piper-hand-eye-gate`、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-mobile-sequence`、`piper-mission-demo`、`piper-learning-smoke`、`piper-ranked-gate` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从安全默认值、task1 隔离边界、仓库体积边界、官方 URDF/MoveIt2 映射、手眼标定配置边界、真实 pick 标定门禁、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、移动操作组合入口、mission 行为层 action 边界、学习排序、任务层 ranked 候选显式消费到 MoveIt2 plan-only 都是通的。
 
 只检查安全默认值，不启动 ROS 节点：
 
@@ -74,7 +74,7 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=placeholder
 ./run.sh piper-task-smoke
 ```
 
-该入口会等待 Piper 假 RGB-D、非空 `/piper/perception/detections_2d`、非空 `/piper/perception/detections_3d`、`/piper/perception/debug_image`、目标位姿、抓取候选和 `/piper/task/*` action server，然后发送一次 fake pick/place goal。它不启动 Nav2、不执行真实轨迹、不连接 SDK。当前无 GUI 冒烟已验证通过。
+该入口会等待 Piper 假 RGB-D、非空 `/piper/perception/detections_2d`、非空 `/piper/perception/detections_3d`、`/piper/perception/debug_image`、目标位姿、带 3D detection 元数据的抓取候选和 `/piper/task/*` action server，然后发送一次 fake pick/place goal。它不启动 Nav2、不执行真实轨迹、不连接 SDK。当前无 GUI 冒烟已验证通过。
 
 移动操作组合入口烟测：
 
@@ -168,6 +168,14 @@ sudo apt-get install ros-humble-moveit-planners-ompl ros-humble-moveit-simple-co
 ```
 
 该入口只启动学习排序旁路，发布假抓取候选并检查 ranked 输出顺序。任务层默认仍不消费 `/piper/learning/grasp_candidates_ranked`。
+
+任务层 ranked 候选显式消费门禁：
+
+```bash
+./run.sh piper-ranked-gate
+```
+
+该入口不启动学习模型或真实后端，只验证 `use_ranked_grasp_candidates:=true` 时任务层会使用 ranked pre-grasp。默认 launch 和配置仍保持关闭。
 
 仓库体积边界检查：
 

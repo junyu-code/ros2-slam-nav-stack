@@ -10,6 +10,7 @@ from rclpy.node import Node
 from slam_nav_piper_interfaces.action import PickObject, PlaceObject
 from slam_nav_piper_interfaces.msg import GraspCandidate, GraspCandidateArray
 from std_msgs.msg import String
+from vision_msgs.msg import Detection3DArray
 
 
 class PiperTaskServerNode(Node):
@@ -18,6 +19,7 @@ class PiperTaskServerNode(Node):
     def __init__(self):
         super().__init__('piper_task_server_node')
         self.declare_parameter('target_pose_topic', '/piper/perception/target_pose')
+        self.declare_parameter('detections_3d_topic', '/piper/perception/detections_3d')
         self.declare_parameter('grasp_candidates_topic', '/piper/grasp_candidates')
         self.declare_parameter('control_state_topic', '/piper/control/state')
         self.declare_parameter('owner_request_topic', '/piper/control/owner_request')
@@ -38,6 +40,8 @@ class PiperTaskServerNode(Node):
         self.declare_parameter('hand_eye_result_path', 'datasets/piper_hand_eye/piper_eye_in_hand.yaml')
 
         self.latest_target_pose = None
+        self.latest_detection_3d = None
+        self.latest_ranked_candidates = None
         self.control_state = ''
         self.fake_execution = bool(self.get_parameter('fake_execution').value)
         self.real_backend_connected = bool(self.get_parameter('real_backend_connected').value)
@@ -67,6 +71,19 @@ class PiperTaskServerNode(Node):
             self.target_pose_callback,
             10,
         )
+        self.create_subscription(
+            Detection3DArray,
+            str(self.get_parameter('detections_3d_topic').value),
+            self.detections_3d_callback,
+            10,
+        )
+        if self.use_ranked_grasp_candidates:
+            self.create_subscription(
+                GraspCandidateArray,
+                str(self.get_parameter('ranked_grasp_candidates_topic').value),
+                self.ranked_grasp_candidates_callback,
+                10,
+            )
         self.create_subscription(
             String,
             str(self.get_parameter('control_state_topic').value),
@@ -106,7 +123,11 @@ class PiperTaskServerNode(Node):
         self.get_logger().info(
             f'Piper 任务 action server 已启动，fake_execution={self.fake_execution}。'
         )
-        if not self.use_ranked_grasp_candidates:
+        if self.use_ranked_grasp_candidates:
+            self.get_logger().warn(
+                'Piper 任务层已显式打开学习排序候选消费；确认当前只用于仿真/离线验收。'
+            )
+        else:
             self.get_logger().info('Piper 任务层未接入学习排序结果，继续使用原始 grasp candidates。')
         if not self.fake_execution and not self.real_backend_connected:
             self.get_logger().warn('Piper fake_execution=false，但真实后端未声明接入；任务会安全拒绝执行。')
@@ -118,6 +139,14 @@ class PiperTaskServerNode(Node):
     def target_pose_callback(self, msg):
         self.latest_target_pose = msg
 
+    def detections_3d_callback(self, msg):
+        if msg.detections:
+            self.latest_detection_3d = msg.detections[0]
+
+    def ranked_grasp_candidates_callback(self, msg):
+        if msg.candidates:
+            self.latest_ranked_candidates = msg
+
     def control_state_callback(self, msg):
         self.control_state = msg.data
 
@@ -126,22 +155,73 @@ class PiperTaskServerNode(Node):
             return
         array = GraspCandidateArray()
         array.header = self.latest_target_pose.header
+        detection_metadata = self.latest_detection_metadata()
+        grasp_pose = self.pose_from_latest_detection() or self.latest_target_pose
         candidate = GraspCandidate()
-        candidate.header = self.latest_target_pose.header
-        candidate.object_id = 'latest_target'
-        candidate.object_class = 'unknown'
-        candidate.grasp_pose = self.latest_target_pose
+        candidate.header = grasp_pose.header
+        candidate.object_id = detection_metadata['object_id']
+        candidate.object_class = detection_metadata['object_class']
+        candidate.grasp_pose = grasp_pose
         candidate.pre_grasp_pose = self.make_pre_grasp_pose(
-            self.latest_target_pose,
+            grasp_pose,
             self.default_approach_distance_m,
         )
-        candidate.score = 0.50
+        candidate.score = detection_metadata['score']
         candidate.gripper_width_m = self.default_gripper_width_m
         candidate.approach_distance_m = self.default_approach_distance_m
-        candidate.source_frame = self.latest_target_pose.header.frame_id
-        candidate.tags = ['depth_center_placeholder']
+        candidate.source_frame = grasp_pose.header.frame_id
+        candidate.tags = detection_metadata['tags']
         array.candidates.append(candidate)
         self.grasp_pub.publish(array)
+
+    def latest_detection_metadata(self):
+        detection = self.latest_detection_3d
+        metadata = {
+            'object_id': 'latest_target',
+            'object_class': 'unknown',
+            'score': 0.50,
+            'tags': ['target_pose_fallback'],
+        }
+        if detection is None:
+            return metadata
+
+        object_class = 'unknown'
+        score = 0.50
+        if detection.results:
+            hypothesis = detection.results[0].hypothesis
+            object_class = hypothesis.class_id or object_class
+            score = float(hypothesis.score)
+
+        metadata['object_id'] = detection.id or object_class or 'latest_target'
+        metadata['object_class'] = object_class
+        metadata['score'] = score
+        # 这些 tag 让学习/调试层能知道候选来自 3D 检测，而不是纯 target_pose fallback。
+        metadata['tags'] = ['detection_3d', f'class:{object_class}', f'source:{detection.header.frame_id}']
+        return metadata
+
+    def pose_from_latest_detection(self):
+        detection = self.latest_detection_3d
+        if detection is None or not detection.header.frame_id:
+            return None
+        pose = PoseStamped()
+        pose.header = detection.header
+        pose.pose = detection.bbox.center
+        return pose
+
+    def best_ranked_candidate(self):
+        if not self.use_ranked_grasp_candidates or self.latest_ranked_candidates is None:
+            return None
+        if not self.latest_ranked_candidates.candidates:
+            return None
+        return self.latest_ranked_candidates.candidates[0]
+
+    def resolve_pick_target(self, requested_pose):
+        if requested_pose.header.frame_id:
+            return requested_pose, None
+        ranked_candidate = self.best_ranked_candidate()
+        if ranked_candidate is not None and ranked_candidate.grasp_pose.header.frame_id:
+            return ranked_candidate.grasp_pose, ranked_candidate
+        return self.latest_target_pose, None
 
     def execute_pick(self, goal_handle):
         goal = goal_handle.request
@@ -156,20 +236,25 @@ class PiperTaskServerNode(Node):
         if not self.check_execution_allowed(goal_handle, result, operation='pick'):
             return result
 
-        target_pose = goal.target_pose
-        if not target_pose.header.frame_id:
-            if self.latest_target_pose is None:
-                goal_handle.abort()
-                result.success = False
-                result.message = '没有目标位姿，无法执行 pick。'
-                return result
-            target_pose = self.latest_target_pose
+        target_pose, ranked_candidate = self.resolve_pick_target(goal.target_pose)
+        if target_pose is None or not target_pose.header.frame_id:
+            goal_handle.abort()
+            result.success = False
+            result.message = '没有目标位姿或 ranked 抓取候选，无法执行 pick。'
+            return result
 
         self.publish_feedback(goal_handle, feedback, '生成抓取候选', 0.35)
-        pre_grasp = self.make_pre_grasp_pose(
-            target_pose,
-            goal.approach_distance_m or self.default_approach_distance_m,
-        )
+        if ranked_candidate is not None and ranked_candidate.pre_grasp_pose.header.frame_id:
+            pre_grasp = ranked_candidate.pre_grasp_pose
+            self.get_logger().info(
+                f'Piper pick 使用 ranked 抓取候选：id={ranked_candidate.object_id}, '
+                f'score={ranked_candidate.score:.2f}'
+            )
+        else:
+            pre_grasp = self.make_pre_grasp_pose(
+                target_pose,
+                goal.approach_distance_m or self.default_approach_distance_m,
+            )
 
         self.publish_feedback(goal_handle, feedback, '规划到预抓取位姿', 0.55)
         self.sleep_step(0.4)

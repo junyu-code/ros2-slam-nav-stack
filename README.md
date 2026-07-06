@@ -21,6 +21,7 @@ cd ~/slam_nav_ws
 ./run.sh task1-status
 ./run.sh task1-check
 ./run.sh task1-runtime-check nav
+./run.sh task1-experiment-check
 ./run.sh task1-delivery-check
 ./run.sh task1-package-preview
 ./run.sh task1-build-report
@@ -71,15 +72,17 @@ cd ~/slam_nav_ws
 cd ~/slam_nav_ws
 ./run.sh task1-status
 ./run.sh task1-check
+./run.sh task1-experiment-check
 ./run.sh task1-delivery-check
 ```
 
-这些命令都不会启动 Gazebo、RViz 或 Nav2。`task1-status` 是最短状态页，会告诉你当前还缺哪些截图、实验记录、报告 PDF 或 Git 提交；`task1-check` 主要检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位；普通模式下，缺截图和待填实验记录只会显示 warning。
+这些命令都不会启动 Gazebo、RViz 或 Nav2。`task1-status` 是最短状态页，会告诉你当前还缺哪些截图、实验记录、报告 PDF 或 Git 提交；`task1-check` 主要检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位；`task1-experiment-check` 会解析 `EXPERIMENT_RECORD.md` 中 10 次静态避障实验表，统计成功次数、碰撞次数和是否达到 80% 成功率；普通模式下，缺截图和待填实验记录只会显示 warning。
 
 `task1-delivery-check` 更偏向打包视角：它会列出建议压缩包名、必须包含的源码/文档/报告材料、仍缺的截图、实验记录待填字段，以及 Git 中是否误跟踪了 `build/`、`install/`、`log/`、rosbag、点云或模型权重等重型产物。最终打包前建议执行：
 
 ```bash
 ./run.sh task1-check --strict
+./run.sh task1-experiment-check --strict
 ./run.sh task1-delivery-check --strict
 ```
 
@@ -706,7 +709,7 @@ Piper 全链路烟测：
 ./run.sh piper-full-smoke
 ```
 
-它会顺序运行安全配置检查、边界检查、依赖预检、官方 frame 审计、MoveIt2 配置映射审计、手眼标定配置检查、运行时 TF 链、runtime 命名空间图、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、移动操作组合入口、mission_behavior 到 Piper action 边界、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
+它会顺序运行安全配置检查、边界检查、依赖预检、官方 frame 审计、MoveIt2 配置映射审计、手眼标定配置检查、运行时 TF 链、runtime 命名空间图、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、移动操作组合入口、mission_behavior 到 Piper action 边界、学习层候选排序、任务层 ranked 候选显式消费门禁、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
 
 只检查实机前安全默认值：
 
@@ -798,7 +801,7 @@ source install/setup.bash
 ./run.sh piper-task-smoke
 ```
 
-该入口会在独立 `ROS_DOMAIN_ID` 下启动 `piper_sim`，等待 `/piper/arm_camera/*`、`/piper/perception/detections_2d`、`/piper/perception/detections_3d`、`/piper/perception/debug_image`、`/piper/perception/target_pose`、`/piper/grasp_candidates`，然后向 `/piper/task/pick_object` 和 `/piper/task/place_object` 各发送一次 fake goal。它已经完成无 GUI 冒烟验证，只检查项目侧任务边界，不启动 Nav2、不连接真实 SDK。
+该入口会在独立 `ROS_DOMAIN_ID` 下启动 `piper_sim`，等待 `/piper/arm_camera/*`、`/piper/perception/detections_2d`、`/piper/perception/detections_3d`、`/piper/perception/debug_image`、`/piper/perception/target_pose`、`/piper/grasp_candidates`，并确认抓取候选继承 3D detection 的 id/class/score/tag，然后向 `/piper/task/pick_object` 和 `/piper/task/place_object` 各发送一次 fake goal。它已经完成无 GUI 冒烟验证，只检查项目侧任务边界，不启动 Nav2、不连接真实 SDK。
 
 一键验证移动操作组合入口：
 
@@ -969,6 +972,14 @@ ros2 launch slam_nav_piper_learning piper_learning.launch.py enable_learning:=tr
 ```
 
 `piper-learning-smoke` 会发布 3 个假抓取候选，确认 `/piper/learning/grasp_candidates_ranked` 按分数排序并带上学习后端标签。默认任务层不会消费 ranked 输出，训练数据、模型权重、checkpoint 和 rosbag 也都被 `.gitignore` 排除，避免把 GitHub 仓库撑大。
+
+显式验证任务层消费 ranked 候选：
+
+```bash
+./run.sh piper-ranked-gate
+```
+
+该入口只启动任务层并手动发布 ranked 候选，确认 `use_ranked_grasp_candidates:=true` 时 pick 会使用 ranked pre-grasp；默认配置仍保持 `false`。
 
 担心后续 Piper、相机数据或强化学习产物把仓库撑大时，运行：
 
