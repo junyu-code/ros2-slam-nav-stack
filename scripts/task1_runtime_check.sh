@@ -8,7 +8,9 @@ cd "${WORKSPACE_DIR}"
 source "${SCRIPT_DIR}/setup_workspace_env.sh"
 set -u
 
-mode="${1:-auto}"
+mode="auto"
+SAVE_SUMMARY=false
+SUMMARY_PATH="tasks/task1/TASK1_RUNTIME_LAST.md"
 sample_seconds="${TASK1_RUNTIME_SAMPLE_SECONDS:-6}"
 errors=0
 warnings=0
@@ -119,28 +121,85 @@ check_lifecycle_active() {
 print_usage() {
   cat <<'EOF'
 用法:
-  ./run.sh task1-runtime-check [mapping|nav|dynamic|auto]
+  ./run.sh task1-runtime-check [mapping|nav|dynamic|auto] [--save] [--output <path>]
 
 说明:
   mapping  检查仿真 + 建图链路是否具备保存地图条件
   nav      检查仿真 + 已保存地图导航链路是否具备发目标点条件
   dynamic  检查动态障碍物/3D 增强演示链路的关键话题
   auto     根据当前 ROS 图自动判断，默认值
+  --save   将本次检查终端输出保存为 Markdown 快照，默认写入 tasks/task1/TASK1_RUNTIME_LAST.md
+  --output  配合 --save 指定快照路径
 
 环境变量:
   TASK1_RUNTIME_SAMPLE_SECONDS=6  设置 topic hz 采样秒数
 EOF
 }
 
-if [[ "${mode}" == "-h" || "${mode}" == "--help" ]]; then
-  print_usage
-  exit 0
-fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    mapping|nav|dynamic|auto)
+      mode="$1"
+      ;;
+    --save)
+      SAVE_SUMMARY=true
+      ;;
+    --output)
+      if [[ -z "${2:-}" ]]; then
+        echo "[task1-runtime] --output 需要路径参数" >&2
+        exit 2
+      fi
+      SUMMARY_PATH="$2"
+      shift
+      ;;
+    -h|--help|help)
+      print_usage
+      exit 0
+      ;;
+    *)
+      fail "未知参数: $1"
+      print_usage
+      exit 2
+      ;;
+  esac
+  shift
+done
 
 if [[ ! "${mode}" =~ ^(mapping|nav|dynamic|auto)$ ]]; then
   fail "未知模式: ${mode}"
   print_usage
   exit 2
+fi
+
+if [[ "${SAVE_SUMMARY}" == "true" && "${TASK1_RUNTIME_SAVE_ACTIVE:-false}" != "true" ]]; then
+  tmp_output="$(mktemp)"
+  cleanup_runtime_summary() {
+    rm -f "${tmp_output}"
+  }
+  trap cleanup_runtime_summary EXIT
+
+  set +e
+  TASK1_RUNTIME_SAVE_ACTIVE=true "$0" "${mode}" 2>&1 | tee "${tmp_output}"
+  status="${PIPESTATUS[0]}"
+  set -e
+
+  mkdir -p "$(dirname "${SUMMARY_PATH}")"
+  {
+    echo "# Task1 运行时检查快照"
+    echo
+    echo "> 自动生成时间：$(date '+%Y-%m-%d %H:%M:%S %z')"
+    echo ">"
+    echo "> 生成命令：\`./run.sh task1-runtime-check ${mode} --save\`"
+    echo ">"
+    echo "> 说明：本文件记录真实运行中的 ROS 图检查结果，可作为填写 EXPERIMENT_RECORD.md 的依据，但不能替代截图。"
+    echo
+    echo '```text'
+    cat "${tmp_output}"
+    echo '```'
+  } > "${SUMMARY_PATH}"
+
+  echo "[task1-runtime] 已写入运行时快照: ${SUMMARY_PATH}"
+  exit "${status}"
 fi
 
 echo "[task1-runtime] 工作区: ${WORKSPACE_DIR}"

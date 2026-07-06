@@ -189,6 +189,7 @@ def check_config(report, workspace_root, args):
         '/piper/arm_camera/depth/points',
         '/piper/perception/target_pose',
         '/piper/grasp_candidates',
+        '/piper/visualization/grasp_candidates',
         '/piper/learning/grasp_candidates_ranked',
     }
     report.expect(

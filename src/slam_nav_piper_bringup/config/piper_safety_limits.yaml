@@ -17,4 +17,5 @@ piper_safety_limits:
       - /piper/perception/detections_3d
       - /piper/perception/target_pose
       - /piper/grasp_candidates
+      - /piper/visualization/grasp_candidates
       - /piper/learning/grasp_candidates_ranked

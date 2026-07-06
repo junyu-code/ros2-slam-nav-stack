@@ -71,6 +71,7 @@ check_file "tasks/task1/STUDENT_INFO.md" "个人信息记录"
 check_file "tasks/task1/DELIVERY_CHECKLIST.md" "交付检查清单"
 check_file "tasks/task1/TASK1_FINAL_RUNBOOK.md" "task1 最终 Runbook"
 check_file "tasks/task1/TASK1_EVIDENCE_TODO.md" "task1 剩余证据采集清单"
+check_optional_file "tasks/task1/TASK1_STATUS_SNAPSHOT.md" "task1 当前状态快照"
 check_file "tasks/task1/RUN_AND_SCREENSHOT_STEPS.md" "运行与截图步骤"
 check_file "tasks/task1/EXPERIMENT_RECORD.md" "实验记录表"
 check_file "tasks/task1/SLAM_FINAL_REPORT_DRAFT.md" "Markdown 报告草稿"
@@ -147,6 +148,20 @@ if [[ -x "scripts/task1_experiment_check.sh" ]]; then
   fi
 else
   fail "缺少静态避障实验记录检查脚本: scripts/task1_experiment_check.sh"
+fi
+
+if [[ -x "scripts/task1_report_audit.sh" ]]; then
+  report_audit_args=()
+  if [[ "${STRICT}" == "true" ]]; then
+    report_audit_args+=(--strict)
+  fi
+  if "scripts/task1_report_audit.sh" "${report_audit_args[@]}"; then
+    ok "结课报告源文件、截图和 PDF 审计已执行"
+  else
+    warn "结课报告审计未通过；请先补齐截图、清理待填字段并重新编译 PDF"
+  fi
+else
+  fail "缺少结课报告审计脚本: scripts/task1_report_audit.sh"
 fi
 
 competition_hits="$(grep -RInE 'RoboMaster|RMUC|哨兵|云台|比赛模式|比赛业务' \

@@ -10,6 +10,7 @@ REPORT_TEX="tasks/task1/report_latex/main.tex"
 REPORT_PDF="tasks/task1/report_latex/main.pdf"
 EXPERIMENT_RECORD="tasks/task1/EXPERIMENT_RECORD.md"
 REPORT_DRAFT="tasks/task1/SLAM_FINAL_REPORT_DRAFT.md"
+RUNTIME_SNAPSHOT="tasks/task1/TASK1_RUNTIME_LAST.md"
 
 required_figs=(
   "fig_6_1_gazebo_world.png|图 6-1 Gazebo 静态场地总览|./run.sh clean && ./run.sh sim-static"
@@ -93,6 +94,12 @@ if [[ -f "${REPORT_PDF}" ]]; then
   pass "结课报告 PDF 存在: ${REPORT_PDF}，更新时间 $(file_mtime "${REPORT_PDF}")"
 else
   warn "结课报告 PDF 不存在，补齐截图后执行 ./run.sh task1-build-report"
+fi
+
+if [[ -f "${RUNTIME_SNAPSHOT}" ]]; then
+  pass "运行时检查快照存在: ${RUNTIME_SNAPSHOT}，更新时间 $(file_mtime "${RUNTIME_SNAPSHOT}")"
+else
+  warn "运行时检查快照尚未生成；启动建图或导航后可运行 ./run.sh task1-runtime-check mapping --save 或 ./run.sh task1-runtime-check nav --save"
 fi
 
 echo

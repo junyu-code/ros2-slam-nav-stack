@@ -13,6 +13,8 @@ Piper 抓取/放置任务层。它暴露项目侧 action，不直接暴露 MoveI
 
 抓取候选会优先继承 3D detection 的 `object_id`、`object_class`、`score` 和 `detection_3d` 标签；若暂时没有 detection，则退回 `target_pose_fallback` 候选。这样后续真实识别网络或学习排序层可以直接消费语义元数据，而不用依赖厂家话题名。
 
+任务层还会发布 `/piper/visualization/grasp_candidates`，类型为 `visualization_msgs/MarkerArray`。RViz 中可以看到 grasp 点、pre-grasp 点、approach 向量和候选标签；这只是调试可视化，不参与 MoveIt2 执行或 Nav2 costmap。
+
 实机移动操作时，应由任务编排层显式暂停导航或打开 `publish_base_stop`。
 
 真实 pick 路径默认还要求手眼标定已经人工验收：`require_hand_eye_calibration_before_pick=true`、`hand_eye_calibrated=false`、`hand_eye_result_must_exist=true`。fake 冒烟不受这个门禁影响；当 `fake_execution=false` 且 `real_backend_connected=true` 时，未标定的 pick action 会安全拒绝。
@@ -23,7 +25,7 @@ Piper 抓取/放置任务层。它暴露项目侧 action，不直接暴露 MoveI
 ./run.sh piper-task-smoke
 ```
 
-该脚本会启动 Piper fake 感知链路，等待 2D/3D 检测、debug image、目标位姿与带 `detection_3d` 元数据的抓取候选，再向 pick/place action 各发送一次 goal。它只验证任务接口和状态机，不接真实 MoveIt2 执行后端或厂家 SDK。当前已验证 fake pick/place 均返回成功。
+该脚本会启动 Piper fake 感知链路，等待 2D/3D 检测、debug image、目标位姿、带 `detection_3d` 元数据的抓取候选和抓取候选 MarkerArray，再向 pick/place action 各发送一次 goal。它只验证任务接口和状态机，不接真实 MoveIt2 执行后端或厂家 SDK。当前已验证 fake pick/place 均返回成功。
 
 实机入口默认安全拒绝烟测：
 

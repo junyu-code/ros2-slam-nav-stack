@@ -4,12 +4,13 @@ import time
 from pathlib import Path
 
 import rclpy
-from geometry_msgs.msg import PoseStamped, Twist
+from geometry_msgs.msg import Point, PoseStamped, Twist
 from rclpy.action import ActionServer
 from rclpy.node import Node
 from slam_nav_piper_interfaces.action import PickObject, PlaceObject
 from slam_nav_piper_interfaces.msg import GraspCandidate, GraspCandidateArray
 from std_msgs.msg import String
+from visualization_msgs.msg import Marker, MarkerArray
 from vision_msgs.msg import Detection3DArray
 
 
@@ -21,6 +22,7 @@ class PiperTaskServerNode(Node):
         self.declare_parameter('target_pose_topic', '/piper/perception/target_pose')
         self.declare_parameter('detections_3d_topic', '/piper/perception/detections_3d')
         self.declare_parameter('grasp_candidates_topic', '/piper/grasp_candidates')
+        self.declare_parameter('visualization_markers_topic', '/piper/visualization/grasp_candidates')
         self.declare_parameter('control_state_topic', '/piper/control/state')
         self.declare_parameter('owner_request_topic', '/piper/control/owner_request')
         self.declare_parameter('base_cmd_vel_topic', '/cmd_vel')
@@ -93,6 +95,11 @@ class PiperTaskServerNode(Node):
         self.grasp_pub = self.create_publisher(
             GraspCandidateArray,
             str(self.get_parameter('grasp_candidates_topic').value),
+            10,
+        )
+        self.marker_pub = self.create_publisher(
+            MarkerArray,
+            str(self.get_parameter('visualization_markers_topic').value),
             10,
         )
         self.owner_pub = self.create_publisher(
@@ -173,6 +180,87 @@ class PiperTaskServerNode(Node):
         candidate.tags = detection_metadata['tags']
         array.candidates.append(candidate)
         self.grasp_pub.publish(array)
+        self.publish_grasp_markers(array)
+
+    def publish_grasp_markers(self, candidates):
+        marker_array = MarkerArray()
+        for index, candidate in enumerate(candidates.candidates[:5]):
+            base_id = index * 10
+            marker_array.markers.append(
+                self.make_pose_marker(
+                    candidate.grasp_pose,
+                    'grasp_pose',
+                    base_id,
+                    Marker.SPHERE,
+                    (0.055, 0.055, 0.055),
+                    (0.1, 0.95, 0.35, 0.85),
+                )
+            )
+            marker_array.markers.append(
+                self.make_pose_marker(
+                    candidate.pre_grasp_pose,
+                    'pre_grasp_pose',
+                    base_id + 1,
+                    Marker.SPHERE,
+                    (0.040, 0.040, 0.040),
+                    (0.1, 0.45, 1.0, 0.75),
+                )
+            )
+            marker_array.markers.append(self.make_approach_marker(candidate, base_id + 2))
+            marker_array.markers.append(self.make_label_marker(candidate, base_id + 3))
+        self.marker_pub.publish(marker_array)
+
+    def make_pose_marker(self, pose_stamped, namespace, marker_id, marker_type, scale, color):
+        marker = Marker()
+        marker.header = pose_stamped.header
+        marker.ns = namespace
+        marker.id = marker_id
+        marker.type = marker_type
+        marker.action = Marker.ADD
+        marker.pose = pose_stamped.pose
+        marker.scale.x = float(scale[0])
+        marker.scale.y = float(scale[1])
+        marker.scale.z = float(scale[2])
+        marker.color.r = float(color[0])
+        marker.color.g = float(color[1])
+        marker.color.b = float(color[2])
+        marker.color.a = float(color[3])
+        marker.lifetime.sec = 1
+        return marker
+
+    def make_approach_marker(self, candidate, marker_id):
+        marker = Marker()
+        marker.header = candidate.header
+        marker.ns = 'approach_vector'
+        marker.id = marker_id
+        marker.type = Marker.ARROW
+        marker.action = Marker.ADD
+        marker.points = [
+            self.point_from_pose(candidate.pre_grasp_pose),
+            self.point_from_pose(candidate.grasp_pose),
+        ]
+        marker.scale.x = 0.012
+        marker.scale.y = 0.030
+        marker.scale.z = 0.050
+        marker.color.r = 0.0
+        marker.color.g = 0.85
+        marker.color.b = 1.0
+        marker.color.a = 0.85
+        marker.lifetime.sec = 1
+        return marker
+
+    def make_label_marker(self, candidate, marker_id):
+        marker = self.make_pose_marker(
+            candidate.grasp_pose,
+            'grasp_label',
+            marker_id,
+            Marker.TEXT_VIEW_FACING,
+            (0.0, 0.0, 0.040),
+            (1.0, 1.0, 1.0, 0.95),
+        )
+        marker.pose.position.z += 0.08
+        marker.text = f'{candidate.object_class}:{candidate.score:.2f}'
+        return marker
 
     def latest_detection_metadata(self):
         detection = self.latest_detection_3d
@@ -419,6 +507,14 @@ class PiperTaskServerNode(Node):
         # 占位策略：沿 piper_base_link 的 x 负方向后撤，真实项目应使用 TCP approach 向量。
         pose.pose.position.x -= abs(float(approach_distance))
         return pose
+
+    @staticmethod
+    def point_from_pose(pose_stamped):
+        point = Point()
+        point.x = pose_stamped.pose.position.x
+        point.y = pose_stamped.pose.position.y
+        point.z = pose_stamped.pose.position.z
+        return point
 
 
 def main():

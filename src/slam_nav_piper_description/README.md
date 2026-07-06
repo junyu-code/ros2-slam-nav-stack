@@ -40,7 +40,7 @@ ros2 launch slam_nav_piper_description piper_description.launch.py
 ros2 launch slam_nav_piper_description piper_description.launch.py enable_piper_gazebo_camera:=true
 ```
 
-该插件的话题固定在 `/piper/arm_camera/*`，不会 remap 到 `/nav_camera/*`。普通 TF/MoveIt2 plan-only 验证默认不开这个插件，避免和 fake camera 或实机相机抢话题。
+该插件的话题固定在 `/piper/arm_camera/*`，不会 remap 到 `/nav_camera/*`。普通 TF/MoveIt2 plan-only 验证默认不开这个插件，避免和 fake camera 或实机相机抢话题；WSL/headless Gazebo Classic 下深度相机插件可能不稳定，默认烟测仍使用 fake camera 验证 RGB-D 数据链路。
 
 缺少官方包、只想做接口冒烟时可以显式退回占位模型：
 

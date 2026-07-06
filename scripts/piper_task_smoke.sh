@@ -45,6 +45,7 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseStamped
+from visualization_msgs.msg import MarkerArray
 from vision_msgs.msg import Detection2DArray, Detection3DArray
 
 from slam_nav_piper_interfaces.action import PickObject, PlaceObject
@@ -63,6 +64,7 @@ class PiperTaskSmoke(Node):
         self.detections_3d = None
         self.target_pose = None
         self.grasp_candidates = None
+        self.grasp_markers = None
         self.pick_client = ActionClient(self, PickObject, '/piper/task/pick_object')
         self.place_client = ActionClient(self, PlaceObject, '/piper/task/place_object')
         self.create_subscription(Image, '/piper/arm_camera/color/image_raw', self.color_cb, 10)
@@ -72,6 +74,7 @@ class PiperTaskSmoke(Node):
         self.create_subscription(Detection3DArray, '/piper/perception/detections_3d', self.detections_3d_cb, 10)
         self.create_subscription(PoseStamped, '/piper/perception/target_pose', self.target_cb, 10)
         self.create_subscription(GraspCandidateArray, '/piper/grasp_candidates', self.grasp_cb, 10)
+        self.create_subscription(MarkerArray, '/piper/visualization/grasp_candidates', self.marker_cb, 10)
 
     def color_cb(self, _msg):
         self.color_seen = True
@@ -101,6 +104,10 @@ class PiperTaskSmoke(Node):
         if msg.candidates:
             self.grasp_candidates = msg
 
+    def marker_cb(self, msg):
+        if msg.markers:
+            self.grasp_markers = msg
+
     def wait_until(self, label, predicate, timeout_s=45.0):
         deadline = time.time() + timeout_s
         while rclpy.ok() and time.time() < deadline:
@@ -120,6 +127,7 @@ class PiperTaskSmoke(Node):
             ('Piper 调试图像 /piper/perception/debug_image', lambda: self.debug_image_seen),
             ('Piper 目标位姿 /piper/perception/target_pose', lambda: self.target_pose is not None),
             ('Piper 抓取候选 /piper/grasp_candidates', self.grasp_candidate_metadata_ready),
+            ('Piper 抓取候选可视化 /piper/visualization/grasp_candidates', self.grasp_markers_ready),
         ]
         for label, predicate in checks:
             if not self.wait_until(label, predicate):
@@ -164,6 +172,12 @@ class PiperTaskSmoke(Node):
             f'class={candidate.object_class}, score={candidate.score:.2f}'
         )
         return True
+
+    def grasp_markers_ready(self):
+        if self.grasp_markers is None:
+            return False
+        namespaces = {marker.ns for marker in self.grasp_markers.markers}
+        return {'grasp_pose', 'pre_grasp_pose', 'approach_vector', 'grasp_label'}.issubset(namespaces)
 
     def grasp_candidate_metadata_ready(self):
         if self.grasp_candidates is None or not self.grasp_candidates.candidates:

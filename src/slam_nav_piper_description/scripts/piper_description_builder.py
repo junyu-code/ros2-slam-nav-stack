@@ -177,7 +177,7 @@ def add_gazebo_arm_camera(root, args):
     sensor = ET.SubElement(gazebo, 'sensor', {'name': 'piper_arm_camera', 'type': 'depth'})
     add_text(sensor, 'always_on', 'true')
     add_text(sensor, 'update_rate', args.piper_gazebo_camera_update_rate)
-    add_text(sensor, 'visualize', 'true')
+    add_text(sensor, 'visualize', 'false')
 
     camera = ET.SubElement(sensor, 'camera')
     add_text(camera, 'horizontal_fov', args.piper_gazebo_camera_fov)
@@ -197,7 +197,7 @@ def add_gazebo_arm_camera(root, args):
     plugin = ET.SubElement(sensor, 'plugin', {'name': 'piper_arm_camera_controller', 'filename': 'libgazebo_ros_camera.so'})
     ros = ET.SubElement(plugin, 'ros')
     # Gazebo 腕部相机只发布到 /piper/arm_camera/*，不能复用 /nav_camera。
-    add_text(ros, 'namespace', '/piper/arm_camera')
+    add_text(ros, 'namespace', 'piper/arm_camera')
     for remap in (
         'wrist_rgbd/image_raw:=color/image_raw',
         'wrist_rgbd/depth/image_raw:=depth/image_raw',

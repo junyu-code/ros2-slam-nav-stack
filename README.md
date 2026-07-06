@@ -19,11 +19,13 @@ cd ~/slam_nav_ws
 ./run.sh nav
 ./run.sh diagnose --duration 5
 ./run.sh task1-status
+./run.sh task1-snapshot
 ./run.sh task1-check
 ./run.sh task1-runtime-check nav
 ./run.sh task1-experiment-check
 ./run.sh task1-delivery-check
 ./run.sh task1-package-preview
+./run.sh task1-report-audit
 ./run.sh task1-build-report
 ./run.sh task1-finalize
 ./run.sh real-preflight
@@ -43,6 +45,14 @@ tasks/task1/TASK1_FINAL_RUNBOOK.md
 ```text
 tasks/task1/TASK1_EVIDENCE_TODO.md
 ```
+
+如果你希望把“当前还缺什么、下一步该跑什么”保存成一份可继续维护的记录，可以运行：
+
+```bash
+./run.sh task1-snapshot
+```
+
+它会生成或覆盖 `tasks/task1/TASK1_STATUS_SNAPSHOT.md`。这个快照不会启动 Gazebo、RViz 或 Nav2，适合每次跑完一批截图/实验后更新一次，后续写报告时也能直接看出实验推进过程。
 
 当前最短验收路线是：
 
@@ -71,18 +81,30 @@ cd ~/slam_nav_ws
 ```bash
 cd ~/slam_nav_ws
 ./run.sh task1-status
+./run.sh task1-snapshot
 ./run.sh task1-check
 ./run.sh task1-experiment-check
+./run.sh task1-report-audit
 ./run.sh task1-delivery-check
 ```
 
 这些命令都不会启动 Gazebo、RViz 或 Nav2。`task1-status` 是最短状态页，会告诉你当前还缺哪些截图、实验记录、报告 PDF 或 Git 提交；`task1-check` 主要检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位；`task1-experiment-check` 会解析 `EXPERIMENT_RECORD.md` 中 10 次静态避障实验表，统计成功次数、碰撞次数和是否达到 80% 成功率；普通模式下，缺截图和待填实验记录只会显示 warning。
 
-`task1-delivery-check` 更偏向打包视角：它会列出建议压缩包名、必须包含的源码/文档/报告材料、仍缺的截图、实验记录待填字段，以及 Git 中是否误跟踪了 `build/`、`install/`、`log/`、rosbag、点云或模型权重等重型产物。最终打包前建议执行：
+当仿真、建图或导航已经启动后，可以把运行时检查结果保存成可转写到实验记录的快照：
+
+```bash
+./run.sh task1-runtime-check mapping --save
+./run.sh task1-runtime-check nav --save
+```
+
+默认输出到 `tasks/task1/TASK1_RUNTIME_LAST.md`。这份快照记录 ROS 话题、TF、Nav2 生命周期和 action 检查结果，适合填写 `EXPERIMENT_RECORD.md` 的“运行检查/导航检查”表格，但不能替代 GUI 截图。
+
+`task1-report-audit` 专门审计结课报告侧材料：姓名学号、截图引用、截图文件是否存在、PNG 文件是否有效、报告待填字段、PDF 是否比源文件旧。`task1-delivery-check` 更偏向打包视角：它会列出建议压缩包名、必须包含的源码/文档/报告材料、仍缺的截图、实验记录待填字段，以及 Git 中是否误跟踪了 `build/`、`install/`、`log/`、rosbag、点云或模型权重等重型产物。最终打包前建议执行：
 
 ```bash
 ./run.sh task1-check --strict
 ./run.sh task1-experiment-check --strict
+./run.sh task1-report-audit --strict
 ./run.sh task1-delivery-check --strict
 ```
 
@@ -92,6 +114,8 @@ cd ~/slam_nav_ws
 ./run.sh task1-package-preview
 ./run.sh task1-package-preview --list
 ```
+
+预览会同时打印将进入压缩包的最大文件列表，用来确认没有误打包 rosbag、点云、数据集或模型权重。
 
 材料全部补齐后，可用下面命令创建压缩包到 `dist/`；`dist/` 和 `*.zip` 已加入 `.gitignore`，不会误提交：
 
@@ -762,13 +786,15 @@ source install/setup.bash
 
 该插件只发布 `/piper/arm_camera/color/*`、`/piper/arm_camera/depth/*` 和可选点云，不 remap 到 `/nav_camera/*`，也不会成为 Nav2 默认 costmap 观测源。
 
+注意：该 Gazebo RGB-D 插件是显式仿真开关，当前不纳入默认 headless 全链路烟测；WSL/headless Gazebo Classic 下深度相机插件可能不稳定。日常验证 RGB-D 感知链路仍使用 `./run.sh piper-task-smoke` 的 fake camera。
+
 不打开 GUI、只做一次自动验证：
 
 ```bash
 ./run.sh piper-gazebo-smoke
 ```
 
-该入口会在独立 `ROS_DOMAIN_ID` 和 `GAZEBO_MASTER_URI` 下 headless 启动静态 Gazebo 场地，显式打开 `enable_piper_gazebo_camera:=true`，检查 `/robot_description` 中是官方 `piper_joint*` 适配链、Gazebo 中已生成 `mobile_robot` 实体，并等待 `/piper/arm_camera/*` 相机 topic 出现且没有 `/nav_camera` 泄漏；结束后自动清理本次仿真进程。
+该入口会在独立 `ROS_DOMAIN_ID` 和 `GAZEBO_MASTER_URI` 下 headless 启动静态 Gazebo 场地，检查 `/robot_description` 中是官方 `piper_joint*` 适配链，并确认 Gazebo 中已生成 `mobile_robot` 实体；结束后自动清理本次仿真进程。它默认不打开 Gazebo 腕部相机插件，避免 headless Gazebo Classic 深度相机不稳定影响基础模型验收。
 
 占位 fallback：
 
@@ -795,7 +821,7 @@ source install/setup.bash
 ./run.sh piper-viz
 ```
 
-该命令会打开 RViz，并默认同时启动 Piper 独立 fake runtime；它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹。需要把项目侧 MoveIt2 plan-only 也一起开起来观察时，再显式使用：
+该命令会打开 RViz，并默认同时启动 Piper 独立 fake runtime；它能显示官方 Piper 适配链、腕部相机图像、debug 检测框、目标 pose 和 `/piper/visualization/grasp_candidates` 抓取候选 marker。它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹。需要把项目侧 MoveIt2 plan-only 也一起开起来观察时，再显式使用：
 
 ```bash
 ./run.sh piper-viz start_moveit_plan:=true
@@ -809,7 +835,7 @@ source install/setup.bash
 ./run.sh piper-task-smoke
 ```
 
-该入口会在独立 `ROS_DOMAIN_ID` 下启动 `piper_sim`，等待 `/piper/arm_camera/*`、`/piper/perception/detections_2d`、`/piper/perception/detections_3d`、`/piper/perception/debug_image`、`/piper/perception/target_pose`、`/piper/grasp_candidates`，并确认抓取候选继承 3D detection 的 id/class/score/tag，然后向 `/piper/task/pick_object` 和 `/piper/task/place_object` 各发送一次 fake goal。它已经完成无 GUI 冒烟验证，只检查项目侧任务边界，不启动 Nav2、不连接真实 SDK。
+该入口会在独立 `ROS_DOMAIN_ID` 下启动 `piper_sim`，等待 `/piper/arm_camera/*`、`/piper/perception/detections_2d`、`/piper/perception/detections_3d`、`/piper/perception/debug_image`、`/piper/perception/target_pose`、`/piper/grasp_candidates` 和 `/piper/visualization/grasp_candidates`，并确认抓取候选继承 3D detection 的 id/class/score/tag，然后向 `/piper/task/pick_object` 和 `/piper/task/place_object` 各发送一次 fake goal。它已经完成无 GUI 冒烟验证，只检查项目侧任务边界，不启动 Nav2、不连接真实 SDK。
 
 一键验证移动操作组合入口：
 
@@ -910,7 +936,7 @@ ros2 launch slam_nav_piper_bringup piper_mobile_manipulation.launch.py use_sim_t
 
 这个组合入口默认 `start_description:=false`，会复用已启动的整车仿真/实机 TF，避免重复发布 `robot_state_publisher`。脱离 Gazebo 单独跑时再显式加 `start_description:=true publish_joint_states:=true`。
 
-如果前一个 Gazebo 已经用 `enable_piper_gazebo_camera:=true` 发布了腕部 RGB-D，相机节点可以保持关闭，只运行感知和任务层：
+如果你在 GUI/本机 Gazebo 环境中确认 `enable_piper_gazebo_camera:=true` 已经稳定发布腕部 RGB-D，相机节点可以保持关闭，只运行感知和任务层：
 
 ```bash
 ros2 launch slam_nav_piper_bringup piper_mobile_manipulation.launch.py use_sim_time:=true fake_camera:=false fake_execution:=true

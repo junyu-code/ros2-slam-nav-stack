@@ -16,6 +16,17 @@ LOG_DIR="${WORKSPACE_DIR}/log"
 mkdir -p "${LOG_DIR}"
 LOG_FILE="${LOG_DIR}/piper_gazebo_smoke_$(date +%Y%m%d_%H%M%S).log"
 LAUNCH_PID=""
+ENABLE_GAZEBO_CAMERA="${PIPER_GAZEBO_SMOKE_ENABLE_CAMERA:-false}"
+for arg in "$@"; do
+  if [[ "${arg}" == "enable_piper_gazebo_camera:=true" ]]; then
+    ENABLE_GAZEBO_CAMERA="true"
+  fi
+done
+export PIPER_GAZEBO_SMOKE_ENABLE_CAMERA="${ENABLE_GAZEBO_CAMERA}"
+CAMERA_ARGS=()
+if [[ "${ENABLE_GAZEBO_CAMERA}" == "1" || "${ENABLE_GAZEBO_CAMERA}" == "true" || "${ENABLE_GAZEBO_CAMERA}" == "TRUE" ]]; then
+  CAMERA_ARGS+=(enable_piper_gazebo_camera:=true)
+fi
 
 cleanup() {
   if [[ -n "${LAUNCH_PID}" ]]; then
@@ -36,7 +47,7 @@ setsid ros2 launch slam_nav_simulation simulation.launch.py \
   world:=static \
   enable_piper_arm:=true \
   piper_arm_model:=official \
-  enable_piper_gazebo_camera:=true \
+  "${CAMERA_ARGS[@]}" \
   "$@" >"${LOG_FILE}" 2>&1 &
 LAUNCH_PID="$!"
 
@@ -45,9 +56,13 @@ python3 - <<'PY'
 import subprocess
 import sys
 import time
+import os
 
 import rclpy
 from gazebo_msgs.srv import GetModelList
+
+
+ENABLE_GAZEBO_CAMERA = os.environ.get('PIPER_GAZEBO_SMOKE_ENABLE_CAMERA', '').lower() in {'1', 'true', 'yes', 'on'}
 
 
 def command(args, timeout=8.0):
@@ -68,20 +83,23 @@ def wait_for_official_description(timeout_s=90.0):
         result = command(['ros2', 'param', 'get', '/robot_state_publisher', 'robot_description'])
         last_output = result.stdout
         if result.returncode == 0:
-            has_official_chain = all(
-                name in result.stdout
-                for name in (
-                    'piper_base_link',
-                    'piper_joint1',
-                    'piper_joint8',
-                    'piper_arm_camera_optical_frame',
-                    'piper_arm_camera_controller',
-                    '/piper/arm_camera',
-                )
-            )
+            required_tokens = [
+                'piper_base_link',
+                'piper_joint1',
+                'piper_joint8',
+                'piper_arm_camera_optical_frame',
+            ]
+            if ENABLE_GAZEBO_CAMERA:
+                required_tokens.extend(['piper_arm_camera_controller', 'piper/arm_camera'])
+            has_official_chain = all(name in result.stdout for name in required_tokens)
             has_placeholder_chain = 'piper_joint1_placeholder' in result.stdout
-            if has_official_chain and not has_placeholder_chain:
-                print('[Piper Gazebo] robot_description 已加载官方 Piper 适配链和 Gazebo 腕部相机插件。')
+            has_unexpected_camera_plugin = (
+                not ENABLE_GAZEBO_CAMERA
+                and ('piper_arm_camera_controller' in result.stdout or 'piper/arm_camera' in result.stdout)
+            )
+            if has_official_chain and not has_placeholder_chain and not has_unexpected_camera_plugin:
+                suffix = '和 Gazebo 腕部相机插件' if ENABLE_GAZEBO_CAMERA else ''
+                print(f'[Piper Gazebo] robot_description 已加载官方 Piper 适配链{suffix}。')
                 return
         time.sleep(2.0)
     print('[Piper Gazebo] 等待官方 Piper robot_description 超时。最后一次输出：', file=sys.stderr)
@@ -149,8 +167,11 @@ def wait_for_piper_camera_topics(timeout_s=120.0):
 
 wait_for_official_description()
 check_gazebo_entity()
-wait_for_piper_camera_topics()
-print('[Piper Gazebo] headless Gazebo + 官方 Piper 适配链 + 腕部相机烟测通过。')
+if ENABLE_GAZEBO_CAMERA:
+    wait_for_piper_camera_topics()
+    print('[Piper Gazebo] headless Gazebo + 官方 Piper 适配链 + 腕部相机烟测通过。')
+else:
+    print('[Piper Gazebo] headless Gazebo + 官方 Piper 适配链烟测通过。')
 PY
 SMOKE_STATUS="$?"
 set -e

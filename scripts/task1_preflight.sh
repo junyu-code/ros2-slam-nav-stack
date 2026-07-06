@@ -75,8 +75,8 @@ for script in \
   start_mapping.sh start_auto_mapping.sh teleop.sh save_map.sh save_pcd_map.sh \
   start_navigation.sh start_navigation_3d.sh start_navigation_rgbd.sh \
   start_navigation_full.sh start_robust_navigation.sh \
-  diagnose_runtime.sh task1_status.sh task1_runtime_check.sh task1_delivery_check.sh \
-  task1_experiment_check.sh task1_package_preview.sh build_task1_report.sh task1_finalize.sh; do
+  diagnose_runtime.sh task1_status.sh task1_snapshot.sh task1_runtime_check.sh task1_delivery_check.sh \
+  task1_experiment_check.sh task1_package_preview.sh task1_report_audit.sh build_task1_report.sh task1_finalize.sh; do
   check_executable "scripts/${script}" "脚本"
 done
 
@@ -86,7 +86,7 @@ for command_name in \
   mapping auto-mapping teleop save-map save-pcd \
   nav nav-3d nav-rgbd nav-full robust-nav \
   diagnose task1-status task1-check task1-runtime-check task1-delivery-check \
-  task1-experiment-check task1-package-preview task1-build-report task1-finalize; do
+  task1-snapshot task1-experiment-check task1-package-preview task1-report-audit task1-build-report task1-finalize; do
   if grep -q "${command_name}" <<<"${help_text}"; then
     ok "run.sh help 包含命令: ${command_name}"
   else

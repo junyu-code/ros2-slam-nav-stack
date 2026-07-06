@@ -91,6 +91,7 @@ def expect_forbidden_topics(params):
         '/piper/perception/detections_3d',
         '/piper/perception/target_pose',
         '/piper/grasp_candidates',
+        '/piper/visualization/grasp_candidates',
         '/piper/learning/grasp_candidates_ranked',
     }
     if isinstance(topics, list) and required.issubset(set(topics)):
@@ -185,6 +186,7 @@ expect_true(manipulation, 'hand_eye_result_must_exist', '任务层')
 expect_false(manipulation, 'use_ranked_grasp_candidates', '任务层')
 expect_equal(manipulation, 'target_pose_topic', '/piper/perception/target_pose', '任务层')
 expect_equal(manipulation, 'grasp_candidates_topic', '/piper/grasp_candidates', '任务层')
+expect_equal(manipulation, 'visualization_markers_topic', '/piper/visualization/grasp_candidates', '任务层')
 expect_equal(manipulation, 'control_state_topic', '/piper/control/state', '任务层')
 expect_equal(manipulation, 'owner_request_topic', '/piper/control/owner_request', '任务层')
 

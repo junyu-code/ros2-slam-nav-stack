@@ -58,6 +58,7 @@ class PiperNamespaceSmoke(Node):
         '/piper/perception/detections_3d',
         '/piper/perception/debug_image',
         '/piper/grasp_candidates',
+        '/piper/visualization/grasp_candidates',
         '/piper/control/state',
     }
 

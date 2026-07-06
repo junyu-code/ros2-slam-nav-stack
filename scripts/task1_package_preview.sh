@@ -10,6 +10,8 @@ ALLOW_WARNINGS=false
 LIST_FILES=false
 OUTPUT_DIR="dist"
 PACKAGE_NAME="3232072072234+佘俊谕.zip"
+LARGEST_COUNT=15
+WARN_PACKAGE_BYTES=$((250 * 1024 * 1024))
 
 usage() {
   cat <<'EOF'
@@ -22,6 +24,7 @@ usage() {
   --list            列出将被打包的文件路径。
   --create          创建 zip 到 dist/ 目录。
   --allow-warnings  允许在 task1-delivery-check --strict 未通过时创建草稿包。
+  --largest <N>     显示将进入压缩包的最大 N 个文件，默认 15。
 EOF
 }
 
@@ -43,6 +46,14 @@ while [[ $# -gt 0 ]]; do
     --name)
       shift
       PACKAGE_NAME="${1:?--name 需要文件名}"
+      ;;
+    --largest)
+      shift
+      LARGEST_COUNT="${1:?--largest 需要数量}"
+      if [[ ! "${LARGEST_COUNT}" =~ ^[0-9]+$ || "${LARGEST_COUNT}" -eq 0 ]]; then
+        echo "[task1-package] --largest 必须是正整数" >&2
+        exit 2
+      fi
       ;;
     -h|--help|help)
       usage
@@ -101,8 +112,9 @@ should_skip() {
 }
 
 tmp_list="$(mktemp)"
+tmp_sizes="$(mktemp)"
 cleanup() {
-  rm -f "${tmp_list}"
+  rm -f "${tmp_list}" "${tmp_sizes}"
 }
 trap cleanup EXIT
 
@@ -129,6 +141,7 @@ total_bytes=0
 while IFS= read -r file; do
   size="$(stat -c '%s' "${file}" 2>/dev/null || echo 0)"
   total_bytes=$((total_bytes + size))
+  printf '%s\t%s\n' "${size}" "${file}" >> "${tmp_sizes}"
 done < "${tmp_list}"
 if command -v numfmt >/dev/null 2>&1; then
   human_size="$(numfmt --to=iec --suffix=B "${total_bytes}")"
@@ -140,9 +153,22 @@ echo "[task1-package] 工作区: ${WORKSPACE_DIR}"
 echo "[task1-package] 建议压缩包名: ${PACKAGE_NAME}"
 echo "[task1-package] 将包含文件数: ${file_count}"
 echo "[task1-package] 估算体积: ${human_size}"
+if (( total_bytes > WARN_PACKAGE_BYTES )); then
+  echo "[task1-package] WARN: 估算体积超过 250MiB，建议查看下方最大文件列表，确认没有误打包数据集、点云或权重。" >&2
+fi
 echo "[task1-package] 包含根路径:"
 printf '  %s\n' "${INCLUDE_PATHS[@]}"
 echo "[task1-package] 已排除: build/ install/ log/ .git/ .vscode/ dist/ datasets/ external/ third_party/ vendor/ rosbag/点云/模型权重/LaTeX 辅助文件"
+
+echo "[task1-package] 将进入压缩包的最大 ${LARGEST_COUNT} 个文件:"
+sort -nr "${tmp_sizes}" | head -n "${LARGEST_COUNT}" | while IFS=$'\t' read -r size file; do
+  if command -v numfmt >/dev/null 2>&1; then
+    display_size="$(numfmt --to=iec --suffix=B "${size}")"
+  else
+    display_size="${size}B"
+  fi
+  printf '  %8s  %s\n' "${display_size}" "${file}"
+done
 
 if [[ "${LIST_FILES}" == "true" ]]; then
   echo "[task1-package] 文件列表:"

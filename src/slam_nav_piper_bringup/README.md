@@ -52,7 +52,7 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py
 ./run.sh piper-viz
 ```
 
-该入口默认启动 `piper_sim.launch.py` 并打开 `config/piper_visualization.rviz`，可查看官方 Piper 适配链 RobotModel、TF、假腕部 RGB 图、带检测框的 `/piper/perception/debug_image` 和 `/piper/perception/target_pose`。它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹。需要同时看 MoveIt2 plan-only 服务时可显式加：
+该入口默认启动 `piper_sim.launch.py` 并打开 `config/piper_visualization.rviz`，可查看官方 Piper 适配链 RobotModel、TF、假腕部 RGB 图、带检测框的 `/piper/perception/debug_image`、`/piper/perception/target_pose` 和 `/piper/visualization/grasp_candidates` 抓取候选 marker。它不启动 Nav2、不接 SDK、不执行 MoveIt2 轨迹。需要同时看 MoveIt2 plan-only 服务时可显式加：
 
 ```bash
 ./run.sh piper-viz start_moveit_plan:=true
@@ -74,7 +74,7 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=placeholder
 ./run.sh piper-task-smoke
 ```
 
-该入口会等待 Piper 假 RGB-D、非空 `/piper/perception/detections_2d`、非空 `/piper/perception/detections_3d`、`/piper/perception/debug_image`、目标位姿、带 3D detection 元数据的抓取候选和 `/piper/task/*` action server，然后发送一次 fake pick/place goal。它不启动 Nav2、不执行真实轨迹、不连接 SDK。当前无 GUI 冒烟已验证通过。
+该入口会等待 Piper 假 RGB-D、非空 `/piper/perception/detections_2d`、非空 `/piper/perception/detections_3d`、`/piper/perception/debug_image`、目标位姿、带 3D detection 元数据的抓取候选、抓取候选 MarkerArray 和 `/piper/task/*` action server，然后发送一次 fake pick/place goal。它不启动 Nav2、不执行真实轨迹、不连接 SDK。当前无 GUI 冒烟已验证通过。
 
 移动操作组合入口烟测：
 
@@ -328,7 +328,9 @@ ros2 launch slam_nav_piper_bringup piper_official_gazebo_demo.launch.py start_mo
 ./run.sh sim enable_piper_arm:=true enable_piper_gazebo_camera:=true
 ```
 
-该 Gazebo 插件只发布 `/piper/arm_camera/*`，不会 remap 到 `/nav_camera/*`。如果使用这一路真实 Gazebo 相机 topic，组合入口里的 `fake_camera` 可以保持 `false`。
+该 Gazebo 插件只发布 `/piper/arm_camera/*`，不会 remap 到 `/nav_camera/*`。确认本机 GUI/Gazebo 环境稳定后，如果使用这一路 Gazebo 相机 topic，组合入口里的 `fake_camera` 可以保持 `false`。
+
+该开关目前不进入默认 headless 全链路烟测；WSL/headless Gazebo Classic 下深度相机插件可能不稳定。日常 RGB-D 数据链路仍由 `piper-task-smoke` 的 fake camera 覆盖。
 
 headless 自动烟测：
 
@@ -336,7 +338,7 @@ headless 自动烟测：
 ./run.sh piper-gazebo-smoke
 ```
 
-该入口会在独立 `ROS_DOMAIN_ID` 和 `GAZEBO_MASTER_URI` 下启动静态场地、官方 Piper 适配链、Gazebo 腕部 RGB-D 插件和 Gazebo server，确认 `/robot_description` 没有落回占位关节，检查 `mobile_robot` 已经 spawn，并等待 `/piper/arm_camera/*` topic 出现。它不启动 Nav2、MoveIt2 执行或厂家 SDK。
+该入口会在独立 `ROS_DOMAIN_ID` 和 `GAZEBO_MASTER_URI` 下启动静态场地、官方 Piper 适配链和 Gazebo server，确认 `/robot_description` 没有落回占位关节，并检查 `mobile_robot` 已经 spawn。它不启动 Nav2、MoveIt2 执行、Gazebo 腕部相机插件或厂家 SDK。
 
 ## 学习层预留
 

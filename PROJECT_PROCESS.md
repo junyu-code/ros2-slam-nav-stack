@@ -15,6 +15,14 @@
 
 长期扩展目标放在 `tasks/task2`，包括 RGB-D 相机、行为树、语义理解和机械臂。
 
+2026-07-07 维护记录：新增 `./run.sh task1-snapshot`，用于把 task1 当前证据状态写入 `tasks/task1/TASK1_STATUS_SNAPSHOT.md`。它不启动 Gazebo/RViz/Nav2，只记录默认地图、报告 PDF、必需截图、实验表、预检状态和下一步建议，方便每次完成一批截图或实验记录后留下可追踪的进度快照；`./run.sh task1-finalize` 也已接入该步骤，最终检查时会自动刷新快照。
+
+2026-07-07 维护记录：新增 `./run.sh task1-report-audit`，专门审计结课报告中的个人信息、截图引用、缺失截图、PNG 文件有效性、待填字段和 PDF 更新时间。该检查已接入 `task1-delivery-check` 与 `task1-finalize`，用于把“报告写完了吗”和“工程能跑吗”分开检查，减少最终打包时漏图、误放空截图或 PDF 未重新编译的风险。
+
+2026-07-07 维护记录：增强 `./run.sh task1-package-preview`，预览压缩包时会列出将进入包内的最大文件，并在估算体积超过 250MiB 时给出提醒。该功能用于最终提交前确认没有误打包 rosbag、点云、数据集、模型权重或无关外部依赖。
+
+2026-07-07 维护记录：增强 `./run.sh task1-runtime-check`，支持 `--save` 将真实运行时的 ROS 话题、TF、Nav2 生命周期和 action 检查输出保存到 `tasks/task1/TASK1_RUNTIME_LAST.md`。该文件用于辅助填写 `EXPERIMENT_RECORD.md` 中的建图/导航运行检查表，但不替代 Gazebo/RViz 截图。
+
 ## 2. 保留与抽离原则
 
 保留内容：

@@ -34,11 +34,13 @@ show_help() {
   real-preflight        实机部署前无 GUI/无硬件预检
   diagnose              运行时诊断
   task1-status          task1 当前剩余证据/下一步（不启动 GUI）
+  task1-snapshot        生成 task1 当前证据状态快照 md（不启动 GUI）
   task1-check           task1 交付材料预检（不启动 GUI）
   task1-runtime-check   task1 运行时链路检查（不启动 GUI）
   task1-experiment-check task1 静态避障实验表/成功率检查（不启动 GUI）
   task1-delivery-check  task1 打包交付前自查（不启动 GUI）
   task1-package-preview task1 最终压缩包预览/可选创建
+  task1-report-audit   task1 结课报告源文件/截图/PDF 审计（不启动 GUI）
   task1-build-report    编译 task1 LaTeX 结课报告 PDF
   task1-finalize        task1 最终交付编排（编译报告/strict 检查/可选打包）
   setup-piper           准备 Piper 外部参考包
@@ -78,11 +80,13 @@ show_help() {
   ./run.sh save-pcd nav_test_static
   ./run.sh nav-full
   ./run.sh task1-status
+  ./run.sh task1-snapshot
   ./run.sh task1-check
   ./run.sh task1-runtime-check nav
   ./run.sh task1-experiment-check
   ./run.sh task1-delivery-check
   ./run.sh task1-package-preview
+  ./run.sh task1-report-audit
   ./run.sh task1-build-report
   ./run.sh task1-finalize
   ./run.sh real-preflight
@@ -143,11 +147,13 @@ script_for_command() {
     real-preflight|real-check|deploy-check) echo "real_preflight.sh" ;;
     diagnose) echo "diagnose_runtime.sh" ;;
     task1-status|task1-next|task1-todo|status-task1) echo "task1_status.sh" ;;
+    task1-snapshot|task1-state|task1-progress) echo "task1_snapshot.sh" ;;
     task1-check|task1-preflight|task1) echo "task1_preflight.sh" ;;
     task1-runtime-check|task1-runtime|runtime-check) echo "task1_runtime_check.sh" ;;
     task1-experiment-check|task1-experiment|experiment-check|experiment) echo "task1_experiment_check.sh" ;;
     task1-delivery-check|task1-delivery|delivery-check) echo "task1_delivery_check.sh" ;;
     task1-package-preview|task1-package|package-preview) echo "task1_package_preview.sh" ;;
+    task1-report-audit|task1-report-check|report-audit) echo "task1_report_audit.sh" ;;
     task1-build-report|task1-report|build-report|report-build) echo "build_task1_report.sh" ;;
     task1-finalize|task1-final|finalize-task1|task1-submit-check) echo "task1_finalize.sh" ;;
     setup-piper) echo "setup_piper_open_class.sh" ;;
@@ -231,14 +237,16 @@ show_menu() {
  16) runtime nav        检查导航运行时链路
  17) diagnose           运行时诊断
  18) task1-status       查看 task1 剩余证据和下一步
- 19) task1-check        task1 交付材料预检
- 20) experiment-check   task1 静态避障实验表检查
- 21) task1-delivery     task1 打包交付前自查
- 22) package-preview    task1 压缩包预览
- 23) build-report       编译 task1 结课报告 PDF
- 24) task1-finalize     task1 最终交付编排
- 25) real-preflight     实机部署前预检
- 26) build              编译工作区
+ 19) task1-snapshot     生成 task1 当前证据状态快照 md
+ 20) task1-check        task1 交付材料预检
+ 21) experiment-check   task1 静态避障实验表检查
+ 22) task1-delivery     task1 打包交付前自查
+ 23) package-preview    task1 压缩包预览
+ 24) report-audit       task1 结课报告源文件/截图/PDF 审计
+ 25) build-report       编译 task1 结课报告 PDF
+ 26) task1-finalize     task1 最终交付编排
+ 27) real-preflight     实机部署前预检
+ 28) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 
@@ -279,14 +287,16 @@ case "${choice}" in
   16) run_command task1-runtime-check nav ;;
   17) run_command diagnose ;;
   18) run_command task1-status ;;
-  19) run_command task1-check ;;
-  20) run_command task1-experiment-check ;;
-  21) run_command task1-delivery-check ;;
-  22) run_command task1-package-preview ;;
-  23) run_command task1-build-report ;;
-  24) run_command task1-finalize ;;
-  25) run_command real-preflight ;;
-  26) run_command build ;;
+  19) run_command task1-snapshot ;;
+  20) run_command task1-check ;;
+  21) run_command task1-experiment-check ;;
+  22) run_command task1-delivery-check ;;
+  23) run_command task1-package-preview ;;
+  24) run_command task1-report-audit ;;
+  25) run_command task1-build-report ;;
+  26) run_command task1-finalize ;;
+  27) run_command real-preflight ;;
+  28) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;
