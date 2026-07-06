@@ -43,12 +43,13 @@ show_help() {
   piper-plan-test       向 MoveIt2 发送一次 Piper plan-only 规划请求
   piper-moveit-smoke    一键启动 MoveIt2 plan-only 并发送规划冒烟请求
   piper-tf-smoke        一键验证 Piper 运行时 TF 链和 task1 TF 隔离边界
+  piper-namespace-smoke 一键验证 Piper runtime topic/action 不污染 Nav2 或 /nav_camera
   piper-gazebo-smoke    一键启动 headless Gazebo 并检查官方 Piper 适配链
   piper-task-smoke      一键验证 Piper 假感知、抓取候选和 pick/place action
   piper-control-smoke   一键验证 Piper 控制桥 owner/enable/estop 边界
   piper-real-dry-run    一键验证 Piper 实机入口默认安全拒绝真实执行
   piper-learning-smoke  一键验证 Piper 学习层抓取候选排序旁路
-  piper-full-smoke      顺序运行 Piper 边界、TF、控制、实机 dry-run、Gazebo、任务、学习和 MoveIt2 烟测
+  piper-full-smoke      顺序运行 Piper 边界、TF、命名空间、控制、实机 dry-run、Gazebo、任务、学习和 MoveIt2 烟测
   piper-boundary-check  检查 Piper 未泄漏进 task1/Nav2 或 /nav_camera
 
 示例：
@@ -66,6 +67,7 @@ show_help() {
   ./run.sh piper-plan-test
   ./run.sh piper-moveit-smoke
   ./run.sh piper-tf-smoke
+  ./run.sh piper-namespace-smoke
   ./run.sh piper-gazebo-smoke
   ./run.sh piper-task-smoke
   ./run.sh piper-control-smoke
@@ -110,6 +112,7 @@ script_for_command() {
     piper-plan-test|piper-plan-smoke) echo "piper_plan_smoke_test.sh" ;;
     piper-moveit-smoke|piper-smoke) echo "piper_moveit_smoke.sh" ;;
     piper-tf-smoke|piper-tf) echo "piper_tf_smoke.sh" ;;
+    piper-namespace-smoke|piper-namespace|piper-ns) echo "piper_namespace_smoke.sh" ;;
     piper-gazebo-smoke|piper-gazebo) echo "piper_gazebo_smoke.sh" ;;
     piper-task-smoke|piper-task) echo "piper_task_smoke.sh" ;;
     piper-control-smoke|piper-control) echo "piper_control_smoke.sh" ;;
