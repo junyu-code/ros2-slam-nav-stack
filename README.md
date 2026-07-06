@@ -635,7 +635,7 @@ Piper 全链路烟测：
 ./run.sh piper-full-smoke
 ```
 
-它会顺序运行边界检查、依赖预检、官方 frame 审计、运行时 TF 链、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
+它会顺序运行边界检查、依赖预检、官方 frame 审计、运行时 TF 链、runtime 命名空间图、控制桥安全边界、实机入口 dry-run 安全拒绝、headless Gazebo 组合模型、fake 感知 + pick/place action、学习层候选排序、MoveIt2 plan-only。全部都在 `/piper` 边界内验证，不接入 task1 导航主链路。
 
 只检查 Piper 是否保持在独立边界内：
 
@@ -652,6 +652,14 @@ Piper 全链路烟测：
 ```
 
 该入口会实际查询 `base_link -> piper_base_link`、`piper_base_link -> piper_tcp`、`piper_tcp -> piper_arm_camera_optical_frame`，并确认独立 Piper TF 图没有发布 `map -> odom`、`odom -> base_footprint` 或 `nav_camera` frame。
+
+只检查 Piper runtime 命名空间图：
+
+```bash
+./run.sh piper-namespace-smoke
+```
+
+该入口会启动 `piper_sim`，等待 `/piper/arm_camera/*`、`/piper/perception/*`、`/piper/grasp_candidates`、`/piper/control/state` 和 `/piper/task/*` action 出现，并确认运行图里没有 `/nav_camera`、costmap、Nav2 action 或 AMCL/Nav2 节点。
 
 先看 Gazebo 里的底盘 + Piper 臂：
 

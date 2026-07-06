@@ -10,7 +10,7 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 ./run.sh piper-full-smoke
 ```
 
-该入口会顺序跑 `piper-boundary-check`、`piper-preflight --require-official`、官方 frame audit、`piper-tf-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从 task1 隔离边界、运行时 TF、控制安全、实机默认拒绝、模型、假感知、任务 action、学习排序到 MoveIt2 plan-only 都是通的。
+该入口会顺序跑 `piper-boundary-check`、`piper-preflight --require-official`、官方 frame audit、`piper-tf-smoke`、`piper-namespace-smoke`、`piper-control-smoke`、`piper-real-dry-run`、`piper-gazebo-smoke`、`piper-task-smoke`、`piper-learning-smoke` 和 `piper-moveit-smoke`。它用于确认当前 Piper 扩展从 task1 隔离边界、运行时 TF、runtime 命名空间、控制安全、实机默认拒绝、模型、假感知、任务 action、学习排序到 MoveIt2 plan-only 都是通的。
 
 只检查边界，不启动 Gazebo/MoveIt2：
 
@@ -25,6 +25,14 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 ```
 
 该入口会查询 `base_link -> piper_base_link`、`piper_base_link -> piper_tcp`、`piper_tcp -> piper_arm_camera_optical_frame`，并确认独立 Piper TF 图没有发布 `map -> odom`、`odom -> base_footprint` 或 `nav_camera` frame。
+
+只检查 runtime topic/action/node 命名空间：
+
+```bash
+./run.sh piper-namespace-smoke
+```
+
+该入口会启动 `piper_sim`，确认 Piper 相机、感知、抓取候选、控制状态和 task action 都在 `/piper` 下，并确认没有 `/nav_camera`、costmap、Nav2 action 或 AMCL/Nav2 节点。
 
 ```bash
 ros2 launch slam_nav_piper_bringup piper_sim.launch.py
