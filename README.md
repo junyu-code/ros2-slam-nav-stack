@@ -650,6 +650,14 @@ source install/setup.bash
 
 该入口只启动 Piper TF、假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake pick/place action。默认 TF 使用官方 Piper URDF 适配链；缺少官方包时可加 `arm_model:=placeholder` 做占位冒烟。项目侧上层接口保持 `/piper/task/pick_object` 和 `/piper/task/place_object`。
 
+一键验证 fake 感知和任务 action：
+
+```bash
+./run.sh piper-task-smoke
+```
+
+该入口会在独立 `ROS_DOMAIN_ID` 下启动 `piper_sim`，等待 `/piper/arm_camera/*`、`/piper/perception/target_pose`、`/piper/grasp_candidates`，然后向 `/piper/task/pick_object` 和 `/piper/task/place_object` 各发送一次 fake goal。它已经完成无 GUI 冒烟验证，只检查项目侧任务边界，不启动 Nav2、不连接真实 SDK。
+
 项目侧 MoveIt2 plan-only 配置已经独立放在 `slam_nav_piper_moveit_config`，默认不接入 task1、不执行轨迹、不连接 SDK：
 
 ```bash

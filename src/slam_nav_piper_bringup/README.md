@@ -8,7 +8,7 @@ Piper 移动操作扩展的独立启动入口。这里的 launch 不会被 `./ru
 ros2 launch slam_nav_piper_bringup piper_sim.launch.py
 ```
 
-该入口默认使用 AgileX 官方 Piper URDF 适配链，并启动假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake 抓取/放置 action。
+该入口默认使用 AgileX 官方 Piper URDF 适配链，并启动假腕部 RGB-D 相机、目标位姿估计、控制桥和 fake 抓取/放置 action。独立仿真默认发布 Piper 假关节状态，保证 `piper_base_link -> piper_arm_camera_optical_frame` TF 可用于目标位姿估计；实机入口不启用这个假关节状态发布器。
 
 缺少官方包、只想先检查 `/piper` 话题/action 边界时，可以显式退回占位 TF：
 
@@ -17,6 +17,14 @@ ros2 launch slam_nav_piper_bringup piper_sim.launch.py arm_model:=placeholder
 ```
 
 注意：MoveIt2 规划接口已经安装，但当前 `piper_sim.launch.py` 仍默认使用 fake 执行后端。这样可以先验证 `/piper` 命名空间、TF、相机和 action 链路，不会误动真实机械臂。
+
+一键 fake 任务链路烟测：
+
+```bash
+./run.sh piper-task-smoke
+```
+
+该入口会等待 Piper 假 RGB-D、目标位姿、抓取候选和 `/piper/task/*` action server，然后发送一次 fake pick/place goal。它不启动 Nav2、不执行真实轨迹、不连接 SDK。当前无 GUI 冒烟已验证通过。
 
 项目侧 MoveIt2 plan-only 单独启动：
 

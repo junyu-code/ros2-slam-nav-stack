@@ -562,6 +562,7 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：新增 `./run.sh sim-static` 静态验收场地快捷入口，保留 `./run.sh sim` 当前默认动态场地用于扩展示范；同步 README、task1 Runbook、实验记录、Markdown 报告草稿和 LaTeX 报告中的建图/导航命令，避免动态障碍物混入静态避障成功率统计。
 - 2026-07-07：修正 task1 报告中的 Nav2 算法描述：默认验收链路为 `SmacPlanner2D + DWBLocalPlanner + BackUp/ClearCostmap/Spin` 恢复行为树，`nav-3d/nav-full` 才使用地形分析、强度体素代价地图和全向 PID 控制器作为增强展示。
 - 2026-07-07：为 Piper MoveIt2 plan-only 增加 `./run.sh piper-plan-test` 冒烟测试入口，向 `/piper/plan_kinematic_path` 发送一次关节目标规划请求，只验证返回轨迹是否非空，不执行轨迹、不连接 SDK，也不接入 task1 默认导航链路。
+- 2026-07-07：新增并验证 `./run.sh piper-task-smoke`，在独立 `ROS_DOMAIN_ID` 下启动 Piper fake 感知/任务链路，确认 `/piper/arm_camera/*`、`/piper/perception/target_pose`、`/piper/grasp_candidates`、`/piper/task/pick_object` 和 `/piper/task/place_object` 均可连通；该冒烟只验证项目侧任务边界，不启动 Nav2、不连接真实 SDK。
 - 2026-07-07：清理根目录旧版 `start_*.sh` 和 `setup_piper_open_class.sh` wrapper，统一保留 `./run.sh` 作为根目录导航入口，实际脚本集中在 `scripts/` 目录；同步修正 `perception_adapter` 文档中的旧脚本调用。
 - 2026-07-07：统一 task1 创新与扩展示范截图口径：静态 80% 成功率只使用静态场地 10 次目标点测试，动态障碍物写作扩展验证；RGB-D `/visual_obstacles` 和 `perception_adapter` 截图作为可选扩展材料。同步更新 Markdown 报告、LaTeX 报告、实验记录和交付清单。
 - 2026-07-07：校准 task2 鲁棒导航路线图状态，将已接入的 `IntensityVoxelLayer`、`BackUpFreeSpace`、全向 PID 控制器、`cloud_relocalization` 和 `safe_cmd_bridge` 从“待设计/待实现”更新为“已有初版、待实测调参或闭环验证”。

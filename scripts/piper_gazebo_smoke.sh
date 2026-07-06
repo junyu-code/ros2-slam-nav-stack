@@ -46,7 +46,7 @@ import sys
 import time
 
 import rclpy
-from gazebo_msgs.srv import GetEntityState
+from gazebo_msgs.srv import GetModelList
 
 
 def command(args, timeout=8.0):
@@ -84,32 +84,26 @@ def wait_for_official_description(timeout_s=90.0):
 def check_gazebo_entity(timeout_s=90.0):
     rclpy.init()
     node = rclpy.create_node('piper_gazebo_smoke_client')
-    client = node.create_client(GetEntityState, '/gazebo/get_entity_state')
+    client = node.create_client(GetModelList, '/get_model_list')
     try:
         if not client.wait_for_service(timeout_sec=timeout_s):
-            print('[Piper Gazebo] 等待 /gazebo/get_entity_state 超时。', file=sys.stderr)
+            print('[Piper Gazebo] 等待 /get_model_list 超时。', file=sys.stderr)
             raise SystemExit(2)
 
-        request = GetEntityState.Request()
-        request.name = 'mobile_robot'
-        request.reference_frame = 'world'
+        request = GetModelList.Request()
         future = client.call_async(request)
         rclpy.spin_until_future_complete(node, future, timeout_sec=timeout_s)
         if not future.done():
-            print('[Piper Gazebo] 查询 mobile_robot 实体超时。', file=sys.stderr)
+            print('[Piper Gazebo] 查询 Gazebo 模型列表超时。', file=sys.stderr)
             raise SystemExit(2)
 
         response = future.result()
-        if response is None or not response.success:
-            status = '' if response is None else response.status_message
-            print(f'[Piper Gazebo] Gazebo 中未找到 mobile_robot 实体：{status}', file=sys.stderr)
+        if response is None or not response.success or 'mobile_robot' not in response.model_names:
+            model_names = [] if response is None else list(response.model_names)
+            print(f'[Piper Gazebo] Gazebo 中未找到 mobile_robot，当前模型：{model_names}', file=sys.stderr)
             raise SystemExit(2)
 
-        pose = response.state.pose.position
-        print(
-            '[Piper Gazebo] Gazebo 已生成 mobile_robot 实体：'
-            f'x={pose.x:.2f}, y={pose.y:.2f}, z={pose.z:.2f}'
-        )
+        print('[Piper Gazebo] Gazebo 已生成 mobile_robot 实体。')
     finally:
         node.destroy_node()
         rclpy.shutdown()
