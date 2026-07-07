@@ -61,12 +61,32 @@
   )
 
   ## 优先使用仓库自带的 Livox SDK2 库；没有时再查找系统安装路径。
+  string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" LIVOX_SYSTEM_PROCESSOR)
+  if(LIVOX_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64)$")
+    # 仓库自带的 Livox SDK2 预编译库是 x86_64，只允许 PC/WSL 优先使用。
+    set(LIVOX_LIDAR_SDK_LIBRARY_PATHS
+      "${PROJECT_SOURCE_DIR}/lib"
+      /usr/local/lib
+      /usr/lib
+      /usr/lib/x86_64-linux-gnu)
+  elseif(LIVOX_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+    # Jetson/ARM64 必须链接本机编译安装的 Livox-SDK2，不能使用仓库里的 x86_64 .so。
+    set(LIVOX_LIDAR_SDK_LIBRARY_PATHS
+      /usr/local/lib
+      /usr/lib
+      /usr/lib/aarch64-linux-gnu)
+  else()
+    set(LIVOX_LIDAR_SDK_LIBRARY_PATHS
+      /usr/local/lib
+      /usr/lib)
+  endif()
+
   find_library(LIVOX_LIDAR_SDK_LIBRARY
     NAMES livox_lidar_sdk_shared liblivox_lidar_sdk_shared.so
-    PATHS "${PROJECT_SOURCE_DIR}/lib" /usr/local/lib
+    PATHS ${LIVOX_LIDAR_SDK_LIBRARY_PATHS}
     NO_DEFAULT_PATH
     REQUIRED)
-  message(${LIVOX_LIDAR_SDK_LIBRARY})
+  message(STATUS "Livox SDK2 library: ${LIVOX_LIDAR_SDK_LIBRARY}")
   ##
   find_path(LIVOX_LIDAR_SDK_INCLUDE_DIR
     NAMES "livox_lidar_api.h" "livox_lidar_def.h"
