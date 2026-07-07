@@ -75,10 +75,31 @@ for script in \
   start_mapping.sh start_auto_mapping.sh teleop.sh save_map.sh save_pcd_map.sh \
   start_navigation.sh start_navigation_3d.sh start_navigation_rgbd.sh \
   start_navigation_full.sh start_robust_navigation.sh \
-  diagnose_runtime.sh task1_status.sh task1_snapshot.sh task1_runtime_check.sh task1_delivery_check.sh \
+  diagnose_runtime.sh task1_status.sh task1_snapshot.sh task1_world_check.sh task1_map_check.sh task1_runtime_check.sh task1_delivery_check.sh \
   task1_experiment_check.sh task1_figures.sh task1_sync_report.sh task1_package_preview.sh task1_report_audit.sh build_task1_report.sh task1_finalize.sh; do
   check_executable "scripts/${script}" "脚本"
 done
+
+# run.sh 是用户主入口，这里额外解析所有命令映射，防止新增入口后忘记提交脚本或执行权限。
+declare -A checked_run_scripts=()
+while IFS= read -r mapped_script; do
+  [[ -n "${mapped_script}" ]] || continue
+  [[ "${mapped_script}" == "__help__" ]] && continue
+  if [[ -n "${checked_run_scripts[${mapped_script}]:-}" ]]; then
+    continue
+  fi
+  checked_run_scripts["${mapped_script}"]=1
+  check_executable "scripts/${mapped_script}" "run.sh 映射脚本"
+done < <(
+  awk '
+    /\) echo "[^"]+\.sh" ;;/ {
+      line = $0
+      sub(/.*echo "/, "", line)
+      sub(/" ;;.*/, "", line)
+      print line
+    }
+  ' run.sh
+)
 
 help_text="$(./run.sh help || true)"
 for command_name in \
@@ -86,7 +107,7 @@ for command_name in \
   mapping auto-mapping teleop save-map save-pcd \
   nav nav-3d nav-rgbd nav-full robust-nav \
   diagnose task1-status task1-check task1-runtime-check task1-delivery-check \
-  task1-snapshot task1-experiment-check task1-figures task1-sync-report task1-package-preview task1-report-audit task1-build-report task1-finalize; do
+  task1-snapshot task1-world-check task1-map-check task1-experiment-check task1-figures task1-sync-report task1-package-preview task1-report-audit task1-build-report task1-finalize; do
   if grep -q "${command_name}" <<<"${help_text}"; then
     ok "run.sh help 包含命令: ${command_name}"
   else
@@ -119,6 +140,42 @@ check_file "src/slam_nav_bringup/map/nav_test_map.yaml" "默认导航地图 yaml
 check_file "src/slam_nav_bringup/map/nav_test_map.pgm" "默认导航地图 pgm"
 check_file "src/slam_nav_simulation/world/nav_test_world/nav_test_world.world" "静态仿真场地"
 check_file "src/slam_nav_simulation/world/nav_test_world/nav_test_world_dynamic.world" "动态障碍物仿真场地"
+if [[ -x "scripts/task1_world_check.sh" ]]; then
+  if "scripts/task1_world_check.sh"; then
+    ok "仿真场地 world 语法/几何/一致性检查通过"
+  else
+    fail "仿真场地 world 检查未通过；请先修正场地模型再继续建图/导航验收"
+  fi
+else
+  fail "缺少仿真场地检查脚本: scripts/task1_world_check.sh"
+fi
+if [[ -f "src/slam_nav_bringup/map/nav_test_map.yaml" && -f "src/slam_nav_bringup/map/nav_test_map.pgm" ]]; then
+  if [[ -x "scripts/task1_map_check.sh" ]]; then
+    if "scripts/task1_map_check.sh" >/tmp/task1_preflight_map_check.log 2>&1; then
+      ok "默认地图 yaml/pgm 元数据检查通过"
+    else
+      fail "默认地图 yaml/pgm 元数据检查未通过；请重新建图并执行 ./run.sh save-map nav_test_map"
+    fi
+  else
+    fail "缺少默认地图元数据检查脚本: scripts/task1_map_check.sh"
+  fi
+  # 只有 world 内容确实偏离 Git 基线时，才提示默认地图需要重建；单纯 touch 不再误报。
+  map_world_mismatch=false
+  world_files=(
+    "src/slam_nav_simulation/world/nav_test_world/nav_test_world.world"
+  )
+  for world_file in "${world_files[@]}"; do
+    if [[ "${world_file}" -nt "src/slam_nav_bringup/map/nav_test_map.yaml" ||
+          "${world_file}" -nt "src/slam_nav_bringup/map/nav_test_map.pgm" ]]; then
+      if ! git diff --quiet -- "${world_file}" 2>/dev/null; then
+        map_world_mismatch=true
+      fi
+    fi
+  done
+  if [[ "${map_world_mismatch}" == "true" ]]; then
+    warn "静态验收场地内容相对 Git 基线已有修改且晚于默认地图；正式截图和 10 次静态避障前建议重新建图并执行 ./run.sh save-map nav_test_map"
+  fi
+fi
 
 # task1 文档链路。
 for doc in \

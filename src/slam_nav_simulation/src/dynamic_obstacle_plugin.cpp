@@ -1,7 +1,9 @@
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <string>
 
+#include <gazebo/common/Console.hh>
 #include <gazebo/common/Plugin.hh>
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
@@ -27,8 +29,8 @@ public:
     speed_ = std::max(0.01, GetDouble(sdf, "speed", 0.35));
     pause_time_ = std::max(0.0, GetDouble(sdf, "pause_time", 0.6));
     robot_model_name_ = GetString(sdf, "robot_model", "mobile_robot");
-    yield_radius_ = std::max(0.0, GetDouble(sdf, "yield_radius", 0.0));
-    yield_resume_radius_ = std::max(yield_radius_, GetDouble(sdf, "yield_resume_radius", yield_radius_ + 0.25));
+    yield_radius_ = std::max(0.0, GetDouble(sdf, "yield_radius", 1.2));
+    yield_resume_radius_ = std::max(yield_radius_, GetDouble(sdf, "yield_resume_radius", yield_radius_ + 0.35));
 
     const auto delta = end_ - start_;
     travel_distance_ = delta.Length();
@@ -37,6 +39,12 @@ public:
 
     update_connection_ = event::Events::ConnectWorldUpdateBegin(
       std::bind(&DynamicObstaclePlugin::OnUpdate, this, std::placeholders::_1));
+
+    gzmsg << "[DynamicObstaclePlugin] model=" << model_->GetName()
+          << ", robot_model=" << robot_model_name_
+          << ", speed=" << speed_
+          << ", yield_radius=" << yield_radius_
+          << ", yield_resume_radius=" << yield_resume_radius_ << "\n";
   }
 
 private:
@@ -75,14 +83,7 @@ private:
     const double dt = std::max(0.0, now - last_update_time_);
     last_update_time_ = now;
 
-    // 动态障碍物是运动学物体，直接撞车会把定位状态撞偏；靠近机器人时先暂停轨迹。
-    if (shouldYieldToRobot()) {
-      start_time_ += dt;
-      model_->SetLinearVel(ignition::math::Vector3d::Zero);
-      model_->SetAngularVel(ignition::math::Vector3d::Zero);
-      return;
-    }
-
+    // 动态障碍物是运动学物体，直接撞车会把定位撞偏；用下一帧候选位置提前让行。
     const double cycle_time = 2.0 * travel_time_ + 2.0 * pause_time_;
     double t = std::fmod(now - start_time_, cycle_time);
     if (t < 0.0) {
@@ -110,13 +111,20 @@ private:
     const auto position = start_ + (end_ - start_) * ratio;
     const double yaw = forward ? forward_yaw_ : forward_yaw_ + M_PI;
 
+    if (shouldYieldToRobot(position)) {
+      start_time_ += dt;
+      model_->SetLinearVel(ignition::math::Vector3d::Zero);
+      model_->SetAngularVel(ignition::math::Vector3d::Zero);
+      return;
+    }
+
     ignition::math::Pose3d pose(position, ignition::math::Quaterniond(0.0, 0.0, yaw));
     model_->SetWorldPose(pose);
     model_->SetLinearVel(ignition::math::Vector3d::Zero);
     model_->SetAngularVel(ignition::math::Vector3d::Zero);
   }
 
-  bool shouldYieldToRobot()
+  bool shouldYieldToRobot(const ignition::math::Vector3d & candidate_pos)
   {
     if (yield_radius_ <= 0.0 || !model_) {
       yielding_ = false;
@@ -135,11 +143,10 @@ private:
       return false;
     }
 
-    const auto obstacle_pos = model_->WorldPose().Pos();
     const auto robot_pos = robot->WorldPose().Pos();
     const double distance_xy = std::hypot(
-      obstacle_pos.X() - robot_pos.X(),
-      obstacle_pos.Y() - robot_pos.Y());
+      candidate_pos.X() - robot_pos.X(),
+      candidate_pos.Y() - robot_pos.Y());
 
     if (yielding_) {
       yielding_ = distance_xy < yield_resume_radius_;

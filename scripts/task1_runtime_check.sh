@@ -317,6 +317,8 @@ if [[ "${mode}" == "nav" || "${mode}" == "dynamic" ]]; then
 fi
 
 if [[ "${mode}" == "dynamic" ]]; then
+  warn_topic_pub "/nav_camera/color/image_raw" "RGB-D 相机 RGB 图像"
+  warn_topic_pub "/nav_camera/depth/image_raw" "RGB-D 相机深度图像"
   warn_topic_pub "/terrain_map" "3D 地形分析一阶段"
   warn_topic_pub "/terrain_map_ext" "3D 地形分析二阶段"
   warn_topic_pub "/visual_obstacles" "RGB-D 松耦合障碍物"

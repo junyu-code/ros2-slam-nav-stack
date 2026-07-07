@@ -9,6 +9,7 @@ from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan, PointCloud2
 from std_msgs.msg import Bool, String
 
@@ -56,9 +57,9 @@ class LocalizationGuard(Node):
         self.diag_pub = self.create_publisher(DiagnosticArray, self.diagnostic_topic, 10)
         self.cmd_vel_pub = self.create_publisher(Twist, self.cmd_vel_topic, 10)
 
-        self.create_subscription(Odometry, self.odom_topic, self._odom_callback, 10)
-        self.create_subscription(PointCloud2, self.cloud_topic, self._cloud_callback, 10)
-        self.create_subscription(LaserScan, self.scan_topic, self._scan_callback, 10)
+        self.create_subscription(Odometry, self.odom_topic, self._odom_callback, qos_profile_sensor_data)
+        self.create_subscription(PointCloud2, self.cloud_topic, self._cloud_callback, qos_profile_sensor_data)
+        self.create_subscription(LaserScan, self.scan_topic, self._scan_callback, qos_profile_sensor_data)
 
         timer_period = 1.0 / max(self.check_rate_hz, 0.5)
         self.create_timer(timer_period, self._on_timer)

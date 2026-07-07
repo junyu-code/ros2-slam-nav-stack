@@ -17,6 +17,7 @@ from rclpy.qos import (
 )
 from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
+from std_msgs.msg import Bool
 
 
 class InitialPosePublisher(Node):
@@ -41,6 +42,10 @@ class InitialPosePublisher(Node):
         self.declare_parameter('settle_time', 2.0)
         self.declare_parameter('require_map_to_base_tf', True)
         self.declare_parameter('post_publish_timeout', 12.0)
+        self.declare_parameter('require_amcl_convergence', False)
+        self.declare_parameter('amcl_converged_topic', '/amcl_converged')
+        self.declare_parameter('amcl_convergence_timeout', 30.0)
+        self.declare_parameter('continue_on_amcl_convergence_timeout', True)
 
         self.frame_id = self.get_parameter('frame_id').value
         self.base_frame_id = self.get_parameter('base_frame_id').value
@@ -53,6 +58,11 @@ class InitialPosePublisher(Node):
         self.settle_time = float(self.get_parameter('settle_time').value)
         self.require_map_to_base_tf = bool(self.get_parameter('require_map_to_base_tf').value)
         self.post_publish_timeout = float(self.get_parameter('post_publish_timeout').value)
+        self.require_amcl_convergence = bool(self.get_parameter('require_amcl_convergence').value)
+        self.amcl_convergence_timeout = float(self.get_parameter('amcl_convergence_timeout').value)
+        self.continue_on_amcl_convergence_timeout = bool(
+            self.get_parameter('continue_on_amcl_convergence_timeout').value
+        )
 
         self.map_ready = False
         self.scan_ready = False
@@ -60,7 +70,10 @@ class InitialPosePublisher(Node):
         self.ready_since = None
         self.sent_count = 0
         self.waiting_for_map_tf = False
+        self.waiting_for_convergence = False
         self.map_tf_wait_started = None
+        self.convergence_wait_started = None
+        self.amcl_converged = False
         self.finished = False
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
@@ -90,6 +103,12 @@ class InitialPosePublisher(Node):
             self._on_odom,
             qos_profile_sensor_data,
         )
+        self.create_subscription(
+            Bool,
+            self.get_parameter('amcl_converged_topic').value,
+            self._on_amcl_converged,
+            10,
+        )
         self.publisher = self.create_publisher(
             PoseWithCovarianceStamped,
             self.get_parameter('initialpose_topic').value,
@@ -111,9 +130,15 @@ class InitialPosePublisher(Node):
     def _on_odom(self, _msg):
         self.odom_ready = True
 
+    def _on_amcl_converged(self, msg):
+        self.amcl_converged = bool(msg.data)
+
     def _try_publish(self):
         if self.waiting_for_map_tf:
             self._wait_for_map_tf()
+            return
+        if self.waiting_for_convergence:
+            self._wait_for_amcl_convergence()
             return
 
         missing = []
@@ -190,6 +215,14 @@ class InitialPosePublisher(Node):
             self.get_logger().info(
                 f'AMCL transform {self.frame_id} -> {self.base_frame_id} is ready.'
             )
+            if self.require_amcl_convergence:
+                self.waiting_for_map_tf = False
+                self.waiting_for_convergence = True
+                self.convergence_wait_started = time.monotonic()
+                self.get_logger().info(
+                    'Waiting for strict AMCL convergence score before starting navigation.'
+                )
+                return
             self.get_logger().info('Initial pose publishing complete.')
             self.finished = True
             return
@@ -204,6 +237,32 @@ class InitialPosePublisher(Node):
 
         self.get_logger().info(
             f'Waiting for {self.frame_id} -> {self.base_frame_id} TF after initial pose.',
+            throttle_duration_sec=2.0,
+        )
+
+    def _wait_for_amcl_convergence(self):
+        # 严格启动模式下，先等 AMCL 多指标收敛，再放行后续 Nav2 节点。
+        if self.amcl_converged:
+            self.get_logger().info('AMCL convergence monitor reports converged. Initial pose stage complete.')
+            self.finished = True
+            return
+
+        elapsed = time.monotonic() - self.convergence_wait_started
+        if self.amcl_convergence_timeout > 0.0 and elapsed >= self.amcl_convergence_timeout:
+            if self.continue_on_amcl_convergence_timeout:
+                self.get_logger().warn(
+                    'Timed out waiting for strict AMCL convergence; continuing launch so the operator can inspect RViz.'
+                )
+                self.finished = True
+                return
+            self.get_logger().warn(
+                'Timed out waiting for strict AMCL convergence; keeping Nav2 gated because convergence is required.',
+                throttle_duration_sec=5.0,
+            )
+            return
+
+        self.get_logger().info(
+            'Waiting for AMCL convergence monitor before starting navigation.',
             throttle_duration_sec=2.0,
         )
 

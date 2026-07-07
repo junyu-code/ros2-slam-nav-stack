@@ -17,9 +17,14 @@ show_help() {
   sim-static            启动静态验收场地仿真
   sim-dynamic           启动动态障碍仿真
   sim-dynamic-rgbd      启动动态障碍 + RGB-D 仿真
+  large-arena           启动大场地仿真
+  large-arena-collision 启动大场地碰撞扰动测试仿真
+  large-arena-nav       启动大场地自主导航
+  large-arena-robust-nav 启动大场地最强稳定导航（显式别名）
   mapping               手动建图链路
   auto-mapping          自动探索建图链路
   teleop                键盘控制
+  teleop-manual-car     键盘控制大场地碰撞扰动用手动车
   save-map [name]       保存 2D 栅格地图
   save-pcd [name]       保存 FAST-LIO PCD 地图
   nav                   默认导航
@@ -36,6 +41,8 @@ show_help() {
   task1-status          task1 当前剩余证据/下一步（不启动 GUI）
   task1-snapshot        生成 task1 当前证据状态快照 md（不启动 GUI）
   task1-check           task1 交付材料预检（不启动 GUI）
+  task1-world-check     task1 仿真场地 world 语法/几何/一致性检查（不启动 GUI）
+  task1-map-check       task1 地图 yaml/pgm 元数据和过期状态检查（不启动 GUI）
   task1-runtime-check   task1 运行时链路检查（不启动 GUI）
   task1-experiment-check task1 静态避障实验表/成功率检查（不启动 GUI）
   task1-figures         task1 报告截图清单/路径/导入辅助（不启动 GUI）
@@ -83,12 +90,18 @@ show_help() {
 
 示例：
   ./run.sh sim-static
+  ./run.sh large-arena-collision
+  ./run.sh large-arena-nav
+  ./run.sh large-arena-robust-nav
+  ./run.sh teleop-manual-car
   ./run.sh auto-mapping
   ./run.sh save-pcd nav_test_static
   ./run.sh nav-full
   ./run.sh task1-status
   ./run.sh task1-snapshot
   ./run.sh task1-check
+  ./run.sh task1-world-check
+  ./run.sh task1-map-check
   ./run.sh task1-runtime-check nav
   ./run.sh task1-experiment-check
   ./run.sh task1-figures
@@ -144,9 +157,14 @@ script_for_command() {
     sim-static|static-sim) echo "start_simulation_static.sh" ;;
     sim-dynamic) echo "start_simulation_dynamic.sh" ;;
     sim-dynamic-rgbd) echo "start_simulation_dynamic_rgbd.sh" ;;
+    large-arena|arena) echo "start_large_arena.sh" ;;
+    large-arena-collision|arena-collision|collision-test) echo "start_large_arena_collision_test.sh" ;;
+    large-arena-nav|arena-nav) echo "start_large_arena_navigation.sh" ;;
+    large-arena-robust-nav|arena-robust-nav|robust-arena-nav) echo "start_large_arena_robust_navigation.sh" ;;
     mapping|map) echo "start_mapping.sh" ;;
     auto-mapping|auto-map) echo "start_auto_mapping.sh" ;;
     teleop) echo "teleop.sh" ;;
+    teleop-manual-car|manual-car|manual-teleop) echo "teleop_manual_car.sh" ;;
     save-map) echo "save_map.sh" ;;
     save-pcd) echo "save_pcd_map.sh" ;;
     nav|navigation) echo "start_navigation.sh" ;;
@@ -163,6 +181,8 @@ script_for_command() {
     task1-status|task1-next|task1-todo|status-task1) echo "task1_status.sh" ;;
     task1-snapshot|task1-state|task1-progress) echo "task1_snapshot.sh" ;;
     task1-check|task1-preflight|task1) echo "task1_preflight.sh" ;;
+    task1-world-check|task1-world|world-check) echo "task1_world_check.sh" ;;
+    task1-map-check|task1-map|map-check) echo "task1_map_check.sh" ;;
     task1-runtime-check|task1-runtime|runtime-check) echo "task1_runtime_check.sh" ;;
     task1-experiment-check|task1-experiment|experiment-check|experiment) echo "task1_experiment_check.sh" ;;
     task1-figures|task1-figure|task1-screenshots|task1-screenshot|figures) echo "task1_figures.sh" ;;
@@ -260,17 +280,19 @@ show_menu() {
  18) task1-status       查看 task1 剩余证据和下一步
  19) task1-snapshot     生成 task1 当前证据状态快照 md
  20) task1-check        task1 交付材料预检
- 21) experiment-check   task1 静态避障实验表检查
- 22) task1-figures      task1 报告截图清单/导入辅助
- 23) task1-sync-report  从实验记录同步生成报告表格
- 24) task1-delivery     task1 打包交付前自查
- 25) package-preview    task1 压缩包预览
- 26) report-audit       task1 结课报告源文件/截图/PDF 审计
- 27) build-report       编译 task1 结课报告 PDF
- 28) task1-finalize     task1 最终交付编排
- 29) task2-status       task2 实机/毕设扩展状态页
- 30) real-preflight     实机部署前预检
- 31) build              编译工作区
+ 21) task1-world-check  检查 task1 静态/动态仿真场地模型
+ 22) task1-map-check    检查 task1 默认地图元数据
+ 23) experiment-check   task1 静态避障实验表检查
+ 24) task1-figures      task1 报告截图清单/导入辅助
+ 25) task1-sync-report  从实验记录同步生成报告表格
+ 26) task1-delivery     task1 打包交付前自查
+ 27) package-preview    task1 压缩包预览
+ 28) report-audit       task1 结课报告源文件/截图/PDF 审计
+ 29) build-report       编译 task1 结课报告 PDF
+ 30) task1-finalize     task1 最终交付编排
+ 31) task2-status       task2 实机/毕设扩展状态页
+ 32) real-preflight     实机部署前预检
+ 33) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 
@@ -313,17 +335,19 @@ case "${choice}" in
   18) run_command task1-status ;;
   19) run_command task1-snapshot ;;
   20) run_command task1-check ;;
-  21) run_command task1-experiment-check ;;
-  22) run_command task1-figures ;;
-  23) run_command task1-sync-report ;;
-  24) run_command task1-delivery-check ;;
-  25) run_command task1-package-preview ;;
-  26) run_command task1-report-audit ;;
-  27) run_command task1-build-report ;;
-  28) run_command task1-finalize ;;
- 29) run_command task2-status ;;
- 30) run_command real-preflight ;;
- 31) run_command build ;;
+  21) run_command task1-world-check ;;
+  22) run_command task1-map-check ;;
+  23) run_command task1-experiment-check ;;
+  24) run_command task1-figures ;;
+  25) run_command task1-sync-report ;;
+  26) run_command task1-delivery-check ;;
+  27) run_command task1-package-preview ;;
+  28) run_command task1-report-audit ;;
+  29) run_command task1-build-report ;;
+  30) run_command task1-finalize ;;
+  31) run_command task2-status ;;
+  32) run_command real-preflight ;;
+  33) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

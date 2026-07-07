@@ -18,6 +18,7 @@ from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -44,6 +45,15 @@ def generate_launch_description():
     initial_pose_x = LaunchConfiguration('initial_pose_x')
     initial_pose_y = LaunchConfiguration('initial_pose_y')
     initial_pose_yaw = LaunchConfiguration('initial_pose_yaw')
+    initial_pose_xy_stddev = LaunchConfiguration('initial_pose_xy_stddev')
+    initial_pose_yaw_stddev = LaunchConfiguration('initial_pose_yaw_stddev')
+    scan_cloud_topic = LaunchConfiguration('scan_cloud_topic')
+    scan_target_frame = LaunchConfiguration('scan_target_frame')
+    require_amcl_convergence = LaunchConfiguration('require_amcl_convergence')
+    amcl_convergence_timeout = LaunchConfiguration('amcl_convergence_timeout')
+    continue_on_amcl_convergence_timeout = LaunchConfiguration(
+        'continue_on_amcl_convergence_timeout'
+    )
 
     def normalize_python_bool(value):
         # Nav2 官方 launch 里有 PythonExpression，布尔值要用 Python 可识别的 True/False。
@@ -100,8 +110,16 @@ def generate_launch_description():
             'x': initial_pose_x,
             'y': initial_pose_y,
             'yaw': initial_pose_yaw,
-            'settle_time': 2.0,
-            'publish_count': 1,
+            'settle_time': 3.0,
+            'publish_count': 3,
+            'xy_stddev': ParameterValue(initial_pose_xy_stddev, value_type=float),
+            'yaw_stddev': ParameterValue(initial_pose_yaw_stddev, value_type=float),
+            'require_amcl_convergence': ParameterValue(require_amcl_convergence, value_type=bool),
+            'amcl_convergence_timeout': ParameterValue(amcl_convergence_timeout, value_type=float),
+            'continue_on_amcl_convergence_timeout': ParameterValue(
+                continue_on_amcl_convergence_timeout,
+                value_type=bool,
+            ),
         }],
         output='screen',
     )
@@ -216,6 +234,21 @@ def generate_launch_description():
         DeclareLaunchArgument('initial_pose_x', default_value='0.0'),
         DeclareLaunchArgument('initial_pose_y', default_value='0.0'),
         DeclareLaunchArgument('initial_pose_yaw', default_value='0.0'),
+        DeclareLaunchArgument('initial_pose_xy_stddev', default_value='0.45'),
+        DeclareLaunchArgument('initial_pose_yaw_stddev', default_value='0.55'),
+        DeclareLaunchArgument('require_amcl_convergence', default_value='false'),
+        DeclareLaunchArgument('amcl_convergence_timeout', default_value='30.0'),
+        DeclareLaunchArgument('continue_on_amcl_convergence_timeout', default_value='true'),
+        DeclareLaunchArgument(
+            'scan_cloud_topic',
+            default_value='/cloud_registered',
+            description='PointCloud2 topic projected to /scan for AMCL and 2D costmaps.',
+        ),
+        DeclareLaunchArgument(
+            'scan_target_frame',
+            default_value='livox_frame',
+            description='Target frame used by pointcloud_to_laserscan.',
+        ),
         DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument(
             'rviz_config',
@@ -254,11 +287,11 @@ def generate_launch_description():
             executable='pointcloud_to_laserscan_node',
             name='pointcloud_to_laserscan',
             remappings=[
-                ('cloud_in', '/cloud_registered'),
+                ('cloud_in', scan_cloud_topic),
                 ('scan', '/scan'),
             ],
             parameters=[{
-                'target_frame': 'livox_frame',
+                'target_frame': scan_target_frame,
                 'transform_tolerance': 0.20,
                 'min_height': -0.30,
                 'max_height': 0.45,

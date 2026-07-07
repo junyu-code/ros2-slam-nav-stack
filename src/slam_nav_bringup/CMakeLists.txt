@@ -14,6 +14,7 @@ install(DIRECTORY
 )
 
 install(PROGRAMS
+  scripts/amcl_convergence_monitor.py
   scripts/auto_explore_mapping.py
   scripts/diagnose_runtime.py
   scripts/publish_initial_pose.py

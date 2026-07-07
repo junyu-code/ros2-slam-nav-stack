@@ -55,7 +55,13 @@ install_if_changed() {
   local dst="$2"
   if [[ -f "${dst}" ]] && cmp -s "${src}" "${dst}"; then
     rm -f "${src}"
-    log "内容未变化，保留原文件时间: ${dst}"
+    # 实验记录的非表格区域也可能被维护；内容相同但源文件更新时刷新 mtime，表示已同步检查。
+    if [[ "${RECORD_FILE}" -nt "${dst}" ]]; then
+      touch "${dst}"
+      log "内容未变化，已刷新同步时间: ${dst}"
+    else
+      log "内容未变化，保留原文件时间: ${dst}"
+    fi
   else
     mv "${src}" "${dst}"
     log "已更新: ${dst}"

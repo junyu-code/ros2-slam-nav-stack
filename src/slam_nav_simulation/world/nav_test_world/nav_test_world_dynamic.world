@@ -226,6 +226,7 @@
         </visual>
       </link>
       <plugin name="dynamic_obstacle_plugin" filename="libdynamic_obstacle_plugin.so">
+        <robot_model>mobile_robot</robot_model>
         <start_x>2.2</start_x>
         <start_y>-2.6</start_y>
         <end_x>2.2</end_x>
@@ -233,6 +234,8 @@
         <height>0.55</height>
         <speed>0.35</speed>
         <pause_time>0.8</pause_time>
+        <yield_radius>1.20</yield_radius>
+        <yield_resume_radius>1.55</yield_resume_radius>
       </plugin>
     </model>
 
@@ -273,6 +276,7 @@
         </visual>
       </link>
       <plugin name="fast_dynamic_obstacle_plugin" filename="libdynamic_obstacle_plugin.so">
+        <robot_model>mobile_robot</robot_model>
         <start_x>-0.8</start_x>
         <start_y>0.0</start_y>
         <end_x>3.6</end_x>
@@ -280,6 +284,8 @@
         <height>0.45</height>
         <speed>0.85</speed>
         <pause_time>0.3</pause_time>
+        <yield_radius>1.60</yield_radius>
+        <yield_resume_radius>2.00</yield_resume_radius>
       </plugin>
     </model>
 

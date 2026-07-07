@@ -24,6 +24,10 @@ def generate_launch_description():
     )
     static_world = os.path.join(sim_dir, 'world', 'nav_test_world', 'nav_test_world.world')
     dynamic_world = os.path.join(sim_dir, 'world', 'nav_test_world', 'nav_test_world_dynamic.world')
+    large_arena_world = os.path.join(sim_dir, 'world', 'large_arena_world', 'large_arena.world')
+    large_arena_collision_world = os.path.join(
+        sim_dir, 'world', 'large_arena_world', 'large_arena_collision.world'
+    )
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     gui = LaunchConfiguration('gui')
@@ -37,8 +41,15 @@ def generate_launch_description():
     piper_tcp_parent_link = LaunchConfiguration('piper_tcp_parent_link')
     piper_camera_xyz = LaunchConfiguration('piper_camera_xyz')
     piper_camera_rpy = LaunchConfiguration('piper_camera_rpy')
+    spawn_x = LaunchConfiguration('spawn_x')
+    spawn_y = LaunchConfiguration('spawn_y')
+    spawn_z = LaunchConfiguration('spawn_z')
+    spawn_yaw = LaunchConfiguration('spawn_yaw')
     world_file = PythonExpression([
-        "'", dynamic_world, "' if '", world, "' == 'dynamic' else '", static_world, "'"
+        "'", dynamic_world, "' if '", world, "' == 'dynamic' else '",
+        large_arena_world, "' if '", world, "' == 'large_arena' else '",
+        large_arena_collision_world,
+        "' if '", world, "' == 'large_arena_collision' else '", static_world, "'",
     ])
 
     robot_description = ParameterValue(
@@ -76,9 +87,13 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'world',
             default_value='dynamic',
-            choices=['static', 'dynamic'],
-            description='Choose static or dynamic-obstacle test world.',
+            choices=['static', 'dynamic', 'large_arena', 'large_arena_collision'],
+            description='Choose static, dynamic-obstacle, large arena, or collision-test world.',
         ),
+        DeclareLaunchArgument('spawn_x', default_value='-7.0'),
+        DeclareLaunchArgument('spawn_y', default_value='-4.2'),
+        DeclareLaunchArgument('spawn_z', default_value='0.06'),
+        DeclareLaunchArgument('spawn_yaw', default_value='0.0'),
         DeclareLaunchArgument(
             'enable_nav_rgbd_camera',
             default_value='false',
@@ -167,10 +182,10 @@ def generate_launch_description():
                     arguments=[
                         '-entity', 'mobile_robot',
                         '-topic', 'robot_description',
-                        '-x', '-7.0',
-                        '-y', '-4.2',
-                        '-z', '0.06',
-                        '-Y', '0.0',
+                        '-x', spawn_x,
+                        '-y', spawn_y,
+                        '-z', spawn_z,
+                        '-Y', spawn_yaw,
                         '-timeout', '120',
                     ],
                     output='screen',
