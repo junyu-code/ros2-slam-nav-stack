@@ -17,28 +17,14 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(gazebo_dev REQUIRED)
-find_package(gazebo_ros REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(tf2_ros REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
-find_package(livox_ros_driver2 REQUIRED)
-find_package(Boost REQUIRED COMPONENTS chrono)
+find_package(gazebo_dev QUIET)
+find_package(gazebo_ros QUIET)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 include_directories(
   include
 )
-include_directories(${GAZEBO_INCLUDE_DIRS})
-include_directories(/usr/include/gazebo-11/gazebo)
-include_directories(/home/lihanchen/Coding/ws_livox/install/livox_ros_driver2/include)
-link_directories(${GAZEBO_LIBRARY_DIRS})
-link_directories(/home/lihanchen/Coding/ws_livox/install/livox_ros_driver2/lib)
 
 
 install(DIRECTORY include/
@@ -47,26 +33,45 @@ install(DIRECTORY include/
 
 
 
-add_library(ros2_livox SHARED src/livox_points_plugin.cpp src/livox_ode_multiray_shape.cpp)
-target_link_libraries(ros2_livox ${GAZEBO_LIBRARIES} RayPlugin GpuRayPlugin)
-ament_target_dependencies(ros2_livox rclcpp std_msgs sensor_msgs geometry_msgs gazebo_dev gazebo_ros tf2_ros livox_ros_driver2 )
-target_link_libraries(ros2_livox libprotobuf.so.9)
-target_link_libraries(ros2_livox libboost_chrono.so.1.71.0)
-target_include_directories(ros2_livox PRIVATE include)
+if(gazebo_dev_FOUND AND gazebo_ros_FOUND)
+  find_package(rclcpp REQUIRED)
+  find_package(std_msgs REQUIRED)
+  find_package(sensor_msgs REQUIRED)
+  find_package(geometry_msgs REQUIRED)
+  find_package(tf2_ros REQUIRED)
+  find_package(rosidl_default_generators REQUIRED)
+  find_package(livox_ros_driver2 REQUIRED)
+  find_package(Boost REQUIRED COMPONENTS chrono)
+  find_package(Protobuf QUIET)
 
-#install(TARGETS ros2_livox DESTINATION lib/${PROJECT_NAME})
+  include_directories(${GAZEBO_INCLUDE_DIRS})
+  link_directories(${GAZEBO_LIBRARY_DIRS})
 
-install(TARGETS ros2_livox
-    LIBRARY DESTINATION lib)
+  add_library(ros2_livox SHARED src/livox_points_plugin.cpp src/livox_ode_multiray_shape.cpp)
+  target_link_libraries(ros2_livox ${GAZEBO_LIBRARIES} RayPlugin GpuRayPlugin)
+  ament_target_dependencies(ros2_livox rclcpp std_msgs sensor_msgs geometry_msgs gazebo_dev gazebo_ros tf2_ros livox_ros_driver2)
+  if(Protobuf_FOUND)
+    target_link_libraries(ros2_livox ${Protobuf_LIBRARIES})
+  else()
+    target_link_libraries(ros2_livox protobuf)
+  endif()
+  target_link_libraries(ros2_livox Boost::chrono)
+  target_include_directories(ros2_livox PRIVATE include)
+
+  install(TARGETS ros2_livox
+      LIBRARY DESTINATION lib)
+
+  ament_export_libraries(
+    ros2_livox
+  )
+else()
+  message(WARNING "Gazebo dependencies were not found; ros2_livox plugin will not be built.")
+endif()
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 endif()
-
-ament_export_libraries(
-  ros2_livox
-)
 
 set(CSV_FILES
     scan_mode/mid40.csv

@@ -3,15 +3,14 @@ project(slam_nav_bringup)
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY
-  behavior_tree
-  config
-  launch
-  map
-  report_assets
-  rviz
-  DESTINATION share/${PROJECT_NAME}
-)
+foreach(_dir behavior_tree config launch map report_assets rviz)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${_dir}")
+    install(DIRECTORY
+      ${_dir}
+      DESTINATION share/${PROJECT_NAME}
+    )
+  endif()
+endforeach()
 
 install(PROGRAMS
   scripts/amcl_convergence_monitor.py
