@@ -29,7 +29,7 @@ def generate_launch_description():
     #untime_pos_log_enable_param：表示是否启用运行时位置日志的参数，布尔类型，默认值为 false
     runtime_pos_log_enable_param = LaunchConfiguration('runtime_pos_log_enable', default='false')  # bool
 
-    default_config_path = os.path.join(package_path, 'config', 'mid360.yaml')
+    default_config_path = os.path.join(package_path, 'config', 'mid360_down.yaml')
     default_rviz_config_path = os.path.join(
         package_path, 'rviz_cfg', 'fastlio.rviz')
 

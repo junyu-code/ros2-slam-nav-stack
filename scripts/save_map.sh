@@ -7,5 +7,5 @@ source "${SCRIPT_DIR}/setup_workspace_env.sh"
 set -u
 
 mkdir -p src/slam_nav_bringup/map
-name="${1:-nav_test_map}"
+name="${1:-base1}"
 exec ros2 run nav2_map_server map_saver_cli -f "src/slam_nav_bringup/map/${name}"

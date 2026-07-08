@@ -16,15 +16,15 @@ GENERATED_TRIALS_MD="tasks/task1/STATIC_TRIALS_TABLE.md"
 GENERATED_TRIALS_TEX="tasks/task1/report_latex/generated_static_trials.tex"
 STATIC_WORLD="src/slam_nav_simulation/world/nav_test_world/nav_test_world.world"
 DYNAMIC_WORLD="src/slam_nav_simulation/world/nav_test_world/nav_test_world_dynamic.world"
-MAP_YAML="src/slam_nav_bringup/map/nav_test_map.yaml"
-MAP_PGM="src/slam_nav_bringup/map/nav_test_map.pgm"
+MAP_YAML="src/slam_nav_bringup/map/base1.yaml"
+MAP_PGM="src/slam_nav_bringup/map/base1.pgm"
 map_stale=false
 
 required_figs=(
   "fig_6_1_gazebo_world.png|图 6-1 Gazebo 静态场地总览|./run.sh clean && ./run.sh sim-static"
   "fig_6_2_robot_model.png|图 6-2 机器人模型和传感器|./run.sh sim-static"
   "fig_7_1_mapping_rviz.png|图 7-1 RViz 建图过程|./run.sh mapping + ./run.sh teleop"
-  "fig_7_2_saved_map.png|图 7-2 保存后的地图|./run.sh save-map nav_test_map"
+  "fig_7_2_saved_map.png|图 7-2 保存后的地图|./run.sh save-map base1"
   "fig_8_1_nav2_map_loaded.png|图 8-1 Nav2 加载地图|./run.sh nav"
   "fig_8_2_global_path.png|图 8-2 全局路径|RViz Nav2 Goal"
   "fig_8_3_avoid_obstacle.png|图 8-3 静态避障过程|RViz 导航过程中截图"
@@ -93,7 +93,7 @@ else
 fi
 
 if [[ -f "${MAP_YAML}" && -f "${MAP_PGM}" ]]; then
-  pass "默认导航地图存在: nav_test_map.yaml ($(file_size "${MAP_YAML}")), nav_test_map.pgm ($(file_size "${MAP_PGM}"))"
+  pass "默认导航地图存在: base1.yaml ($(file_size "${MAP_YAML}")), base1.pgm ($(file_size "${MAP_PGM}"))"
   if [[ -x "scripts/task1_map_check.sh" ]]; then
     if "scripts/task1_map_check.sh" >/tmp/task1_status_map_check.log 2>&1; then
       map_summary="$(grep -E '^  - (resolution|origin|image size|map extent):' /tmp/task1_status_map_check.log | sed 's/^  - //' | awk 'BEGIN{sep=""}{printf "%s%s", sep, $0; sep="; "} END{print ""}')"
@@ -115,10 +115,10 @@ if [[ -f "${MAP_YAML}" && -f "${MAP_PGM}" ]]; then
   done
   if [[ "${map_world_mismatch}" == "true" ]]; then
     map_stale=true
-    warn "仿真场地内容相对 Git 基线已有修改且晚于默认地图；正式验收前建议重新执行 ./run.sh sim-static、./run.sh mapping、./run.sh save-map nav_test_map"
+    warn "仿真场地内容相对 Git 基线已有修改且晚于默认地图；正式验收前建议重新执行 ./run.sh sim-static、./run.sh mapping、./run.sh save-map base1"
   fi
 else
-  fail "默认导航地图不完整，先完成建图并执行 ./run.sh save-map nav_test_map"
+  fail "默认导航地图不完整，先完成建图并执行 ./run.sh save-map base1"
 fi
 
 if [[ -x "scripts/task1_world_check.sh" ]]; then
@@ -214,7 +214,7 @@ echo "6. 下一步建议"
 if (( fail_count > 0 )); then
   echo "- 先修复上面的缺失项，然后运行: ./run.sh task1-check"
 elif [[ "${map_stale}" == "true" ]]; then
-  echo "- 当前场地内容相对 Git 基线已有修改且晚于 nav_test_map；下一步优先重新建图并保存地图: ./run.sh clean && ./run.sh sim-static，另开终端 ./run.sh mapping 和 ./run.sh teleop，扫完后执行 ./run.sh save-map nav_test_map"
+  echo "- 当前场地内容相对 Git 基线已有修改且晚于 base1；下一步优先重新建图并保存地图: ./run.sh clean && ./run.sh sim-static，另开终端 ./run.sh mapping 和 ./run.sh teleop，扫完后执行 ./run.sh save-map base1"
   echo "- 这一步可以顺手补图 6-1、6-2、7-1、7-2；新地图保存后再继续 ./run.sh nav 做 8 组导航截图和 10 次静态避障。"
 elif (( ${#missing_figs[@]} > 0 )); then
   first_missing="${missing_figs[0]}"

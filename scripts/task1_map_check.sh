@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${WORKSPACE_DIR}"
 
-MAP_NAME="${1:-nav_test_map}"
+MAP_NAME="${1:-base1}"
 MAP_DIR="src/slam_nav_bringup/map"
 MAP_YAML="${MAP_DIR}/${MAP_NAME}.yaml"
 STATIC_WORLD="src/slam_nav_simulation/world/nav_test_world/nav_test_world.world"

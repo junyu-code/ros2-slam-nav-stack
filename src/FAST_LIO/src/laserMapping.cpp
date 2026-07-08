@@ -1140,6 +1140,9 @@ private:
 
     void map_publish_callback()
     {
+        if (pcl_wait_pub->empty() || lidar_end_time <= 0.0) {
+            return;
+        }
         publish_map(pubLaserCloudMap_);
     }
 

@@ -11,7 +11,7 @@ required_figs=(
   "6-1|fig_6_1_gazebo_world.png|Gazebo 静态场地总览|./run.sh clean && ./run.sh sim-static"
   "6-2|fig_6_2_robot_model.png|机器人模型和传感器|./run.sh sim-static"
   "7-1|fig_7_1_mapping_rviz.png|RViz 建图过程|./run.sh mapping + ./run.sh teleop"
-  "7-2|fig_7_2_saved_map.png|保存后的地图|./run.sh save-map nav_test_map"
+  "7-2|fig_7_2_saved_map.png|保存后的地图|./run.sh save-map base1"
   "8-1|fig_8_1_nav2_map_loaded.png|Nav2 加载地图|./run.sh nav"
   "8-2|fig_8_2_global_path.png|全局路径|RViz 发送 2D Goal Pose"
   "8-3|fig_8_3_avoid_obstacle.png|静态避障过程|导航过程中截图"

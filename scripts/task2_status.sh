@@ -165,7 +165,7 @@ contains_text "src/safe_cmd_bridge/config/safe_cmd_bridge.yaml" 'enable_udp_outp
 contains_text "src/safe_cmd_bridge/config/safe_cmd_bridge.yaml" 'command_timeout_sec' "速度指令超时配置存在"
 contains_text "src/cloud_relocalization/config/icp_relocalization.yaml" 'publish_tf:[[:space:]]*false' "重定位默认不发布 map->odom"
 contains_text "src/cloud_relocalization/config/icp_relocalization.yaml" 'auto_align:[[:space:]]*false' "重定位默认不自动闭环"
-contains_text "src/rgbd_navigation_perception/README.md" '/nav_camera/depth/image_raw' "导航 RGB-D 使用 /nav_camera"
+contains_text "src/rgbd_navigation_perception/README.md" '/nav_camera/d435i/depth/image_rect_raw' "导航 RGB-D 使用 D435i /nav_camera"
 contains_text "src/slam_nav_piper_perception/README.md" '/piper/arm_camera' "机械臂相机保持 /piper/arm_camera"
 
 if git ls-files | grep -Eq '(^|/)(.*\.(bag|db3|mcap|pcd|ply|las|laz|onnx|pt|pth|ckpt|engine|safetensors))$'; then

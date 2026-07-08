@@ -23,6 +23,14 @@
 
 2026-07-07 维护记录：增强 `./run.sh task1-runtime-check`，支持 `--save` 将真实运行时的 ROS 话题、TF、Nav2 生命周期和 action 检查输出保存到 `tasks/task1/TASK1_RUNTIME_LAST.md`。该文件用于辅助填写 `EXPERIMENT_RECORD.md` 中的建图/导航运行检查表，但不替代 Gazebo/RViz 截图。
 
+2026-07-08 维护记录：复盘实机 RViz 空白问题，确认根因不是 RViz，而是 `mapping` 只启动 FAST-LIO、`pointcloud_to_laserscan`、slam_toolbox 和 RViz，没有先启动 Livox MID360 驱动与 IMU complementary filter，导致 FAST-LIO 缺少 `/livox/lidar` 和 `/imu/data` 输入，后续 `/cloud_registered`、`/scan`、`/map` 都没有有效数据。已新增 `scripts/real_sensor_inputs.sh`，并接入 `mapping`、`auto-mapping`、`nav`、`nav-3d`、`nav-rgbd`、`nav-full` 和 `robust-nav`：入口会自动检测 `/livox/lidar`、`/livox/imu`、`/imu/data`，缺失时自动拉起 Livox 驱动和 IMU filter，已有发布者时复用现有节点。同步修复 `clean` 清理 Livox/IMU filter 残留、`mapping.launch.py` 加载 RViz 配置、`/scan` QoS 兼容性和 FAST-LIO 空地图时间戳刷屏问题。
+
+2026-07-08 维护记录：复盘 Jetson clean build 问题。当前实机为 ARM64 环境，`uname -m` 为 `aarch64`，系统已存在可用的 Livox-SDK2 ARM64 安装：`/usr/local/lib/liblivox_lidar_sdk_shared.so` 为 aarch64，`/usr/local/include/livox_lidar_api.h` 与 `livox_lidar_def.h` 存在。因此构建不再执行额外的手动 Livox-SDK2 安装流程，而是复用系统 SDK。`livox_ros_driver2` 的 CMake 已调整为 ARM64 下优先查找系统 Livox-SDK2，避免继续链接仓库中架构绑定的 x86_64 预编译库。`scripts/build.sh` 默认并行度改为 `nproc`，并使用 colcon parallel executor，同时保留 `BUILD_JOBS` 与 `COLCON_WORKERS` 供低内存机器降档。为保证 clean checkout 能编过，还修复了多个可选资源/依赖的硬失败：`slam_nav_piper_description` 不再强制安装不存在的 `rviz` 目录，`slam_nav_bringup` 对 `report_assets` 做存在性保护，`ros2_livox_simulation` 和 `slam_nav_simulation` 在缺少 Gazebo 开发依赖时跳过插件编译、只安装资源资产。最终全量 `./run.sh build` 已验证通过，结果为 27 packages finished。
+
+2026-07-08 后续构建治理建议：核心导航/感知包应与仿真、Gazebo、RViz 插件形成明确构建边界，避免 headless 或实机部署环境被可选 GUI/仿真依赖阻塞；仓库不应默认链接架构绑定的二进制 `.so`，Livox 这类原生库应优先通过 `find_package`、导出的 CMake target 或系统安装路径探测；CMake 中应避免 `/home/...` 形式硬编码绝对路径；可选目录统一使用 `if(EXISTS ...)` 或提交占位目录；部署前预检应覆盖 CPU 架构、Livox 头文件和 `.so` 架构、Gazebo/RViz 依赖、必需/可选资产目录、并行构建参数；长期建议增加 CI 矩阵，至少覆盖 x86_64/aarch64、clean build、有/无 Gazebo、核心包/全量构建。
+
+2026-07-08 维护记录：实机导航链路已在 Jetson + MID360 输入下验证到 Nav2 层：`/map_server`、`/amcl`、`/planner_server`、`/controller_server`、`/bt_navigator` 均进入 active，`/scan` 与 `/Odometry` 约 10 Hz，`map -> base_footprint` TF 可用，`/compute_path_to_pose` 成功，近距离自目标 `NavigateToPose` 成功且 `/cmd_vel_safe` 保持零速。Unitree GO2 速度输出采用仓库内已有 `safe_cmd_bridge`：`Nav2 /cmd_vel -> safe_cmd_bridge -> /cmd_vel_safe + UDP 192.168.123.22:15000`，UDP payload 为 ASCII `vx,vy,wz\n`，对应 GO2 侧 `SportClient.Move(vx, vy, vyaw)`。`/home/jetson/go2` 可作为协议参考，不作为本仓库运行依赖。
+
 ## 2. 保留与抽离原则
 
 保留内容：
@@ -56,8 +64,25 @@ Gazebo
   -> /scan
   -> slam_toolbox
   -> /map
-  -> ./run.sh save-map nav_test_map
+  -> ./run.sh save-map base1
 ```
+
+实机 MID360 输入链路与仿真不同，入口脚本会先保证真实传感器数据可用：
+
+```text
+Livox MID360
+  -> /livox/lidar
+  -> /livox/imu
+  -> imu_complementary_filter
+  -> /imu/data
+  -> FAST-LIO2
+  -> /Odometry + /cloud_registered
+  -> pointcloud_to_laserscan
+  -> /scan
+  -> slam_toolbox / Nav2 / RViz
+```
+
+实机排障顺序固定为先数据、再 FAST-LIO、再投影和地图：`/livox/lidar` 与 `/livox/imu` 是驱动原始输入，`/imu/data` 是 FAST-LIO 使用的滤波 IMU，`/cloud_registered` 是 FAST-LIO 输出，`/scan` 是二维投影，`/map` 是 slam_toolbox 输出。若 RViz 空白，先检查这些话题频率和 `odom -> base_footprint` TF，不要优先调整 RViz。
 
 为减少手动键盘探索成本，新增 `auto_explore_mapper` 作为建图阶段的可选自动巡航节点：
 
@@ -88,12 +113,12 @@ cd ~/slam_nav_ws
 Gazebo
   -> FAST-LIO2
   -> pointcloud_to_laserscan -> /scan
-  -> Nav2 + map_server(nav_test_map.yaml) + AMCL initial pose publisher
+  -> Nav2 + map_server(base1.yaml) + AMCL initial pose publisher
   -> /cmd_vel
   -> Gazebo robot
 ```
 
-当前 `./run.sh nav` 会调用 `scripts/start_navigation.sh`，启动 FAST-LIO2、`pointcloud_to_laserscan`、Nav2 bringup 和初始位姿发布器，并默认加载 `nav_test_map.yaml`。
+当前 `./run.sh nav` 会调用 `scripts/start_navigation.sh`，启动 FAST-LIO2、`pointcloud_to_laserscan`、Nav2 bringup 和初始位姿发布器，并默认加载 `base1.yaml`。
 
 导航鲁棒性排查后，当前默认链路先做“底层稳定性优先”的修复，而不是立即替换整套控制器：
 
@@ -337,7 +362,7 @@ cd ~/slam_nav_ws
 
 ```bash
 cd ~/slam_nav_ws
-./run.sh save-map nav_test_map
+./run.sh save-map base1
 ```
 
 导航：
@@ -440,7 +465,7 @@ Livox Mid-360 传感器已设置为 `always_on`，无 GUI 模式也可以发布 
 成功构建环境地图：
 
 - RViz 中显示 `/map`。
-- 成功保存 `nav_test_map.yaml` 和 `nav_test_map.pgm`。
+- 成功保存 `base1.yaml` 和 `base1.pgm`。
 
 实现指定目标点自主导航：
 
@@ -633,20 +658,20 @@ src/slam_nav_bringup/behavior_tree/navigate_through_poses_with_backup_recovery.x
 - 2026-07-07：将 `--next` 接入 `task1-delivery-check` 与 `task1-finalize` 的静态避障实验检查调用；最终交付编排失败时会同步输出下一条待补记录和推荐格式，不需要再单独手动追查 `EXPERIMENT_RECORD.md` 的缺口。
 - 2026-07-07：优化 `task1-sync-report` 的生成文件写入策略，只有 Markdown/LaTeX 静态避障表内容发生变化时才替换目标文件；重复运行同步命令不再无意义刷新 mtime，避免 `task1-report-audit` 误报“生成表格比 PDF 新”。
 - 2026-07-07：增强 `task1-runtime-check` 与实验记录的对应关系，新增 `/cloud_registered` 发布者和频率检查，并在 mapping/nav/dynamic 三种模式结束时输出应填写到 `EXPERIMENT_RECORD.md` 的记录建议；`--save` 快照也会保留这些建议，方便真实运行后转写建图检查、导航检查和动态障碍物扩展示范说明。
-- 2026-07-07：删除未被当前启动链路引用的旧场景地图文件，保留通用 `nav_test_map` 作为 task1 默认导航地图，减少源码层遗留场景命名对泛用项目定位的干扰。
+- 2026-07-07：删除未被当前启动链路引用的旧场景地图文件，保留通用 `base1` 作为 task1 默认导航地图，减少源码层遗留场景命名对泛用项目定位的干扰。
 - 2026-07-07：新增 `tasks/task2/REAL_ROBOT_DEPLOYMENT_CHECKLIST.md`，把后续实机部署拆成无硬件预检、UDP 底盘通信、传感器/TF/外参、定位健康监控、PCD 辅助重定位、低速上车流程和实地记录模板；`real-preflight` 已把该文档纳入长期维护文档检查。
 - 2026-07-07：新增 `./run.sh task2-status` 无 GUI/无硬件状态页，用于检查 task2 长期文档、实机/鲁棒导航入口、扩展包目录、安全默认值、RGB-D/重定位/机械臂隔离边界，并把 task1 真实证据未完成项标成 WAIT；可追加 `--with-preflight` 顺带运行 `real-preflight`。
 - 2026-07-07：扩充 task1 LaTeX 结课报告正式稿，按本科毕业设计（论文）规范补充中文宋体/英文 Times New Roman 字体设置、页脚居中页码、摘要与 Abstract、公式/图/表按章编号、一级章节另起页和三线表排版；新增 LiDAR-IMU 状态方程、点到面残差、占据栅格 log-odds、AMCL 粒子权重、代价地图膨胀、全局规划目标函数、DWB 局部控制评分、静态避障成功率公式，以及调试问题与方案改进表。PDF 已通过 `./run.sh task1-build-report` 重新生成，当前剩余真实证据缺口仍是 9 张截图和 10 次静态避障实验数据。
-- 2026-07-07：复查 task1 Gazebo 场地模型时发现，后续试做的新坡道/左上角场地方案会改变已保存 `nav_test_map` 对应的环境几何，导致“场地已更新但地图仍是旧版本”的错位风险；已撤回该 world 内容改动，当前默认静态/动态场地回到 Git 基线，与现有默认地图兼容。
-- 2026-07-07：将 task1 交付检查中的“地图是否过期”逻辑从单纯 mtime 判断改为“world 文件晚于地图且内容相对 Git 基线确实变化”才提醒重建图；这样恢复文件或 touch 文件不会误报，但真正修改场地时仍会提醒重新保存 `nav_test_map`。
-- 2026-07-07：继续优化 task1 状态页与快照的下一步建议优先级；当 world 内容确实相对 Git 基线发生变化且晚于 `nav_test_map` 时，`task1-status` 和 `task1-snapshot` 才会把“重新建图、保存 `nav_test_map`”列为首要动作，避免因文件时间变化误导进入不必要的重扫。
+- 2026-07-07：复查 task1 Gazebo 场地模型时发现，后续试做的新坡道/左上角场地方案会改变已保存 `base1` 对应的环境几何，导致“场地已更新但地图仍是旧版本”的错位风险；已撤回该 world 内容改动，当前默认静态/动态场地回到 Git 基线，与现有默认地图兼容。
+- 2026-07-07：将 task1 交付检查中的“地图是否过期”逻辑从单纯 mtime 判断改为“world 文件晚于地图且内容相对 Git 基线确实变化”才提醒重建图；这样恢复文件或 touch 文件不会误报，但真正修改场地时仍会提醒重新保存 `base1`。
+- 2026-07-07：继续优化 task1 状态页与快照的下一步建议优先级；当 world 内容确实相对 Git 基线发生变化且晚于 `base1` 时，`task1-status` 和 `task1-snapshot` 才会把“重新建图、保存 `base1`”列为首要动作，避免因文件时间变化误导进入不必要的重扫。
 - 2026-07-07：保留新坡道几何复查经验作为问题记录：坡面方向、连接缝隙和与墙体/窄门区域的空间关系都可能影响底盘运动与点云建图；但当前 task1 默认场地不启用该新坡道方案，避免和已有默认地图不一致。
 - 2026-07-07：收敛 task1 交付文档口径，明确区分“当前默认地图存在且元数据检查通过”和“若后续修改 world 内容则必须重新建图、保存地图、补 GUI 截图和 10 次静态避障复测”的条件，避免把历史地图或试做场地混入最终证据。
 - 2026-07-07：修复 `Ubuntu-22.04` 用户级 `~/.bashrc` 环境污染问题：移除文件开头误多出的单引号，并取消全局自动 source `~/0glut2/install/setup.bash`；当前交互式终端只自动加载 `/opt/ros/humble/setup.bash`，具体工作区覆盖层由 `slam_nav_ws/run.sh` 或工程根目录手动 `source install/setup.bash` 控制，避免多个 ROS2 工作区互相串包。
 - 2026-07-07：增强 `task1-check` 的入口完整性检查，自动解析 `run.sh` 中所有映射到 `scripts/*.sh` 的命令，逐一确认目标脚本存在且可执行；这样后续新增 task2、实机部署或 Piper 相关入口时，如果忘记提交脚本或执行权限，普通 task1 预检阶段就能提前发现。
 - 2026-07-07：新增 `./run.sh task1-world-check`，在不启动 Gazebo/RViz 的情况下检查静态/动态 `.world` 文件、SDF 语法、固定障碍物、动态障碍物插件和旧场地兼容性；该检查已接入 `task1-check` 与 `task1-delivery-check`，用于提前发现 world 文件缺失、插件缺失或固定障碍布局被误改等问题。
 - 2026-07-07：修复动态障碍物不再让行的问题。`dynamic_obstacle_plugin.cpp` 已支持根据机器人模型距离暂停运动，但 `nav_test_world_dynamic.world` 中未显式配置 `yield_radius`，导致插件按固定轨迹往返而不会在接近机器人时停车；现已为两个动态障碍物补充 `robot_model=mobile_robot`、`yield_radius` 和 `yield_resume_radius`，并把该字段纳入 `task1-world-check`，避免后续退化成直接碰撞机器人。
-- 2026-07-07：新增 `./run.sh task1-map-check`，在不启动 ROS/Gazebo 的情况下解析 `nav_test_map.yaml/pgm`，输出 resolution、origin、PGM 尺寸、地图覆盖范围、文件大小、像素统计以及地图是否晚于场地文件；该检查已接入 `task1-check`、`task1-delivery-check`、`task1-status` 和 `task1-snapshot`，用于保存地图后快速转写实验记录并避免继续沿用旧地图。
+- 2026-07-07：新增 `./run.sh task1-map-check`，在不启动 ROS/Gazebo 的情况下解析 `base1.yaml/pgm`，输出 resolution、origin、PGM 尺寸、地图覆盖范围、文件大小、像素统计以及地图是否晚于场地文件；该检查已接入 `task1-check`、`task1-delivery-check`、`task1-status` 和 `task1-snapshot`，用于保存地图后快速转写实验记录并避免继续沿用旧地图。
 - 2026-07-07：新增大场地鲁棒导航扩展：整理 `large_arena.world`、`large_arena_collision.world`、`large_arena.yaml/pgm` 与 `teleop_manual_car`，将 `./run.sh large-arena-nav` 指向 `large_arena_robust_navigation.launch.py`。该入口组合 AMCL 启动引导、原始 LiDAR 点云投影 `/scan`、`localization_guard`、GICP/ICP/NDT PCD 重定位和 `relocalization_amcl_bridge.py`；AMCL 收敛后桥接节点冻结 `map -> odom` 并停用 AMCL，正常行驶回到 FAST-LIO/odom，只有碰撞扰动或明显漂移后才用 PCD 重定位更新冻结 TF。
 
 ## 2026-07-07 大场地 /scan 与 AMCL 初始化修复记录

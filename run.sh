@@ -22,6 +22,7 @@ show_help() {
   large-arena-nav       启动大场地自主导航
   large-arena-robust-nav 启动大场地最强稳定导航（显式别名）
   mapping               手动建图链路
+  real-mapping          实机一键建图链路（MID360 + IMU + FAST-LIO + slam_toolbox）
   auto-mapping          自动探索建图链路
   teleop                键盘控制
   teleop-manual-car     键盘控制大场地碰撞扰动用手动车
@@ -36,6 +37,11 @@ show_help() {
   relocalization-gicp   GICP 重定位快捷入口
   guard                 定位健康监控
   safe-bridge           速度安全桥
+  livox-mid360          启动 Go2 配置的 Livox MID360
+  livox-debug           检查 MID360 网络、话题和 driver 参数
+  imu-filter            启动 Livox IMU complementary filter
+  d435i                 启动导航 D435i 深度相机
+  real-mapping-check    实机建图链路诊断
   real-preflight        实机部署前无 GUI/无硬件预检
   diagnose              运行时诊断
   task1-status          task1 当前剩余证据/下一步（不启动 GUI）
@@ -94,6 +100,7 @@ show_help() {
   ./run.sh large-arena-nav
   ./run.sh large-arena-robust-nav
   ./run.sh teleop-manual-car
+  ./run.sh real-mapping
   ./run.sh auto-mapping
   ./run.sh save-pcd nav_test_static
   ./run.sh nav-full
@@ -113,6 +120,11 @@ show_help() {
   ./run.sh task1-finalize
   ./run.sh task2-status
   ./run.sh real-preflight
+  ./run.sh livox-mid360
+  ./run.sh livox-debug
+  ./run.sh imu-filter
+  ./run.sh d435i
+  ./run.sh real-mapping-check
   ./run.sh piper-safety-check
   ./run.sh piper-frame-audit
   ./run.sh setup-piper-moveit
@@ -161,6 +173,7 @@ script_for_command() {
     large-arena-collision|arena-collision|collision-test) echo "start_large_arena_collision_test.sh" ;;
     large-arena-nav|arena-nav) echo "start_large_arena_navigation.sh" ;;
     large-arena-robust-nav|arena-robust-nav|robust-arena-nav) echo "start_large_arena_robust_navigation.sh" ;;
+    real-mapping|real-map|real-slam|mapping-real) echo "start_real_mapping.sh" ;;
     mapping|map) echo "start_mapping.sh" ;;
     auto-mapping|auto-map) echo "start_auto_mapping.sh" ;;
     teleop) echo "teleop.sh" ;;
@@ -176,6 +189,11 @@ script_for_command() {
     relocalization-gicp|gicp) echo "start_relocalization_gicp.sh" ;;
     guard|localization-guard) echo "start_localization_guard.sh" ;;
     safe-bridge) echo "start_safe_cmd_bridge.sh" ;;
+    livox-mid360|mid360|go2-livox|go2-mid360) echo "start_livox_mid360_go2.sh" ;;
+    livox-debug|mid360-debug|debug-livox) echo "livox_debug.sh" ;;
+    imu-filter|imu|livox-imu|complementary-filter) echo "start_imu_filter.sh" ;;
+    d435i|realsense-d435i|nav-camera|nav-d435i) echo "start_realsense_d435i.sh" ;;
+    real-mapping-check|real-map-check|mapping-check) echo "real_mapping_check.sh" ;;
     real-preflight|real-check|deploy-check) echo "real_preflight.sh" ;;
     diagnose) echo "diagnose_runtime.sh" ;;
     task1-status|task1-next|task1-todo|status-task1) echo "task1_status.sh" ;;
@@ -292,11 +310,12 @@ show_menu() {
  30) task1-finalize     task1 最终交付编排
  31) task2-status       task2 实机/毕设扩展状态页
  32) real-preflight     实机部署前预检
- 33) build              编译工作区
+ 33) real-mapping-check 实机建图链路诊断
+ 34) build              编译工作区
   h) help               查看全部命令
   q) quit               退出
 
-也可以直接输入 help 中的任意命令，例如 nav-full、task1-runtime-check nav 或 piper-safety-check。
+也可以直接输入 help 中的任意命令，例如 real-mapping、nav-full、task1-runtime-check nav 或 piper-safety-check。
 EOF
   printf "输入编号或命令："
 }
@@ -318,8 +337,8 @@ case "${choice}" in
   7) run_command auto-mapping ;;
   8) run_command teleop ;;
   9)
-    read -r -p "地图名 [nav_test_map]：" map_name
-    run_command save-map "${map_name:-nav_test_map}"
+    read -r -p "地图名 [base1]：" map_name
+    run_command save-map "${map_name:-base1}"
     ;;
   10)
     read -r -p "PCD 名 [nav_test_static]：" pcd_name
@@ -347,7 +366,8 @@ case "${choice}" in
   30) run_command task1-finalize ;;
   31) run_command task2-status ;;
   32) run_command real-preflight ;;
-  33) run_command build ;;
+  33) run_command real-mapping-check ;;
+  34) run_command build ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

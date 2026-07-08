@@ -18,7 +18,7 @@ from rclpy.qos import (
     qos_profile_sensor_data,
 )
 from rosgraph_msgs.msg import Clock
-from sensor_msgs.msg import CameraInfo, Image, LaserScan, PointCloud2
+from sensor_msgs.msg import CameraInfo, Image, Imu, LaserScan, PointCloud2
 from tf2_msgs.msg import TFMessage
 
 try:
@@ -74,16 +74,19 @@ class RuntimeDoctor(Node):
     def __init__(self, args):
         super().__init__('slam_nav_runtime_doctor')
         self.args = args
+        self.real_mode = args.real or args.time_mode == 'real'
         self.clock_sec: Optional[float] = None
         self.topic_stats: Dict[str, TopicStats] = {}
         self.tf_edges: Dict[str, str] = {}
         self.tf_edge_time: Dict[Tuple[str, str], Optional[float]] = {}
 
-        self._subscribe('/clock', Clock, self._on_clock, required=True)
+        self._subscribe('/clock', Clock, self._on_clock, required=not self.real_mode)
         if LivoxCustomMsg is not None:
-            self._subscribe('/livox/lidar', LivoxCustomMsg, None, required=False)
+            self._subscribe('/livox/lidar', LivoxCustomMsg, None, required=self.real_mode)
         else:
-            self.get_logger().warn('livox_ros_driver2 CustomMsg not importable, skip /livox/lidar sampling.')
+            self.get_logger().warn('livox_ros_driver2 CustomMsg not importable, skip Livox sampling.')
+        self._subscribe('/livox/imu', Imu, None, required=self.real_mode)
+        self._subscribe('/imu/data', Imu, None, required=self.real_mode)
         self._subscribe('/cloud_registered', PointCloud2, None, required=True)
         self._subscribe('/cloud_nav_filtered', PointCloud2, None, required=False)
         self._subscribe('/nav_obstacle_cloud', PointCloud2, None, required=False)
@@ -93,9 +96,11 @@ class RuntimeDoctor(Node):
         self._subscribe('/visual_obstacles', PointCloud2, None, required=False)
         self._subscribe('/nav_camera/depth/image_raw', Image, None, required=False)
         self._subscribe('/nav_camera/depth/camera_info', CameraInfo, None, required=False)
+        self._subscribe('/nav_camera/d435i/depth/image_rect_raw', Image, None, required=False)
+        self._subscribe('/nav_camera/d435i/depth/camera_info', CameraInfo, None, required=False)
         self._subscribe('/scan', LaserScan, None, required=True)
         self._subscribe('/Odometry', Odometry, None, required=True)
-        self._subscribe('/map', OccupancyGrid, None, required=False, transient_local=True)
+        self._subscribe('/map', OccupancyGrid, None, required=args.require_map, transient_local=True)
         self._subscribe('/cmd_vel', Twist, None, required=False)
         self._subscribe('/cmd_vel_safe', Twist, None, required=False)
 
@@ -178,9 +183,13 @@ class RuntimeDoctor(Node):
 
         lines.append('== 运行时导航链路诊断 ==')
         lines.append(f'采样时长: {self.args.duration:.1f}s')
+        lines.append(f'时间模式: {"real" if self.real_mode else "sim"}')
         if self.clock_sec is None:
-            errors.append('没有收到 /clock；仿真 use_sim_time 链路可能没有启动。')
-            lines.append('/clock: 未收到')
+            if self.real_mode:
+                lines.append('/clock: 未收到（实机 use_sim_time=false 时正常）')
+            else:
+                errors.append('没有收到 /clock；仿真 use_sim_time 链路可能没有启动。')
+                lines.append('/clock: 未收到')
         else:
             lines.append(f'/clock: {self.clock_sec:.3f}s')
 
@@ -207,6 +216,8 @@ class RuntimeDoctor(Node):
                         '/visual_obstacles',
                         '/nav_camera/depth/image_raw',
                         '/nav_camera/depth/camera_info',
+                        '/nav_camera/d435i/depth/image_rect_raw',
+                        '/nav_camera/d435i/depth/camera_info',
                         '/scan',
                         '/Odometry',
                     )
@@ -255,25 +266,26 @@ class RuntimeDoctor(Node):
             else:
                 lines.append(f'{topic}: no costmap subscriber')
 
-        cloud_nav_costmaps = self.costmap_subscribers_for('/cloud_nav_filtered')
-        if cloud_nav_costmaps:
-            warnings.append(
-                '/cloud_nav_filtered 仍被 costmap 订阅；默认 3D 导航应改用 /terrain_map 或 /terrain_map_ext，'
-                '请 clean 后重启导航，或检查是否加载了旧参数文件。'
-            )
-        terrain_costmaps = self.costmap_subscribers_for('/terrain_map')
-        if not terrain_costmaps:
-            warnings.append('/terrain_map 当前没有被 costmap 订阅；一阶段地形分析没有进入局部代价地图。')
-        terrain_ext_costmaps = self.costmap_subscribers_for('/terrain_map_ext')
-        if not terrain_ext_costmaps:
-            warnings.append('/terrain_map_ext 当前没有被 costmap 订阅；二阶段扩展地形图没有进入全局代价地图。')
+        if not self.args.skip_costmap_checks:
+            cloud_nav_costmaps = self.costmap_subscribers_for('/cloud_nav_filtered')
+            if cloud_nav_costmaps:
+                warnings.append(
+                    '/cloud_nav_filtered 仍被 costmap 订阅；默认 3D 导航应改用 /terrain_map 或 /terrain_map_ext，'
+                    '请 clean 后重启导航，或检查是否加载了旧参数文件。'
+                )
+            terrain_costmaps = self.costmap_subscribers_for('/terrain_map')
+            if not terrain_costmaps:
+                warnings.append('/terrain_map 当前没有被 costmap 订阅；一阶段地形分析没有进入局部代价地图。')
+            terrain_ext_costmaps = self.costmap_subscribers_for('/terrain_map_ext')
+            if not terrain_ext_costmaps:
+                warnings.append('/terrain_map_ext 当前没有被 costmap 订阅；二阶段扩展地形图没有进入全局代价地图。')
 
-        visual_costmaps = self.costmap_subscribers_for('/visual_obstacles')
-        visual_publishers = self.get_publishers_info_by_topic('/visual_obstacles')
-        if visual_costmaps and not visual_publishers:
-            warnings.append(
-                '/visual_obstacles 被 costmap 订阅但没有发布者；若未测试 RGB-D，建议确认当前参数是否为保守默认配置。'
-            )
+            visual_costmaps = self.costmap_subscribers_for('/visual_obstacles')
+            visual_publishers = self.get_publishers_info_by_topic('/visual_obstacles')
+            if visual_costmaps and not visual_publishers:
+                warnings.append(
+                    '/visual_obstacles 被 costmap 订阅但没有发布者；若未测试 RGB-D，建议确认当前参数是否为保守默认配置。'
+                )
 
         lines.append('')
         lines.append('== TF 链路 ==')
@@ -290,8 +302,9 @@ class RuntimeDoctor(Node):
             ('map', 'odom'),
             ('odom', self.args.base_frame),
             ('map', self.args.base_frame),
-            ('map', self.args.lidar_frame),
         ]
+        if self.args.check_lidar_frame and self.args.lidar_frame:
+            expected_checks.append(('map', self.args.lidar_frame))
         for target, source in expected_checks:
             ok, chain = self.can_reach(target, source)
             arrow_chain = ' <- '.join(chain)
@@ -322,8 +335,18 @@ def parse_args():
         description='检查 SLAM/Nav2 运行时的话题、时间戳和 TF 链路。'
     )
     parser.add_argument('--duration', type=float, default=5.0, help='采样秒数，默认 5。')
+    parser.add_argument('--real', action='store_true', help='按实机 use_sim_time=false 链路检查，不要求 /clock。')
+    parser.add_argument(
+        '--time-mode',
+        choices=('sim', 'real'),
+        default='sim',
+        help='时间模式，默认 sim。实机可用 --real 或 --time-mode real。',
+    )
     parser.add_argument('--base-frame', default='base_footprint', help='导航基坐标，默认 base_footprint。')
     parser.add_argument('--lidar-frame', default='livox_frame', help='雷达坐标，默认 livox_frame。')
+    parser.add_argument('--check-lidar-frame', action='store_true', help='额外检查 map 到雷达 frame 的 TF 连通性。')
+    parser.add_argument('--require-map', action='store_true', help='要求 /map 在采样窗口内有消息。')
+    parser.add_argument('--skip-costmap-checks', action='store_true', help='跳过 Nav2 costmap 订阅检查，适合只查建图。')
     parser.add_argument(
         '--max-stamp-offset',
         type=float,

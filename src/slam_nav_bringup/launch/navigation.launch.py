@@ -167,6 +167,23 @@ def generate_launch_description():
         output='screen',
     )
 
+    base_footprint_to_base_link = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='base_footprint_to_base_link',
+        arguments=[
+            '0.0',
+            '0.0',
+            '0.0',
+            '0.0',
+            '0.0',
+            '0.0',
+            'base_footprint',
+            'base_link',
+        ],
+        output='screen',
+    )
+
     static_localization = GroupAction(
         condition=IfCondition(PythonExpression(["'", localization_mode, "' == 'static'"])),
         actions=[
@@ -194,7 +211,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        DeclareLaunchArgument('use_sim_time', default_value='true'),
+        DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument(
             'use_composition',
             default_value='True',
@@ -215,11 +232,11 @@ def generate_launch_description():
         DeclareLaunchArgument('static_map_to_odom_roll', default_value='0.0'),
         DeclareLaunchArgument(
             'fast_lio_config',
-            default_value=os.path.join(fast_lio_dir, 'config', 'mid360.yaml'),
+            default_value=os.path.join(fast_lio_dir, 'config', 'mid360_down.yaml'),
         ),
         DeclareLaunchArgument(
             'map',
-            default_value=os.path.join(bringup_dir, 'map', 'nav_test_map.yaml'),
+            default_value=os.path.join(bringup_dir, 'map', 'base1.yaml'),
         ),
         DeclareLaunchArgument(
             'params_file',
@@ -246,7 +263,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'scan_target_frame',
-            default_value='livox_frame',
+            default_value='base_footprint',
             description='Target frame used by pointcloud_to_laserscan.',
         ),
         DeclareLaunchArgument('rviz', default_value='true'),
@@ -263,6 +280,7 @@ def generate_launch_description():
             parameters=[{'use_sim_time': use_sim_time}],
             output='screen',
         ),
+        base_footprint_to_base_link,
         Node(
             package='fast_lio',
             executable='fastlio_mapping',
@@ -292,7 +310,7 @@ def generate_launch_description():
             ],
             parameters=[{
                 'target_frame': scan_target_frame,
-                'transform_tolerance': 0.20,
+                'transform_tolerance': 0.05,
                 'min_height': -0.30,
                 'max_height': 0.45,
                 'angle_min': -3.14159,

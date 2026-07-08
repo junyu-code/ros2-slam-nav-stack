@@ -129,7 +129,7 @@ def generate_launch_description():
         DeclareLaunchArgument('static_map_to_odom_roll', default_value='0.0'),
         DeclareLaunchArgument(
             'map',
-            default_value=os.path.join(bringup_dir, 'map', 'nav_test_map.yaml'),
+            default_value=os.path.join(bringup_dir, 'map', 'base1.yaml'),
         ),
         DeclareLaunchArgument(
             'params_file',
@@ -148,8 +148,8 @@ def generate_launch_description():
             default_value=os.path.join(bringup_dir, 'rviz', 'nav2_debug.rviz'),
         ),
         DeclareLaunchArgument('enable_rgbd_nav', default_value='false'),
-        DeclareLaunchArgument('rgbd_depth_image_topic', default_value='/nav_camera/depth/image_raw'),
-        DeclareLaunchArgument('rgbd_camera_info_topic', default_value='/nav_camera/depth/camera_info'),
+        DeclareLaunchArgument('rgbd_depth_image_topic', default_value='/nav_camera/d435i/depth/image_rect_raw'),
+        DeclareLaunchArgument('rgbd_camera_info_topic', default_value='/nav_camera/d435i/depth/camera_info'),
         DeclareLaunchArgument('rgbd_output_cloud_topic', default_value='/visual_obstacles'),
         DeclareLaunchArgument('enable_terrain_analysis', default_value='true'),
         DeclareLaunchArgument('terrain_input_cloud_topic', default_value='/cloud_registered_body'),

@@ -79,9 +79,9 @@ public:
   {
     enabled_ = declare_parameter<bool>("enabled", false);
     depth_image_topic_ = declare_parameter<std::string>(
-      "depth_image_topic", "/nav_camera/depth/image_raw");
+      "depth_image_topic", "/nav_camera/d435i/depth/image_rect_raw");
     camera_info_topic_ = declare_parameter<std::string>(
-      "camera_info_topic", "/nav_camera/depth/camera_info");
+      "camera_info_topic", "/nav_camera/d435i/depth/camera_info");
     output_cloud_topic_ = declare_parameter<std::string>("output_cloud_topic", "/visual_obstacles");
     frame_id_override_ = declare_parameter<std::string>("frame_id_override", "");
     target_frame_ = declare_parameter<std::string>("target_frame", "base_footprint");

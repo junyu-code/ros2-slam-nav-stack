@@ -17,8 +17,8 @@ GENERATED_TRIALS_MD="tasks/task1/STATIC_TRIALS_TABLE.md"
 GENERATED_TRIALS_TEX="tasks/task1/report_latex/generated_static_trials.tex"
 STATIC_WORLD="src/slam_nav_simulation/world/nav_test_world/nav_test_world.world"
 DYNAMIC_WORLD="src/slam_nav_simulation/world/nav_test_world/nav_test_world_dynamic.world"
-MAP_YAML="src/slam_nav_bringup/map/nav_test_map.yaml"
-MAP_PGM="src/slam_nav_bringup/map/nav_test_map.pgm"
+MAP_YAML="src/slam_nav_bringup/map/base1.yaml"
+MAP_PGM="src/slam_nav_bringup/map/base1.pgm"
 WRITE_FILE=true
 
 usage() {
@@ -66,7 +66,7 @@ required_figs=(
   "fig_6_1_gazebo_world.png|Gazebo 静态场地总览|./run.sh clean && ./run.sh sim-static"
   "fig_6_2_robot_model.png|机器人模型和传感器|./run.sh sim-static"
   "fig_7_1_mapping_rviz.png|RViz 建图过程|./run.sh mapping + ./run.sh teleop"
-  "fig_7_2_saved_map.png|保存后的地图|./run.sh save-map nav_test_map"
+  "fig_7_2_saved_map.png|保存后的地图|./run.sh save-map base1"
   "fig_8_1_nav2_map_loaded.png|Nav2 加载地图|./run.sh nav"
   "fig_8_2_global_path.png|全局路径|RViz Nav2 Goal"
   "fig_8_3_avoid_obstacle.png|静态避障过程|RViz 导航过程中截图"
@@ -132,10 +132,10 @@ if [[ -f "${MAP_YAML}" && -f "${MAP_PGM}" ]]; then
   done
   if [[ "${map_world_mismatch}" == "true" ]]; then
     map_stale=true
-    map_stale_status="场地内容相对 Git 基线已有修改且晚于 nav_test_map，正式验收前需要重新建图保存"
+    map_stale_status="场地内容相对 Git 基线已有修改且晚于 base1，正式验收前需要重新建图保存"
   fi
 else
-  map_stale_status="默认地图不完整，需要先建图并保存 nav_test_map"
+  map_stale_status="默认地图不完整，需要先建图并保存 base1"
 fi
 
 world_check_status="未运行"
@@ -192,7 +192,7 @@ fi
 
 next_step="- 暂无自动建议，请运行 ./run.sh task1-status 复核。"
 if [[ "${map_stale}" == "true" ]]; then
-  next_step="- 当前场地内容相对 Git 基线已有修改且晚于 `nav_test_map`；下一步优先重新建图并保存地图：`./run.sh clean && ./run.sh sim-static`，另开终端运行 `./run.sh mapping` 和 `./run.sh teleop`，扫完后执行 `./run.sh save-map nav_test_map`。这一步可以顺手补图 6-1、6-2、7-1、7-2。"
+  next_step="- 当前场地内容相对 Git 基线已有修改且晚于 `base1`；下一步优先重新建图并保存地图：`./run.sh clean && ./run.sh sim-static`，另开终端运行 `./run.sh mapping` 和 `./run.sh teleop`，扫完后执行 `./run.sh save-map base1`。这一步可以顺手补图 6-1、6-2、7-1、7-2。"
 elif (( ${#missing_required_figs[@]} > 0 )); then
   IFS='|' read -r first_file _first_desc first_hint <<<"${missing_required_figs[0]}"
   case "${first_file}" in

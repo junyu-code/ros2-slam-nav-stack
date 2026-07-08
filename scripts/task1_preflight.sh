@@ -136,8 +136,8 @@ for package_dir in \
   fi
 done
 
-check_file "src/slam_nav_bringup/map/nav_test_map.yaml" "默认导航地图 yaml"
-check_file "src/slam_nav_bringup/map/nav_test_map.pgm" "默认导航地图 pgm"
+check_file "src/slam_nav_bringup/map/base1.yaml" "默认导航地图 yaml"
+check_file "src/slam_nav_bringup/map/base1.pgm" "默认导航地图 pgm"
 check_file "src/slam_nav_simulation/world/nav_test_world/nav_test_world.world" "静态仿真场地"
 check_file "src/slam_nav_simulation/world/nav_test_world/nav_test_world_dynamic.world" "动态障碍物仿真场地"
 if [[ -x "scripts/task1_world_check.sh" ]]; then
@@ -149,12 +149,12 @@ if [[ -x "scripts/task1_world_check.sh" ]]; then
 else
   fail "缺少仿真场地检查脚本: scripts/task1_world_check.sh"
 fi
-if [[ -f "src/slam_nav_bringup/map/nav_test_map.yaml" && -f "src/slam_nav_bringup/map/nav_test_map.pgm" ]]; then
+if [[ -f "src/slam_nav_bringup/map/base1.yaml" && -f "src/slam_nav_bringup/map/base1.pgm" ]]; then
   if [[ -x "scripts/task1_map_check.sh" ]]; then
     if "scripts/task1_map_check.sh" >/tmp/task1_preflight_map_check.log 2>&1; then
       ok "默认地图 yaml/pgm 元数据检查通过"
     else
-      fail "默认地图 yaml/pgm 元数据检查未通过；请重新建图并执行 ./run.sh save-map nav_test_map"
+      fail "默认地图 yaml/pgm 元数据检查未通过；请重新建图并执行 ./run.sh save-map base1"
     fi
   else
     fail "缺少默认地图元数据检查脚本: scripts/task1_map_check.sh"
@@ -165,15 +165,15 @@ if [[ -f "src/slam_nav_bringup/map/nav_test_map.yaml" && -f "src/slam_nav_bringu
     "src/slam_nav_simulation/world/nav_test_world/nav_test_world.world"
   )
   for world_file in "${world_files[@]}"; do
-    if [[ "${world_file}" -nt "src/slam_nav_bringup/map/nav_test_map.yaml" ||
-          "${world_file}" -nt "src/slam_nav_bringup/map/nav_test_map.pgm" ]]; then
+    if [[ "${world_file}" -nt "src/slam_nav_bringup/map/base1.yaml" ||
+          "${world_file}" -nt "src/slam_nav_bringup/map/base1.pgm" ]]; then
       if ! git diff --quiet -- "${world_file}" 2>/dev/null; then
         map_world_mismatch=true
       fi
     fi
   done
   if [[ "${map_world_mismatch}" == "true" ]]; then
-    warn "静态验收场地内容相对 Git 基线已有修改且晚于默认地图；正式截图和 10 次静态避障前建议重新建图并执行 ./run.sh save-map nav_test_map"
+    warn "静态验收场地内容相对 Git 基线已有修改且晚于默认地图；正式截图和 10 次静态避障前建议重新建图并执行 ./run.sh save-map base1"
   fi
 fi
 

@@ -291,7 +291,7 @@ check_file_contains(
 )
 check_file_contains(
     'src/rgbd_navigation_perception/README.md',
-    ['/nav_camera/depth/image_raw', '/visual_obstacles'],
+    ['/nav_camera/d435i/depth/image_rect_raw', '/visual_obstacles'],
     'RGB-D 接口说明',
 )
 

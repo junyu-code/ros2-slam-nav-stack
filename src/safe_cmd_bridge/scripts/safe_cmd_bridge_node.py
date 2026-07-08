@@ -6,6 +6,7 @@ import socket
 import time
 
 import rclpy
+from rclpy._rclpy_pybind11 import RCLError
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
@@ -90,6 +91,7 @@ class SafeCmdBridge(Node):
         self._feedback_fault_active = False
         self._feedback_fault_reasons = []
         self._last_feedback_warn = 0.0
+        self._publisher_error_warned = False
 
         self._udp_socket = None
         if self.enable_udp_output:
@@ -292,7 +294,12 @@ class SafeCmdBridge(Node):
 
     def _emit(self, msg):
         if self._publisher is not None:
-            self._publisher.publish(msg)
+            try:
+                self._publisher.publish(msg)
+            except RCLError as exc:
+                if not self._publisher_error_warned:
+                    self._publisher_error_warned = True
+                    self.get_logger().warn(f'ROS velocity publish failed: {exc}')
 
         if self._udp_socket is not None:
             payload = f'{msg.linear.x:.4f},{msg.linear.y:.4f},{msg.angular.z:.4f}\n'
@@ -354,7 +361,8 @@ def main(args=None):
         if node.send_zero_on_shutdown:
             node.publish_zero()
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

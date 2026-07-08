@@ -189,7 +189,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'map',
-            default_value=os.path.join(bringup_dir, 'map', 'nav_test_map.yaml'),
+            default_value=os.path.join(bringup_dir, 'map', 'base1.yaml'),
         ),
         DeclareLaunchArgument(
             'params_file',
@@ -214,8 +214,8 @@ def generate_launch_description():
             default_value='false',
             description='Enable optional RGB-D navigation obstacle projection.',
         ),
-        DeclareLaunchArgument('rgbd_depth_image_topic', default_value='/nav_camera/depth/image_raw'),
-        DeclareLaunchArgument('rgbd_camera_info_topic', default_value='/nav_camera/depth/camera_info'),
+        DeclareLaunchArgument('rgbd_depth_image_topic', default_value='/nav_camera/d435i/depth/image_rect_raw'),
+        DeclareLaunchArgument('rgbd_camera_info_topic', default_value='/nav_camera/d435i/depth/camera_info'),
         DeclareLaunchArgument('rgbd_output_cloud_topic', default_value='/visual_obstacles'),
         DeclareLaunchArgument(
             'enable_terrain_analysis',

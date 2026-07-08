@@ -55,3 +55,26 @@ ros2 launch safe_cmd_bridge safe_cmd_bridge.launch.py \
 ```
 
 这层模块只负责速度安全整形和转发，不直接绑定某个底盘 SDK。具体底盘侧可以用一个独立进程接收 UDP，再调用对应运动接口。
+
+## Unitree GO2
+
+Unitree GO2 联调时可以直接使用本包的 UDP 输出，不需要额外 ROS2 sender：
+
+```bash
+ros2 launch safe_cmd_bridge safe_cmd_bridge.launch.py \
+  input_topic:=/cmd_vel \
+  output_topic:=/cmd_vel_safe \
+  enable_fault_stop:=true \
+  enable_udp_output:=true \
+  udp_host:=192.168.123.22 \
+  udp_port:=15000 \
+  max_vx:=0.2 max_vy:=0.1 max_wz:=0.3
+```
+
+发送 payload 为 ASCII：
+
+```text
+vx,vy,wz\n
+```
+
+GO2 侧接收器应把这三个值对应到 `SportClient.Move(vx, vy, vyaw)`。打开 UDP 前先保持 `enable_udp_output:=false` 观察 `/cmd_vel_safe`，确认限速、超时停车、方向和急停条件都正确。

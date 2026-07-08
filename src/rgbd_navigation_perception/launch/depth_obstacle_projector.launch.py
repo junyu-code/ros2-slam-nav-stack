@@ -28,8 +28,8 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
         DeclareLaunchArgument('enabled', default_value='true'),
-        DeclareLaunchArgument('depth_image_topic', default_value='/nav_camera/depth/image_raw'),
-        DeclareLaunchArgument('camera_info_topic', default_value='/nav_camera/depth/camera_info'),
+        DeclareLaunchArgument('depth_image_topic', default_value='/nav_camera/d435i/depth/image_rect_raw'),
+        DeclareLaunchArgument('camera_info_topic', default_value='/nav_camera/d435i/depth/camera_info'),
         DeclareLaunchArgument('output_cloud_topic', default_value='/visual_obstacles'),
         DeclareLaunchArgument('frame_id_override', default_value=''),
         DeclareLaunchArgument('target_frame', default_value='base_footprint'),

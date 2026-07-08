@@ -84,8 +84,8 @@ check_file "tasks/task1/homework_latex/main.tex" "LaTeX 平时作业源文件"
 check_optional_file "tasks/task1/report_latex/main.pdf" "结课报告 PDF"
 check_optional_file "tasks/task1/homework_latex/main.pdf" "平时作业 PDF"
 
-check_file "src/slam_nav_bringup/map/nav_test_map.yaml" "默认导航地图 yaml"
-check_file "src/slam_nav_bringup/map/nav_test_map.pgm" "默认导航地图 pgm"
+check_file "src/slam_nav_bringup/map/base1.yaml" "默认导航地图 yaml"
+check_file "src/slam_nav_bringup/map/base1.pgm" "默认导航地图 pgm"
 if [[ -x "scripts/task1_world_check.sh" ]]; then
   if "scripts/task1_world_check.sh"; then
     ok "仿真场地 world 语法/几何/一致性检查已通过"
@@ -99,27 +99,27 @@ if [[ -x "scripts/task1_map_check.sh" ]]; then
   if "scripts/task1_map_check.sh"; then
     ok "默认地图 yaml/pgm 元数据检查已通过"
   else
-    fail "默认地图 yaml/pgm 元数据检查未通过；请重新建图并执行 ./run.sh save-map nav_test_map"
+    fail "默认地图 yaml/pgm 元数据检查未通过；请重新建图并执行 ./run.sh save-map base1"
   fi
 else
   fail "缺少默认地图元数据检查脚本: scripts/task1_map_check.sh"
 fi
-if [[ -f "src/slam_nav_bringup/map/nav_test_map.yaml" && -f "src/slam_nav_bringup/map/nav_test_map.pgm" ]]; then
+if [[ -f "src/slam_nav_bringup/map/base1.yaml" && -f "src/slam_nav_bringup/map/base1.pgm" ]]; then
   # 只有 world 内容确实偏离 Git 基线时，才提示默认地图需要重建；单纯 touch 不再误报。
   map_world_mismatch=false
   world_files=(
     "src/slam_nav_simulation/world/nav_test_world/nav_test_world.world"
   )
   for world_file in "${world_files[@]}"; do
-    if [[ "${world_file}" -nt "src/slam_nav_bringup/map/nav_test_map.yaml" ||
-          "${world_file}" -nt "src/slam_nav_bringup/map/nav_test_map.pgm" ]]; then
+    if [[ "${world_file}" -nt "src/slam_nav_bringup/map/base1.yaml" ||
+          "${world_file}" -nt "src/slam_nav_bringup/map/base1.pgm" ]]; then
       if ! git diff --quiet -- "${world_file}" 2>/dev/null; then
         map_world_mismatch=true
       fi
     fi
   done
   if [[ "${map_world_mismatch}" == "true" ]]; then
-    warn "仿真场地内容相对 Git 基线已有修改且晚于默认地图；请重新建图、保存 nav_test_map，并补新的建图/导航截图后再最终打包"
+    warn "仿真场地内容相对 Git 基线已有修改且晚于默认地图；请重新建图、保存 base1，并补新的建图/导航截图后再最终打包"
   fi
 fi
 

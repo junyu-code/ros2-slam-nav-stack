@@ -38,6 +38,22 @@ cd ~/slam_nav_ws
 
 实际脚本统一收纳在 `scripts/` 目录，例如 `scripts/start_navigation.sh`。日常建议优先使用 `./run.sh <命令>`，这样根目录更干净，也不需要记住每个脚本文件名。
 
+实机 MID360 建图/导航入口已经带传感器自检。`mapping`、`auto-mapping`、`nav`、`nav-3d`、`nav-rgbd`、`nav-full` 和 `robust-nav` 会先检查 `/livox/lidar`、`/livox/imu` 和 `/imu/data` 是否已有发布者；没有时自动启动 Livox MID360 驱动和 IMU complementary filter，再启动 FAST-LIO、`/scan` 投影、slam_toolbox/Nav2 和 RViz。若你已经手动运行了 `./run.sh livox-mid360` 或 `./run.sh imu-filter`，入口会复用现有数据源，不会重复启动端口。
+
+实机 RViz 空白时，先按数据链路排查，而不是先改 RViz：
+
+```bash
+ros2 topic hz /livox/lidar
+ros2 topic hz /livox/imu
+ros2 topic hz /imu/data
+ros2 topic hz /cloud_registered
+ros2 topic hz /scan
+ros2 topic hz /map
+ros2 run tf2_ros tf2_echo odom base_footprint
+```
+
+正常情况下，MID360 点云约 7-10 Hz，IMU 和 `/imu/data` 约 200 Hz，`/cloud_registered` 和 `/scan` 约 10 Hz，`/map` 约 1 Hz。若 `/cloud_registered` 没有频率，说明 FAST-LIO 没拿到 LiDAR/IMU 输入；若 `/cloud_registered` 有而 `/scan` 没有，再看 `pointcloud_to_laserscan` 和 TF。
+
 Task1 课程作业的最终运行、截图、静态/动态场地区分和打包清单已经集中到：
 
 ```text
@@ -59,7 +75,7 @@ tasks/task1/TASK1_EVIDENCE_TODO.md
 
 它会生成或覆盖 `tasks/task1/TASK1_STATUS_SNAPSHOT.md`。这个快照不会启动 Gazebo、RViz 或 Nav2，适合每次跑完一批截图/实验后更新一次，后续写报告时也能直接看出实验推进过程。
 
-如果 `./run.sh task1-status` 或 `./run.sh task1-map-check` 提示 world 内容相对 Git 基线确实发生变化，并且晚于默认地图，说明当前 `nav_test_map` 可能不再对应当前场地。此时先按下面路线重新执行静态建图并保存 `nav_test_map`，再继续导航截图和 10 次静态避障统计。当前默认静态/动态场地已经恢复到与 `nav_test_map` 兼容的版本；单纯文件时间变化不会再要求重扫图。
+如果 `./run.sh task1-status` 或 `./run.sh task1-map-check` 提示 world 内容相对 Git 基线确实发生变化，并且晚于默认地图，说明当前 `base1` 可能不再对应当前场地。此时先按下面路线重新执行静态建图并保存 `base1`，再继续导航截图和 10 次静态避障统计。当前默认静态/动态场地已经恢复到与 `base1` 兼容的版本；单纯文件时间变化不会再要求重扫图。
 
 如果只是想在打开 Gazebo 前确认场地文件本身没有明显几何错误，可以先运行：
 
@@ -69,7 +85,7 @@ tasks/task1/TASK1_EVIDENCE_TODO.md
 
 它只检查 `.world` 文件和斜坡/动态障碍物结构，不启动 GUI，也不替代实际建图、截图和导航测试。
 
-重新执行 `./run.sh save-map nav_test_map` 后，可运行下面命令查看地图分辨率、origin、PGM 尺寸、覆盖范围、文件大小和像素统计，方便转写到实验记录：
+重新执行 `./run.sh save-map base1` 后，可运行下面命令查看地图分辨率、origin、PGM 尺寸、覆盖范围、文件大小和像素统计，方便转写到实验记录：
 
 ```bash
 ./run.sh task1-map-check
@@ -89,7 +105,7 @@ cd ~/slam_nav_ws
 # 另开终端：./run.sh mapping
 # 另开终端：./run.sh teleop
 # 建图确认：./run.sh task1-runtime-check mapping
-./run.sh save-map nav_test_map
+./run.sh save-map base1
 ./run.sh clean --dry-run
 ./run.sh clean
 ./run.sh sim-static
@@ -177,7 +193,7 @@ cd ~/slam_nav_ws
 ./run.sh task1-delivery-check
 ```
 
-这些命令都不会启动 Gazebo、RViz 或 Nav2。`task1-status` 是最短状态页，会告诉你当前还缺哪些截图、实验记录、报告 PDF 或 Git 提交；`task1-world-check` 专门检查静态/动态 `.world` 文件、斜坡连接、坡向、动态障碍物插件和两份场地静态部分的一致性；`task1-map-check` 专门检查 `nav_test_map.yaml/pgm` 的分辨率、origin、PGM 尺寸、覆盖范围、文件大小、像素统计和地图是否比场地旧；`task1-check` 主要检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位，并会顺带调用场地与地图检查；`task1-experiment-check` 会解析 `EXPERIMENT_RECORD.md` 中 10 次静态避障实验表，统计成功次数、碰撞次数和是否达到 80% 成功率；普通模式下，缺截图和待填实验记录只会显示 warning。填表过程中追加 `--next` 可以显示下一条待补实验记录、缺失字段和推荐填写格式。
+这些命令都不会启动 Gazebo、RViz 或 Nav2。`task1-status` 是最短状态页，会告诉你当前还缺哪些截图、实验记录、报告 PDF 或 Git 提交；`task1-world-check` 专门检查静态/动态 `.world` 文件、斜坡连接、坡向、动态障碍物插件和两份场地静态部分的一致性；`task1-map-check` 专门检查 `base1.yaml/pgm` 的分辨率、origin、PGM 尺寸、覆盖范围、文件大小、像素统计和地图是否比场地旧；`task1-check` 主要检查入口脚本、默认地图、task1 文档、报告源文件、截图文件和实验记录占位，并会顺带调用场地与地图检查；`task1-experiment-check` 会解析 `EXPERIMENT_RECORD.md` 中 10 次静态避障实验表，统计成功次数、碰撞次数和是否达到 80% 成功率；普通模式下，缺截图和待填实验记录只会显示 warning。填表过程中追加 `--next` 可以显示下一条待补实验记录、缺失字段和推荐填写格式。
 
 当仿真、建图或导航已经启动后，可以把运行时检查结果保存成可转写到实验记录的快照：
 
@@ -329,7 +345,7 @@ cd ~/slam_nav_ws
 
 ```bash
 cd ~/slam_nav_ws
-./run.sh save-map nav_test_map
+./run.sh save-map base1
 ```
 
 保存 FAST-LIO 累计出的 PCD 地图：
@@ -349,8 +365,8 @@ src/FAST_LIO/PCD/nav_test_static.pcd
 保存结果应位于：
 
 ```text
-src/slam_nav_bringup/map/nav_test_map.yaml
-src/slam_nav_bringup/map/nav_test_map.pgm
+src/slam_nav_bringup/map/base1.yaml
+src/slam_nav_bringup/map/base1.pgm
 ```
 
 ## 主流程 2：加载地图导航
@@ -378,7 +394,7 @@ cd ~/slam_nav_ws
 FAST-LIO2
 pointcloud_to_laserscan -> /scan
 Nav2 bringup
-map_server 加载 nav_test_map.yaml
+map_server 加载 base1.yaml
 publish_initial_pose.py 初始化 AMCL
 RViz
 ```
@@ -495,7 +511,7 @@ start_navigation_rgbd.sh
 当前融合边界：
 
 ```text
-/nav_camera/depth/image_raw + /nav_camera/depth/camera_info
+/nav_camera/d435i/depth/image_rect_raw + /nav_camera/d435i/depth/camera_info
   -> depth_obstacle_projector
   -> /visual_obstacles
   -> local_costmap obstacle_layer
@@ -647,6 +663,38 @@ ros2 topic echo /cmd_vel_safe
 ```
 
 后续接真实底盘时，可以把 Nav2 的速度输出重映射到安全桥输入，再由安全桥输出给底盘控制接口；如果底盘侧需要独立控制进程，也可以打开 UDP 输出。当前作业主流程不强制启用这一层，以免影响已经验证过的仿真导航链路。
+
+Unitree GO2 不需要依赖外部 `/home/jetson/go2` 工作区发送速度；本仓库已有 `safe_cmd_bridge` 的独立 UDP 输出。推荐链路如下：
+
+```text
+Nav2 /cmd_vel
+  -> safe_cmd_bridge
+  -> /cmd_vel_safe + UDP 192.168.123.22:15000
+  -> Unitree GO2 侧 UDP 接收/运动控制进程
+  -> unitree_sdk2py SportClient.Move(vx, vy, vyaw)
+```
+
+先只观察 topic 输出，不让底盘动：
+
+```bash
+cd ~/slam_nav_ws
+./run.sh safe-bridge enable_udp_output:=false enable_fault_stop:=true
+```
+
+确认 `/cmd_vel_safe` 的限速、超时停车和方向都正确后，再打开 Unitree GO2 UDP 输出：
+
+```bash
+./run.sh safe-bridge \
+  input_topic:=/cmd_vel \
+  output_topic:=/cmd_vel_safe \
+  enable_fault_stop:=true \
+  enable_udp_output:=true \
+  udp_host:=192.168.123.22 \
+  udp_port:=15000 \
+  max_vx:=0.2 max_vy:=0.1 max_wz:=0.3
+```
+
+UDP 包格式为 ASCII `vx,vy,wz\n`，与 Unitree GO2 侧常见 `SportClient.Move(vx, vy, vyaw)` 接收器兼容。UDP 没有握手，必须确认 GO2 侧接收器已经运行，且 `ping -c 2 192.168.123.22` 正常。联调时先看 `ros2 topic info /cmd_vel -v`、`ros2 topic info /cmd_vel_safe -v` 和 `/cmd_vel_safe` 的零速/限速表现，再发送近距离 Nav2 目标点。
 
 真实底盘联调前，先按 `tasks/task2/REAL_ROBOT_DEPLOYMENT_CHECKLIST.md` 的顺序执行无硬件预检、低速 topic 输出、UDP 输出和反馈看门狗测试。不要直接把仿真导航速度接到真实底盘。
 
