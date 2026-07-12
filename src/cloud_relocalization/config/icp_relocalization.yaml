@@ -4,15 +4,20 @@ icp_relocalization_node:
     input_cloud_topic: /cloud_registered
     aligned_cloud_topic: /relocalization/aligned_cloud
     status_topic: /relocalization/status
+    quality_topic: /relocalization/quality
     pose_topic: /relocalization/pose
+    initial_guess_topic: /relocalization/initial_guess
     trigger_service: /relocalization/trigger
+    readiness_service: /relocalization/ready
 
     map_frame: map
     odom_frame: odom
     publish_tf: false
     auto_align: false
     use_last_transform_as_guess: true
-    registration_method: icp
+    # 重定位配准后端：icp 速度快适合精配准，gicp 对 3D 几何更稳，ndt 适合体素化粗配准。
+    # 默认使用 small_gicp；仍可切换为 icp、gicp 或 ndt。
+    registration_method: small_gicp
 
     map_leaf_size: 0.12
     scan_leaf_size: 0.10
@@ -21,8 +26,12 @@ icp_relocalization_node:
     euclidean_fitness_epsilon: 0.0001
     fitness_score_threshold: 0.45
     max_iterations: 45
+    # 仅 NDT 使用下面两个参数；ICP/GICP 使用 max_correspondence_distance 等对应点参数。
     ndt_resolution: 1.0
     ndt_step_size: 0.1
+    # small_gicp 的并行线程数和局部协方差估计邻居数。
+    small_gicp_num_threads: 4
+    small_gicp_correspondence_randomness: 20
     min_scan_points: 120
     min_map_points: 300
     min_interval_sec: 2.0
@@ -30,6 +39,9 @@ icp_relocalization_node:
     local_map_radius: 8.0
     max_result_translation_jump: 1.5
     max_result_yaw_jump: 0.8
+    max_result_z_jump: 0.4
+    max_result_roll_pitch_jump: 0.3
+    min_overlap_ratio: 0.2
 
     initial_x: 0.0
     initial_y: 0.0

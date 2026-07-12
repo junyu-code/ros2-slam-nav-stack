@@ -251,6 +251,9 @@ class AutoExploreMapper(Node):
         self.state = state
         self.state_started = time.monotonic()
         self.state_deadline = None if duration is None else self.state_started + duration
+        if state == 'CRUISE':
+            # 原地扫描/转向阶段没有平移，不能把这段历史带入直行卡滞判断。
+            self.odom_history.clear()
         self.get_logger().info(f'Auto exploration state -> {state}', throttle_duration_sec=1.0)
 
     def _publish_cmd(self, linear_x, angular_z):
@@ -269,7 +272,8 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        node._publish_cmd(0.0, 0.0)
+        if rclpy.ok():
+            node._publish_cmd(0.0, 0.0)
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

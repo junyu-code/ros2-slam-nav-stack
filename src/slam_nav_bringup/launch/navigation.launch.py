@@ -54,6 +54,7 @@ def generate_launch_description():
     continue_on_amcl_convergence_timeout = LaunchConfiguration(
         'continue_on_amcl_convergence_timeout'
     )
+    localization_ready_topic = LaunchConfiguration('localization_ready_topic')
 
     def normalize_python_bool(value):
         # Nav2 官方 launch 里有 PythonExpression，布尔值要用 Python 可识别的 True/False。
@@ -120,6 +121,8 @@ def generate_launch_description():
                 continue_on_amcl_convergence_timeout,
                 value_type=bool,
             ),
+            # 名称保留向后兼容；大场地 BnB 启动链路会改为等待统一定位就绪话题。
+            'amcl_converged_topic': localization_ready_topic,
         }],
         output='screen',
     )
@@ -239,6 +242,7 @@ def generate_launch_description():
         DeclareLaunchArgument('require_amcl_convergence', default_value='false'),
         DeclareLaunchArgument('amcl_convergence_timeout', default_value='30.0'),
         DeclareLaunchArgument('continue_on_amcl_convergence_timeout', default_value='true'),
+        DeclareLaunchArgument('localization_ready_topic', default_value='/amcl_converged'),
         DeclareLaunchArgument(
             'scan_cloud_topic',
             default_value='/cloud_registered',
@@ -331,6 +335,19 @@ def generate_launch_description():
             executable='rviz2',
             condition=IfCondition(rviz),
             arguments=['-d', rviz_config],
+            output='screen',
+        ),
+        Node(
+            package='slam_nav_bringup',
+            executable='navigation_ready_monitor.py',
+            name='navigation_ready_monitor',
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                'localization_ready_topic': localization_ready_topic,
+                'localization_mode': localization_mode,
+                'navigation_ready_topic': '/navigation_ready',
+                'navigate_to_pose_action': '/navigate_to_pose',
+            }],
             output='screen',
         ),
     ])

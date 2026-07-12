@@ -16,8 +16,9 @@
   <xacro:property name="imu_z" value="0.15"/>
   <xacro:property name="livox_x" value="0.12"/>
   <xacro:property name="livox_z" value="0.20"/>
-  <xacro:property name="nav_camera_x" value="0.24"/>
-  <xacro:property name="nav_camera_z" value="0.20"/>
+  <!-- Front-mounted outside the chassis and below the Mid-360's lowest scan ray. -->
+  <xacro:property name="nav_camera_x" value="0.27"/>
+  <xacro:property name="nav_camera_z" value="0.15"/>
   <xacro:property name="piper_mount_x" value="0.16"/>
   <xacro:property name="piper_mount_z" value="0.22"/>
 

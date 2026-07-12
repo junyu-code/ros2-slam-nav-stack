@@ -1,25 +1,31 @@
 localization_guard_node:
   ros__parameters:
-    use_sim_time: true
+    use_sim_time: false
 
     odom_topic: /Odometry
     cloud_topic: /cloud_registered
     scan_topic: /scan
+    quality_status_topic: /amcl_convergence_status
     health_topic: /localization_health
     fault_topic: /localization_fault
     diagnostic_topic: /diagnostics
     cmd_vel_topic: /cmd_vel
 
     check_rate_hz: 5.0
-    odom_timeout_sec: 1.0
-    cloud_timeout_sec: 1.0
-    scan_timeout_sec: 1.5
+    odom_timeout_sec: 3.0
+    cloud_timeout_sec: 3.0
+    scan_timeout_sec: 4.0
 
     max_linear_speed: 2.0
     max_angular_speed: 3.5
     max_pose_jump_m: 1.0
     max_yaw_jump_rad: 1.2
-    fault_hold_sec: 2.0
+    fault_hold_sec: 4.0
+
+    # AMCL 首次收敛后，持续检查二维扫描与地图是否仍然一致，用于发现 FAST-LIO 慢漂。
+    enable_map_consistency_check: true
+    map_consistency_hold_sec: 2.0
+    quality_timeout_sec: 3.0
 
     publish_zero_on_fault: false
     zero_publish_count: 5

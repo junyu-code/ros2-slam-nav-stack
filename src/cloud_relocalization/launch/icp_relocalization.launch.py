@@ -27,6 +27,9 @@ def generate_launch_description():
     min_interval_sec = LaunchConfiguration('min_interval_sec')
     max_result_translation_jump = LaunchConfiguration('max_result_translation_jump')
     max_result_yaw_jump = LaunchConfiguration('max_result_yaw_jump')
+    max_result_z_jump = LaunchConfiguration('max_result_z_jump')
+    max_result_roll_pitch_jump = LaunchConfiguration('max_result_roll_pitch_jump')
+    min_overlap_ratio = LaunchConfiguration('min_overlap_ratio')
     use_sim_time = LaunchConfiguration('use_sim_time')
 
     default_params = PathJoinSubstitution([
@@ -41,7 +44,9 @@ def generate_launch_description():
         DeclareLaunchArgument('input_cloud_topic', default_value='/cloud_registered'),
         DeclareLaunchArgument('publish_tf', default_value='false'),
         DeclareLaunchArgument('auto_align', default_value='false'),
-        DeclareLaunchArgument('registration_method', default_value='icp'),
+        # 从 launch 层切换 PCL 配准后端，源码中会统一校验为 icp/gicp/ndt。
+        # 默认使用工作区 external/small_gicp 提供的 GICP 后端。
+        DeclareLaunchArgument('registration_method', default_value='small_gicp'),
         DeclareLaunchArgument('ndt_resolution', default_value='1.0'),
         DeclareLaunchArgument('ndt_step_size', default_value='0.1'),
         DeclareLaunchArgument('crop_map_around_guess', default_value='true'),
@@ -54,6 +59,9 @@ def generate_launch_description():
         DeclareLaunchArgument('min_interval_sec', default_value='2.0'),
         DeclareLaunchArgument('max_result_translation_jump', default_value='1.5'),
         DeclareLaunchArgument('max_result_yaw_jump', default_value='0.8'),
+        DeclareLaunchArgument('max_result_z_jump', default_value='0.4'),
+        DeclareLaunchArgument('max_result_roll_pitch_jump', default_value='0.3'),
+        DeclareLaunchArgument('min_overlap_ratio', default_value='0.2'),
         DeclareLaunchArgument('use_sim_time', default_value='true'),
         Node(
             package='cloud_relocalization',
@@ -93,6 +101,12 @@ def generate_launch_description():
                         value_type=float,
                     ),
                     'max_result_yaw_jump': ParameterValue(max_result_yaw_jump, value_type=float),
+                    'max_result_z_jump': ParameterValue(max_result_z_jump, value_type=float),
+                    'max_result_roll_pitch_jump': ParameterValue(
+                        max_result_roll_pitch_jump,
+                        value_type=float,
+                    ),
+                    'min_overlap_ratio': ParameterValue(min_overlap_ratio, value_type=float),
                 },
             ],
         ),

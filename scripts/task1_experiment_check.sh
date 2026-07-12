@@ -11,6 +11,8 @@ SHOW_NEXT=false
 RECORD_FILE="tasks/task1/EXPERIMENT_RECORD.md"
 FIG_DIR="tasks/task1/report_latex/figures"
 
+source "${SCRIPT_DIR}/task1_state.sh"
+
 usage() {
   cat <<'EOF'
 用法：
@@ -124,6 +126,23 @@ if [[ ! -f "${RECORD_FILE}" ]]; then
   fail "缺少实验记录文件: ${RECORD_FILE}"
   exit 1
 fi
+
+if task1_load_state; then
+  task1_print_state | sed 's/^/[task1-experiment]   /'
+  while IFS= read -r issue; do
+    [[ -n "${issue}" ]] && warn "${issue}"
+  done < <(task1_state_issues)
+else
+  fail "Task1 状态文件无效"
+fi
+
+for marker in "导航方案标识" "证据状态" "Git 基线" "实验日期" "导航配置"; do
+  if grep -Fq "${marker}" "${RECORD_FILE}"; then
+    ok "实验批次包含元数据: ${marker}"
+  else
+    warn "实验批次缺少元数据: ${marker}"
+  fi
+done
 
 if [[ ! -d "${FIG_DIR}" ]]; then
   warn "截图目录不存在: ${FIG_DIR}"

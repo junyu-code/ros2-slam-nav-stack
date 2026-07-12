@@ -4,11 +4,16 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, LogInfo, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from slam_nav_bringup.base_profiles import (
+    BUILTIN_PROFILES,
+    build_profiled_nav2_params,
+    resolve_base_profile_file,
+)
 
 
 def generate_launch_description():
@@ -31,6 +36,8 @@ def generate_launch_description():
     map_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
     navigation_params_file = LaunchConfiguration('navigation_params_file')
+    base_profile = LaunchConfiguration('base_profile')
+    base_profile_file = LaunchConfiguration('base_profile_file')
     initial_pose_x = LaunchConfiguration('initial_pose_x')
     initial_pose_y = LaunchConfiguration('initial_pose_y')
     initial_pose_yaw = LaunchConfiguration('initial_pose_yaw')
@@ -144,7 +151,22 @@ def generate_launch_description():
 
     def make_navigation_include(context):
         # 嵌套 launch 中存在同名参数时，先在父作用域解析成普通字符串，避免回落到子 launch 默认值。
+        resolved_profile = resolve_base_profile_file(
+            bringup_dir,
+            base_profile.perform(context),
+            base_profile_file.perform(context),
+        )
+        profiled_params = build_profiled_nav2_params(
+            navigation_params_file.perform(context),
+            resolved_profile,
+        )
         return [
+            LogInfo(
+                msg=(
+                    f"Using base profile '{base_profile.perform(context)}': "
+                    f"{resolved_profile}"
+                )
+            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     os.path.join(bringup_dir, 'launch', 'navigation.launch.py')
@@ -162,7 +184,7 @@ def generate_launch_description():
                     'static_map_to_odom_roll': static_map_to_odom_roll.perform(context),
                     'fast_lio_config': fast_lio_config.perform(context),
                     'map': map_file.perform(context),
-                    'nav2_params_file': navigation_params_file.perform(context),
+                    'nav2_params_file': str(profiled_params),
                     'initial_pose_x': initial_pose_x.perform(context),
                     'initial_pose_y': initial_pose_y.perform(context),
                     'initial_pose_yaw': initial_pose_yaw.perform(context),
@@ -200,6 +222,17 @@ def generate_launch_description():
             'navigation_params_file',
             default_value=params_file,
             description='3D Nav2 parameter file passed into the nested navigation launch. Defaults to params_file.',
+        ),
+        DeclareLaunchArgument(
+            'base_profile',
+            default_value='omni',
+            choices=list(BUILTIN_PROFILES),
+            description='Chassis kinematics, footprint, and velocity limit profile.',
+        ),
+        DeclareLaunchArgument(
+            'base_profile_file',
+            default_value='',
+            description='Optional custom chassis profile YAML; overrides base_profile when set.',
         ),
         DeclareLaunchArgument('initial_pose_x', default_value='0.0'),
         DeclareLaunchArgument('initial_pose_y', default_value='0.0'),

@@ -9,7 +9,6 @@ FIG_DIR="tasks/task1/report_latex/figures"
 
 required_figs=(
   "6-1|fig_6_1_gazebo_world.png|Gazebo 静态场地总览|./run.sh clean && ./run.sh sim-static"
-  "6-2|fig_6_2_robot_model.png|机器人模型和传感器|./run.sh sim-static"
   "7-1|fig_7_1_mapping_rviz.png|RViz 建图过程|./run.sh mapping + ./run.sh teleop"
   "7-2|fig_7_2_saved_map.png|保存后的地图|./run.sh save-map nav_test_map"
   "8-1|fig_8_1_nav2_map_loaded.png|Nav2 加载地图|./run.sh nav"
@@ -23,6 +22,15 @@ optional_figs=(
   "8-5|fig_8_5_backup_recovery.png|后退恢复过程|可选：拥挤障碍附近触发恢复行为"
   "9-2|fig_9_2_rgbd_visual_obstacles.png|RGB-D 近场障碍点云|可选：./run.sh sim-dynamic-rgbd + ./run.sh nav-full"
   "9-3|fig_9_3_perception_adapter.png|感知接口说明|可选：展示感知适配接口或话题"
+  "9-4|fig_9_4_large_arena_overview.png|大场地鲁棒性扩展总览|可选：./run.sh large-arena-collision"
+  "9-5|fig_9_5_large_arena_relocalization.png|大场地重定位扩展验证|可选：./run.sh large-arena-nav"
+  "9-6|fig_9_6_relocalization_log.png|AMCL/GICP 重定位诊断日志|可选：展示 /relocalization/status 或 AMCL 收敛状态"
+  "9-7|fig_9_7_collision_recovery.png|碰撞扰动后恢复对比|可选：./run.sh teleop-manual-car"
+  "10-1|fig_10_1_real_livox_network.png|实机 MID360 网络与驱动|可选：实机迁移材料"
+  "10-2|fig_10_2_real_d435i_depth.png|实机 D435i RGB-D 数据|可选：实机迁移材料"
+  "10-3|fig_10_3_real_fast_lio_mapping.png|实机 FAST-LIO 点云建图|可选：实机迁移材料"
+  "10-4|fig_10_4_real_cmd_bridge_test.png|实机底盘安全桥测试|可选：实机迁移材料"
+  "10-5|fig_10_5_real_runtime_diagnosis.png|实机运行诊断结果|可选：实机迁移材料"
 )
 
 usage() {

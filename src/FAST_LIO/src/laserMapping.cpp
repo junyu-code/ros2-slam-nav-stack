@@ -93,11 +93,12 @@ double res_mean_last = 0.05, total_residual = 0.0;
 double last_timestamp_lidar = 0, last_timestamp_imu = -1.0;
 double gyr_cov = 0.1, acc_cov = 0.1, b_gyr_cov = 0.0001, b_acc_cov = 0.0001;
 double filter_size_surf_min = 0, filter_size_map_min = 0, fov_deg = 0;
+double map_visualization_leaf_size = 0.15;
 double cube_len = 0, HALF_FOV_COS = 0, FOV_DEG = 0, total_distance = 0, lidar_end_time = 0, first_lidar_time = 0.0;
 int    effct_feat_num = 0, time_log_counter = 0, scan_count = 0, publish_count = 0;
 int    iterCount = 0, feats_down_size = 0, NUM_MAX_ITERATIONS = 0, laserCloudValidNum = 0, pcd_save_interval = -1, pcd_index = 0;
 bool   point_selected_surf[100000] = {0};
-bool   lidar_pushed, flg_first_scan = true, flg_exit = false, flg_EKF_inited;
+bool   lidar_pushed, flg_first_scan = true, flg_EKF_inited;
 bool   scan_pub_en = false, dense_pub_en = false, scan_body_pub_en = false;
 bool    is_first_lidar = true;
 
@@ -144,14 +145,6 @@ geometry_msgs::msg::PoseStamped msg_body_pose;
 
 shared_ptr<Preprocess> p_pre(new Preprocess());
 shared_ptr<ImuProcess> p_imu(new ImuProcess());
-
-void SigHandle(int sig)
-{
-    flg_exit = true;
-    std::cout << "catch sig %d" << sig << std::endl;
-    sig_buffer.notify_all();
-    rclcpp::shutdown();
-}
 
 inline void dump_lio_state_to_log(FILE *fp)  
 {
@@ -488,6 +481,7 @@ void map_incremental()
 
 PointCloudXYZI::Ptr pcl_wait_pub(new PointCloudXYZI());
 PointCloudXYZI::Ptr pcl_wait_save(new PointCloudXYZI());
+PointCloudXYZI::Ptr pcl_visual_map(new PointCloudXYZI());
 void publish_frame_world(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pubLaserCloudFull)
 {
     if(scan_pub_en)
@@ -610,9 +604,21 @@ void publish_map(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub
                             &laserCloudWorld->points[i]);
     }
     *pcl_wait_pub += *laserCloudWorld;
+    *pcl_visual_map += *laserCloudWorld;
+
+    if (map_visualization_leaf_size > 0.0 && !pcl_visual_map->empty())
+    {
+        PointCloudXYZI::Ptr filtered_visual_map(new PointCloudXYZI());
+        pcl::VoxelGrid<PointType> visual_filter;
+        const float leaf = static_cast<float>(map_visualization_leaf_size);
+        visual_filter.setLeafSize(leaf, leaf, leaf);
+        visual_filter.setInputCloud(pcl_visual_map);
+        visual_filter.filter(*filtered_visual_map);
+        pcl_visual_map.swap(filtered_visual_map);
+    }
 
     sensor_msgs::msg::PointCloud2 laserCloudmsg;
-    pcl::toROSMsg(*pcl_wait_pub, laserCloudmsg);
+    pcl::toROSMsg(*pcl_visual_map, laserCloudmsg);
     laserCloudmsg.header.stamp = get_ros_time(lidar_end_time);
     laserCloudmsg.header.frame_id = "odom";
     pubLaserCloudMap->publish(laserCloudmsg);
@@ -842,6 +848,7 @@ public:
         this->declare_parameter<bool>("publish.scan_publish_en", true);
         this->declare_parameter<bool>("publish.dense_publish_en", true);
         this->declare_parameter<bool>("publish.scan_bodyframe_pub_en", true);
+        this->declare_parameter<double>("publish.map_visualization_leaf_size", 0.15);
         this->declare_parameter<int>("max_iteration", 4);
         this->declare_parameter<string>("map_file_path", "");
         this->declare_parameter<string>("common.lid_topic", "/livox/lidar");
@@ -878,6 +885,8 @@ public:
         this->get_parameter_or<bool>("publish.scan_publish_en", scan_pub_en, true);
         this->get_parameter_or<bool>("publish.dense_publish_en", dense_pub_en, true);
         this->get_parameter_or<bool>("publish.scan_bodyframe_pub_en", scan_body_pub_en, true);
+        this->get_parameter_or<double>(
+            "publish.map_visualization_leaf_size", map_visualization_leaf_size, 0.15);
         this->get_parameter_or<int>("max_iteration", NUM_MAX_ITERATIONS, 4);
         this->get_parameter_or<string>("map_file_path", map_file_path, "");
         this->get_parameter_or<string>("common.lid_topic", lid_topic, "/livox/lidar");
@@ -1140,22 +1149,40 @@ private:
 
     void map_publish_callback()
     {
+        const auto & current_cloud = dense_pub_en ? feats_undistort : feats_down_body;
+        if (!current_cloud || current_cloud->empty() || lidar_end_time <= 0.0) {
+            return;
+        }
         publish_map(pubLaserCloudMap_);
     }
 
     void map_save_callback(std_srvs::srv::Trigger::Request::ConstSharedPtr req, std_srvs::srv::Trigger::Response::SharedPtr res)
     {
         RCLCPP_INFO(this->get_logger(), "Saving map to %s...", map_file_path.c_str());
-        if (pcd_save_en)
+        if (!pcd_save_en)
+        {
+            res->success = false;
+            res->message = "Map save disabled.";
+            return;
+        }
+        if (pcl_wait_pub->empty())
+        {
+            res->success = false;
+            res->message = "Map is empty; wait for registered point cloud data.";
+            return;
+        }
+
+        try
         {
             save_to_pcd();
             res->success = true;
             res->message = "Map saved.";
         }
-        else
+        catch (const std::exception &error)
         {
+            RCLCPP_ERROR(this->get_logger(), "Failed to save map: %s", error.what());
             res->success = false;
-            res->message = "Map save disabled.";
+            res->message = error.what();
         }
     }
 
@@ -1187,7 +1214,6 @@ private:
 int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
-    signal(SIGINT, SigHandle);
 
     rclcpp::spin(std::make_shared<LaserMappingNode>());
 

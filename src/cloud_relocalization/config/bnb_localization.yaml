@@ -1,0 +1,40 @@
+bnb_localization_node:
+  ros__parameters:
+    map_topic: /map
+    scan_topic: /scan
+    pose_topic: /relocalization/coarse_pose
+    quality_topic: /relocalization/coarse_quality
+    status_topic: /relocalization/coarse_status
+    trigger_service: /relocalization/coarse_trigger
+    map_frame: map
+    base_frame: base_footprint
+    map_pcd_path: ""
+    pcd_grid_resolution: 0.05
+    pcd_min_z: 0.35
+    pcd_max_z: 1.80
+    pcd_map_padding: 0.50
+    pcd_occupied_radius: 0.08
+
+    occupied_threshold: 65
+    likelihood_sigma: 0.20
+    max_obstacle_distance: 1.0
+    scan_sample_step: 3
+    min_scan_points: 60
+    min_range: 0.35
+    max_range: 20.0
+
+    # 全局 yaw 搜索；3 度粗搜索结果会继续交给 small_gicp 精配准。
+    angular_search_window: 3.141592653589793
+    angular_step: 0.05235987755983
+    max_depth: 6
+    max_expansions: 300000
+    max_search_time_sec: 5.0
+    min_score: 0.55
+    min_score_gap: 0.05
+    candidate_score_window: 0.20
+    max_candidates: 8
+    ambiguity_translation: 0.75
+    ambiguity_yaw: 0.35
+
+    auto_match: false
+    min_interval_sec: 5.0

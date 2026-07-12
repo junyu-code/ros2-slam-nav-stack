@@ -13,33 +13,45 @@ show_help() {
 常用命令：
   build                 编译工作区
   clean                 清理 ROS/Gazebo/RViz/Nav2 残留进程
+  ui                    启动 SLAM Nav Web 主界面
+  nav-ui                Web 主界面兼容别名（与 ui 相同）
+  operator              启动 Qt/RViz Operator（也可从 Web 主界面打开）
   sim                   启动默认仿真（当前默认动态场地）
   sim-static            启动静态验收场地仿真
   sim-dynamic           启动动态障碍仿真
   sim-dynamic-rgbd      启动动态障碍 + RGB-D 仿真
+  gazebo-client         单独打开 Gazebo 图形窗口
+  gazebo-client-stop    单独关闭 Gazebo 图形窗口，保留仿真后端
+  demo-nav              一键启动静态仿真 + 默认导航演示
   large-arena           启动大场地仿真
   large-arena-collision 启动大场地碰撞扰动测试仿真
   large-arena-nav       启动大场地自主导航
   large-arena-robust-nav 启动大场地最强稳定导航（显式别名）
+  large-arena-mapping   大场地同源 2D/PCD 建图，Ctrl+C 自动成对保存
+  save-large-arena-maps [name] 手动保存地图对，已有名称自动追加数字
   mapping               手动建图链路
   auto-mapping          自动探索建图链路
   teleop                键盘控制
   teleop-manual-car     键盘控制大场地碰撞扰动用手动车
   save-map [name]       保存 2D 栅格地图
+  preprocess-map [input.yaml] [output.yaml] 保守清理静态地图噪点
   save-pcd [name]       保存 FAST-LIO PCD 地图
   nav                   默认导航
-  nav-3d                3D 地形增强导航
-  nav-rgbd              RGB-D 松耦合导航
-  nav-full              动态障碍 + RGB-D + 3D 完整导航
+  nav-3d [base_profile:=omni|diff_drive|go2] 3D 地形 + MPPI 增强导航
+  nav-rgbd [base_profile:=...] RGB-D 松耦合 + MPPI 导航
+  nav-full [base_profile:=...] 动态障碍 + RGB-D + 3D + MPPI 完整导航
   robust-nav            鲁棒导航入口
   relocalization        ICP/GICP/NDT 重定位入口
   relocalization-gicp   GICP 重定位快捷入口
+  relocalization-bnb    2D Branch-and-Bound 静止粗定位入口
   guard                 定位健康监控
   safe-bridge           速度安全桥
   real-preflight        实机部署前无 GUI/无硬件预检
   diagnose              运行时诊断
+  task1                 Task1 主流程、边界和当前状态（推荐入口）
   task1-status          task1 当前剩余证据/下一步（不启动 GUI）
-  task1-snapshot        生成 task1 当前证据状态快照 md（不启动 GUI）
+  ui-gui-check          UI 图形环境自检（不启动 Gazebo/RViz）
+  task1-snapshot        保存 task1 本地文本状态快照（不启动 GUI）
   task1-check           task1 交付材料预检（不启动 GUI）
   task1-world-check     task1 仿真场地 world 语法/几何/一致性检查（不启动 GUI）
   task1-map-check       task1 地图 yaml/pgm 元数据和过期状态检查（不启动 GUI）
@@ -89,7 +101,12 @@ show_help() {
   piper-boundary-check  检查 Piper 未泄漏进 task1/Nav2 或 /nav_camera
 
 示例：
+  ./run.sh ui
+  ./run.sh operator
   ./run.sh sim-static
+  ./run.sh gazebo-client
+  ./run.sh gazebo-client-stop
+  ./run.sh demo-nav
   ./run.sh large-arena-collision
   ./run.sh large-arena-nav
   ./run.sh large-arena-robust-nav
@@ -97,7 +114,9 @@ show_help() {
   ./run.sh auto-mapping
   ./run.sh save-pcd nav_test_static
   ./run.sh nav-full
+  ./run.sh task1
   ./run.sh task1-status
+  ./run.sh ui-gui-check
   ./run.sh task1-snapshot
   ./run.sh task1-check
   ./run.sh task1-world-check
@@ -153,19 +172,27 @@ script_for_command() {
   case "$1" in
     build) echo "build.sh" ;;
     clean) echo "clean.sh" ;;
+    ui|dashboard|mission-control|nav-ui|navigation-ui|nav-console) echo "start_ui.sh" ;;
+    operator|op|qt-operator|developer-console) echo "start_operator.sh" ;;
     sim|simulation) echo "start_simulation.sh" ;;
     sim-static|static-sim) echo "start_simulation_static.sh" ;;
     sim-dynamic) echo "start_simulation_dynamic.sh" ;;
     sim-dynamic-rgbd) echo "start_simulation_dynamic_rgbd.sh" ;;
+    gazebo-client|gzclient|open-gazebo) echo "start_gazebo_client.sh" ;;
+    gazebo-client-stop|stop-gazebo-client|close-gazebo|close-gazebo-client) echo "stop_gazebo_client.sh" ;;
+    demo-nav|demo-navigation|nav-demo) echo "start_demo_navigation.sh" ;;
     large-arena|arena) echo "start_large_arena.sh" ;;
     large-arena-collision|arena-collision|collision-test) echo "start_large_arena_collision_test.sh" ;;
     large-arena-nav|arena-nav) echo "start_large_arena_navigation.sh" ;;
     large-arena-robust-nav|arena-robust-nav|robust-arena-nav) echo "start_large_arena_robust_navigation.sh" ;;
+    large-arena-mapping|arena-mapping) echo "start_large_arena_mapping.sh" ;;
+    save-large-arena-maps|save-arena-maps) echo "save_large_arena_maps.sh" ;;
     mapping|map) echo "start_mapping.sh" ;;
     auto-mapping|auto-map) echo "start_auto_mapping.sh" ;;
     teleop) echo "teleop.sh" ;;
     teleop-manual-car|manual-car|manual-teleop) echo "teleop_manual_car.sh" ;;
     save-map) echo "save_map.sh" ;;
+    preprocess-map|filter-map|denoise-map) echo "preprocess_occupancy_map.py" ;;
     save-pcd) echo "save_pcd_map.sh" ;;
     nav|navigation) echo "start_navigation.sh" ;;
     nav-3d) echo "start_navigation_3d.sh" ;;
@@ -174,13 +201,16 @@ script_for_command() {
     robust-nav|robust) echo "start_robust_navigation.sh" ;;
     relocalization|relocalize) echo "start_relocalization.sh" ;;
     relocalization-gicp|gicp) echo "start_relocalization_gicp.sh" ;;
+    relocalization-bnb|bnb) echo "start_bnb_localization.sh" ;;
     guard|localization-guard) echo "start_localization_guard.sh" ;;
     safe-bridge) echo "start_safe_cmd_bridge.sh" ;;
     real-preflight|real-check|deploy-check) echo "real_preflight.sh" ;;
     diagnose) echo "diagnose_runtime.sh" ;;
+    task1|task1-guide|guide-task1) echo "task1_guide.sh" ;;
     task1-status|task1-next|task1-todo|status-task1) echo "task1_status.sh" ;;
+    ui-gui-check|gui-check|ui-display-check) echo "ui_gui_check.sh" ;;
     task1-snapshot|task1-state|task1-progress) echo "task1_snapshot.sh" ;;
-    task1-check|task1-preflight|task1) echo "task1_preflight.sh" ;;
+    task1-check|task1-preflight) echo "task1_preflight.sh" ;;
     task1-world-check|task1-world|world-check) echo "task1_world_check.sh" ;;
     task1-map-check|task1-map|map-check) echo "task1_map_check.sh" ;;
     task1-runtime-check|task1-runtime|runtime-check) echo "task1_runtime_check.sh" ;;
@@ -249,6 +279,14 @@ run_command() {
   fi
 
   local script_path="${SCRIPTS_DIR}/${script_name}"
+  if [[ "${script_name}" == "start_ui.sh" ]]; then
+    if [[ ! -f "${script_path}" ]]; then
+      echo "[run] 脚本不存在：${script_path}" >&2
+      exit 2
+    fi
+    exec bash "${script_path}" "$@"
+  fi
+
   if [[ ! -x "${script_path}" ]]; then
     echo "[run] 脚本不可执行或不存在：${script_path}" >&2
     exit 2
@@ -278,7 +316,7 @@ show_menu() {
  16) runtime nav        检查导航运行时链路
  17) diagnose           运行时诊断
  18) task1-status       查看 task1 剩余证据和下一步
- 19) task1-snapshot     生成 task1 当前证据状态快照 md
+ 19) task1-snapshot     保存 task1 本地文本状态快照
  20) task1-check        task1 交付材料预检
  21) task1-world-check  检查 task1 静态/动态仿真场地模型
  22) task1-map-check    检查 task1 默认地图元数据
@@ -293,6 +331,7 @@ show_menu() {
  31) task2-status       task2 实机/毕设扩展状态页
  32) real-preflight     实机部署前预检
  33) build              编译工作区
+  t) task1              查看 Task1 主流程和当前状态
   h) help               查看全部命令
   q) quit               退出
 
@@ -348,6 +387,7 @@ case "${choice}" in
   31) run_command task2-status ;;
   32) run_command real-preflight ;;
   33) run_command build ;;
+  t|task1) run_command task1 ;;
   h|help) show_help ;;
   q|quit|"") exit 0 ;;
   *) run_command "${choice}" ;;

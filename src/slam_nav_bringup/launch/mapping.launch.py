@@ -19,13 +19,19 @@ def generate_launch_description():
     fast_lio_config = LaunchConfiguration('fast_lio_config')
     slam_params = LaunchConfiguration('slam_params')
     rviz = LaunchConfiguration('rviz')
+    rviz_config = LaunchConfiguration('rviz_config')
     auto_explore = LaunchConfiguration('auto_explore')
     auto_explore_max_runtime_sec = LaunchConfiguration('auto_explore_max_runtime_sec')
+    pcd_map_file_path = LaunchConfiguration('pcd_map_file_path')
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
         DeclareLaunchArgument('auto_explore', default_value='false'),
         DeclareLaunchArgument('auto_explore_max_runtime_sec', default_value='0.0'),
+        DeclareLaunchArgument(
+            'pcd_map_file_path',
+            default_value='src/FAST_LIO/PCD/scan.pcd',
+        ),
         DeclareLaunchArgument(
             'fast_lio_config',
             default_value=os.path.join(fast_lio_dir, 'config', 'mid360.yaml'),
@@ -35,6 +41,10 @@ def generate_launch_description():
             default_value=os.path.join(bringup_dir, 'config', 'mapper_params_online_async.yaml'),
         ),
         DeclareLaunchArgument('rviz', default_value='false'),
+        DeclareLaunchArgument(
+            'rviz_config',
+            default_value=os.path.join(bringup_dir, 'rviz', 'mapping.rviz'),
+        ),
         Node(
             package='fast_lio',
             executable='fastlio_mapping',
@@ -49,6 +59,7 @@ def generate_launch_description():
                     'filter_size_map': 0.5,
                     'cube_side_length': 1000.0,
                     'runtime_pos_log_enable': False,
+                    'map_file_path': pcd_map_file_path,
                 },
             ],
             output='screen',
@@ -91,6 +102,7 @@ def generate_launch_description():
             package='rviz2',
             executable='rviz2',
             condition=IfCondition(rviz),
+            arguments=['-d', rviz_config],
             output='screen',
         ),
         Node(

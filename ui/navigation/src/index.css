@@ -1,0 +1,60 @@
+:root {
+  --color-primary: #ffffff;
+  --color-on-primary: #000000;
+  --color-ink: #f4f4f6;
+  --color-body: #cdcdcd;
+  --color-muted: #9c9c9d;
+  --color-ash: #6a6b6c;
+  --color-canvas: #07080a;
+  --color-surface: #0d0d0d;
+  --color-surface-elevated: #101111;
+  --color-surface-card: #121212;
+  --color-hairline: #242728;
+  --color-hairline-strong: rgba(255, 255, 255, 0.16);
+  --color-on-dark: #ffffff;
+  --color-blue: #57c1ff;
+  --color-red: #ff6161;
+  --color-green: #59d499;
+  --color-yellow: #ffc533;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  --font-body: 16px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body-sm: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-button: 500 14px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  font: var(--font-body);
+  color: var(--color-body);
+  background: var(--color-canvas);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "calt", "kern", "liga", "ss03";
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100svh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+svg {
+  flex: 0 0 auto;
+}
+
+#root {
+  min-height: 100svh;
+}
+

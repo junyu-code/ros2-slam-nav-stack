@@ -55,3 +55,15 @@ ros2 launch safe_cmd_bridge safe_cmd_bridge.launch.py \
 ```
 
 这层模块只负责速度安全整形和转发，不直接绑定某个底盘 SDK。具体底盘侧可以用一个独立进程接收 UDP，再调用对应运动接口。
+
+## 与底盘 profile 联动
+
+`nav-3d` 和 `nav-full` 通过 `slam_nav_bringup/config/base_profiles/` 统一配置 MPPI、velocity smoother 和本安全桥。内置 profile 包括：
+
+```bash
+./run.sh nav-full base_profile:=omni
+./run.sh nav-full base_profile:=diff_drive
+./run.sh nav-full base_profile:=go2
+```
+
+使用 `robust_navigation.launch.py` 时，安全桥会直接读取所选 profile 中的 `safe_cmd_bridge_node.ros__parameters`。因此切换底盘时应修改 profile，而不是分别修改 Nav2 和 `safe_cmd_bridge.yaml`。单独启动安全桥时仍使用本包的默认参数文件。

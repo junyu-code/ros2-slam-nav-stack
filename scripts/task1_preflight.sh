@@ -5,10 +5,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${WORKSPACE_DIR}"
 
-strict=false
+STRICT=false
 if [[ "${1:-}" == "--strict" ]]; then
-  strict=true
+  STRICT=true
+  shift
 fi
+if [[ $# -gt 0 ]]; then
+  echo "用法：./run.sh task1-check [--strict]" >&2
+  exit 2
+fi
+
+source "${SCRIPT_DIR}/task1_state.sh"
 
 errors=0
 warnings=0
@@ -37,59 +44,58 @@ check_file() {
   fi
 }
 
-check_executable() {
+check_dir() {
   local path="$1"
   local desc="$2"
-  if [[ -x "${path}" ]]; then
+  if [[ -d "${path}" ]]; then
     ok "${desc}: ${path}"
   else
-    fail "缺少或不可执行 ${desc}: ${path}"
+    fail "缺少 ${desc}: ${path}"
   fi
 }
 
-check_optional_image() {
+check_executable() {
   local path="$1"
-  local desc="$2"
-  if [[ -f "${path}" ]]; then
-    ok "${desc}: ${path}"
+  if [[ -x "${path}" ]]; then
+    ok "脚本可执行: ${path}"
   else
-    warn "待补截图 ${desc}: ${path}"
+    fail "脚本缺少或不可执行: ${path}"
   fi
 }
 
 echo "[task1-check] 工作区: ${WORKSPACE_DIR}"
 
-# 根目录只保留 run.sh 作为用户入口，具体脚本集中在 scripts/。
-check_executable "run.sh" "根目录统一入口"
-for stale in start_simulation.sh start_mapping.sh start_navigation.sh start_navigation_3d.sh setup_piper_open_class.sh; do
-  if [[ -e "${stale}" ]]; then
-    fail "根目录仍存在旧 wrapper，应改用 ./run.sh: ${stale}"
-  else
-    ok "根目录旧 wrapper 已清理: ${stale}"
-  fi
+if task1_load_state; then
+  ok "Task1 状态文件可读取"
+  task1_print_state | sed 's/^/[task1-check]   /'
+  while IFS= read -r issue; do
+    [[ -n "${issue}" ]] && warn "${issue}"
+  done < <(task1_state_issues)
+else
+  fail "Task1 状态文件无效"
+fi
+
+check_executable "run.sh"
+required_scripts=(
+  build.sh clean.sh task1_state.sh task1_guide.sh task1_status.sh task1_snapshot.sh
+  task1_world_check.sh task1_map_check.sh task1_runtime_check.sh
+  task1_experiment_check.sh task1_figures.sh task1_sync_report.sh
+  task1_report_audit.sh task1_delivery_check.sh task1_package_preview.sh
+  build_task1_report.sh task1_finalize.sh
+)
+for script in "${required_scripts[@]}"; do
+  check_executable "scripts/${script}"
 done
 
-for script in \
-  build.sh clean.sh start_simulation.sh start_simulation_static.sh \
-  start_simulation_dynamic.sh start_simulation_dynamic_rgbd.sh \
-  start_mapping.sh start_auto_mapping.sh teleop.sh save_map.sh save_pcd_map.sh \
-  start_navigation.sh start_navigation_3d.sh start_navigation_rgbd.sh \
-  start_navigation_full.sh start_robust_navigation.sh \
-  diagnose_runtime.sh task1_status.sh task1_snapshot.sh task1_world_check.sh task1_map_check.sh task1_runtime_check.sh task1_delivery_check.sh \
-  task1_experiment_check.sh task1_figures.sh task1_sync_report.sh task1_package_preview.sh task1_report_audit.sh build_task1_report.sh task1_finalize.sh; do
-  check_executable "scripts/${script}" "脚本"
-done
-
-# run.sh 是用户主入口，这里额外解析所有命令映射，防止新增入口后忘记提交脚本或执行权限。
-declare -A checked_run_scripts=()
+# 检查 run.sh 中映射到脚本的入口，避免帮助信息和实际文件脱节。
+declare -A checked_scripts=()
 while IFS= read -r mapped_script; do
   [[ -n "${mapped_script}" ]] || continue
   [[ "${mapped_script}" == "__help__" ]] && continue
-  if [[ -n "${checked_run_scripts[${mapped_script}]:-}" ]]; then
-    continue
+  if [[ -z "${checked_scripts[${mapped_script}]:-}" ]]; then
+    checked_scripts["${mapped_script}"]=1
+    check_executable "scripts/${mapped_script}"
   fi
-  checked_run_scripts["${mapped_script}"]=1
-  check_executable "scripts/${mapped_script}" "run.sh 映射脚本"
 done < <(
   awk '
     /\) echo "[^"]+\.sh" ;;/ {
@@ -101,161 +107,84 @@ done < <(
   ' run.sh
 )
 
-help_text="$(./run.sh help || true)"
-for command_name in \
-  clean build sim sim-static sim-dynamic sim-dynamic-rgbd \
-  mapping auto-mapping teleop save-map save-pcd \
-  nav nav-3d nav-rgbd nav-full robust-nav \
-  diagnose task1-status task1-check task1-runtime-check task1-delivery-check \
-  task1-snapshot task1-world-check task1-map-check task1-experiment-check task1-figures task1-sync-report task1-package-preview task1-report-audit task1-build-report task1-finalize; do
-  if grep -q "${command_name}" <<<"${help_text}"; then
-    ok "run.sh help 包含命令: ${command_name}"
-  else
-    fail "run.sh help 缺少命令: ${command_name}"
-  fi
-done
+check_file "README.md" "工作空间 README"
+check_file "tasks/task1/README.md" "Task1 README"
+check_file "tasks/task1/task1.env" "Task1 状态源"
+check_file "tasks/task1/EXPERIMENT_RECORD.md" "实验事实来源"
+check_file "tasks/task1/homework_latex/main.tex" "平时作业 LaTeX"
+check_file "tasks/task1/report_latex/main.tex" "结课报告 LaTeX"
+check_file "tasks/task1/evidence_media/MANIFEST.tsv" "媒体清单"
+check_file "tasks/task1/evidence_media/SHA256SUMS" "媒体校验和"
+check_file "tasks/task1/evidence_media/task1_rgbd_dynamic_demo_720p.mp4" "阶段性演示视频"
 
-if clean_preview="$(./run.sh clean --dry-run 2>&1)" && grep -q "dry-run" <<<"${clean_preview}"; then
-  ok "clean --dry-run 可用，预检不会终止正在运行的仿真/导航进程"
-else
-  fail "clean --dry-run 入口不可用或输出异常"
-fi
-
-# 核心代码和地图文件。
-for package_dir in \
-  src/slam_nav_simulation \
-  src/slam_nav_bringup \
-  src/FAST_LIO \
-  src/pointcloud_to_laserscan \
-  src/perception_adapter \
-  src/cloud_relocalization; do
-  if [[ -d "${package_dir}" ]]; then
-    ok "核心包目录存在: ${package_dir}"
-  else
-    fail "核心包目录缺失: ${package_dir}"
-  fi
-done
-
-check_file "src/slam_nav_bringup/map/nav_test_map.yaml" "默认导航地图 yaml"
-check_file "src/slam_nav_bringup/map/nav_test_map.pgm" "默认导航地图 pgm"
+check_dir "src/slam_nav_simulation" "仿真包"
+check_dir "src/slam_nav_bringup" "导航包"
+check_dir "src/FAST_LIO" "FAST-LIO"
+check_dir "src/pointcloud_to_laserscan" "点云投影包"
+check_file "src/slam_nav_bringup/map/nav_test_map.yaml" "默认地图 YAML"
+check_file "src/slam_nav_bringup/map/nav_test_map.pgm" "默认地图 PGM"
 check_file "src/slam_nav_simulation/world/nav_test_world/nav_test_world.world" "静态仿真场地"
-check_file "src/slam_nav_simulation/world/nav_test_world/nav_test_world_dynamic.world" "动态障碍物仿真场地"
-if [[ -x "scripts/task1_world_check.sh" ]]; then
-  if "scripts/task1_world_check.sh"; then
-    ok "仿真场地 world 语法/几何/一致性检查通过"
-  else
-    fail "仿真场地 world 检查未通过；请先修正场地模型再继续建图/导航验收"
-  fi
+
+if "${SCRIPT_DIR}/task1_world_check.sh" >/tmp/task1_preflight_world.log 2>&1; then
+  ok "仿真场地检查通过"
 else
-  fail "缺少仿真场地检查脚本: scripts/task1_world_check.sh"
-fi
-if [[ -f "src/slam_nav_bringup/map/nav_test_map.yaml" && -f "src/slam_nav_bringup/map/nav_test_map.pgm" ]]; then
-  if [[ -x "scripts/task1_map_check.sh" ]]; then
-    if "scripts/task1_map_check.sh" >/tmp/task1_preflight_map_check.log 2>&1; then
-      ok "默认地图 yaml/pgm 元数据检查通过"
-    else
-      fail "默认地图 yaml/pgm 元数据检查未通过；请重新建图并执行 ./run.sh save-map nav_test_map"
-    fi
-  else
-    fail "缺少默认地图元数据检查脚本: scripts/task1_map_check.sh"
-  fi
-  # 只有 world 内容确实偏离 Git 基线时，才提示默认地图需要重建；单纯 touch 不再误报。
-  map_world_mismatch=false
-  world_files=(
-    "src/slam_nav_simulation/world/nav_test_world/nav_test_world.world"
-  )
-  for world_file in "${world_files[@]}"; do
-    if [[ "${world_file}" -nt "src/slam_nav_bringup/map/nav_test_map.yaml" ||
-          "${world_file}" -nt "src/slam_nav_bringup/map/nav_test_map.pgm" ]]; then
-      if ! git diff --quiet -- "${world_file}" 2>/dev/null; then
-        map_world_mismatch=true
-      fi
-    fi
-  done
-  if [[ "${map_world_mismatch}" == "true" ]]; then
-    warn "静态验收场地内容相对 Git 基线已有修改且晚于默认地图；正式截图和 10 次静态避障前建议重新建图并执行 ./run.sh save-map nav_test_map"
-  fi
+  fail "仿真场地检查未通过，运行 ./run.sh task1-world-check 查看"
 fi
 
-# task1 文档链路。
-for doc in \
-  tasks/task1/STUDENT_INFO.md \
-  tasks/task1/TASK1_FINAL_RUNBOOK.md \
-  tasks/task1/TASK1_EVIDENCE_TODO.md \
-  tasks/task1/PROJECT_DELIVERY_GUIDE.md \
-  tasks/task1/RUN_AND_SCREENSHOT_STEPS.md \
-  tasks/task1/EXPERIMENT_RECORD.md \
-  tasks/task1/DELIVERY_CHECKLIST.md \
-  tasks/task1/SLAM_FINAL_REPORT_DRAFT.md \
-  tasks/task1/report_latex/main.tex \
-  tasks/task1/report_latex/generated_static_trials.tex \
-  tasks/task1/STATIC_TRIALS_TABLE.md; do
-  check_file "${doc}" "task1 文档"
-done
-
-check_file "tasks/task1/homework_latex/main.tex" "平时作业 LaTeX 源文件"
-if [[ -f "tasks/task1/homework_latex/main.pdf" ]]; then
-  ok "平时作业 PDF 已生成"
+if "${SCRIPT_DIR}/task1_map_check.sh" >/tmp/task1_preflight_map.log 2>&1; then
+  ok "默认地图元数据检查通过"
 else
-  warn "平时作业 PDF 未生成或不在本地"
+  fail "默认地图元数据检查未通过，运行 ./run.sh task1-map-check 查看"
 fi
 
-if [[ -f "tasks/task1/report_latex/main.pdf" ]]; then
-  ok "结课报告 PDF 已生成"
+allowed_docs=(
+  README.md
+  tasks/task1/README.md
+  tasks/task1/EXPERIMENT_RECORD.md
+  tasks/task2/README.md
+  tasks/task2/REAL_ROBOT_RUNBOOK.md
+)
+mapfile -t actual_docs < <(find . -path './.git' -prune -o \( -path './src' -o -path './ui' -o -path './Livox-SDK2' \) -prune -o -type f -name '*.md' -printf '%P\n' | sort)
+mapfile -t expected_docs < <(printf '%s\n' "${allowed_docs[@]}" | sort)
+if diff -u <(printf '%s\n' "${expected_docs[@]}") <(printf '%s\n' "${actual_docs[@]}") >/tmp/task1_preflight_docs.diff; then
+  ok "根目录和 tasks/ 的人工 Markdown 已收敛为 5 份"
 else
-  warn "结课报告 PDF 未生成或不在本地；可在 Windows TeX Live 中重新编译 main.tex"
+  fail "根目录和 tasks/ 的 Markdown 不符合约定；差异如下"
+  cat /tmp/task1_preflight_docs.diff >&2
 fi
 
-# 必需截图由用户 GUI 跑完后补齐，默认作为 warning。
-FIG_DIR="tasks/task1/report_latex/figures"
-if [[ -d "${FIG_DIR}" ]]; then
-  ok "task1 截图目录存在: ${FIG_DIR}"
-else
-  warn "task1 截图目录尚未创建: ${FIG_DIR}"
-fi
-check_optional_image "${FIG_DIR}/fig_6_1_gazebo_world.png" "图 6-1 Gazebo 静态场地总览"
-check_optional_image "${FIG_DIR}/fig_6_2_robot_model.png" "图 6-2 机器人模型和传感器"
-check_optional_image "${FIG_DIR}/fig_7_1_mapping_rviz.png" "图 7-1 RViz 建图过程"
-check_optional_image "${FIG_DIR}/fig_7_2_saved_map.png" "图 7-2 保存后的地图"
-check_optional_image "${FIG_DIR}/fig_8_1_nav2_map_loaded.png" "图 8-1 Nav2 加载地图"
-check_optional_image "${FIG_DIR}/fig_8_2_global_path.png" "图 8-2 全局路径"
-check_optional_image "${FIG_DIR}/fig_8_3_avoid_obstacle.png" "图 8-3 静态避障过程"
-check_optional_image "${FIG_DIR}/fig_8_4_goal_reached.png" "图 8-4 到达目标点"
-check_optional_image "${FIG_DIR}/fig_9_1_dynamic_obstacle.png" "图 9-1 动态障碍物扩展演示"
-
-# 这些占位内容需要在最终提交前人工替换。
-todo_count="$(grep -RInE '待填|待补|待替换|【待插图|placeholderfigure' \
-  tasks/task1/EXPERIMENT_RECORD.md \
-  tasks/task1/SLAM_FINAL_REPORT_DRAFT.md \
-  tasks/task1/STATIC_TRIALS_TABLE.md \
-  tasks/task1/report_latex/main.tex \
-  tasks/task1/report_latex/generated_static_trials.tex 2>/dev/null | wc -l | tr -d ' ')"
+todo_sources=(
+  tasks/task1/EXPERIMENT_RECORD.md
+  tasks/task1/homework_latex/main.tex
+  tasks/task1/report_latex/main.tex
+)
+todo_count="$({ grep -RInE '待填|待补|待替换|【待插图' "${todo_sources[@]}" 2>/dev/null || true; } | wc -l | tr -d ' ')"
 if [[ "${todo_count}" == "0" ]]; then
-  ok "task1 实验记录和报告中未发现待填/待替换占位"
+  ok "两份正文和实验记录没有待填占位"
 else
-  warn "task1 实验记录或报告中仍有 ${todo_count} 处待填/待替换占位"
+  warn "两份正文或实验记录仍有 ${todo_count} 处待填占位"
 fi
 
-# 避免报告里残留无关比赛业务字段。
-competition_hits="$(grep -RInE 'RoboMaster|RMUC|哨兵|云台|比赛模式|比赛业务' \
-  tasks/task1/SLAM_FINAL_REPORT_DRAFT.md \
-  tasks/task1/report_latex/main.tex 2>/dev/null || true)"
-if [[ -z "${competition_hits}" ]]; then
-  ok "task1 报告未发现明显无关比赛业务字段"
+if "${SCRIPT_DIR}/task1_experiment_check.sh" >/tmp/task1_preflight_experiment.log 2>&1; then
+  ok "实验记录结构可解析"
 else
-  warn "task1 报告可能仍有无关比赛业务字段："
-  echo "${competition_hits}" >&2
+  fail "实验记录检查失败"
 fi
+
+for pdf in tasks/task1/homework_latex/main.pdf tasks/task1/report_latex/main.pdf; do
+  if [[ -f "${pdf}" ]]; then
+    ok "本地 PDF 存在: ${pdf}"
+  else
+    warn "本地 PDF 尚未生成: ${pdf}"
+  fi
+done
 
 echo "[task1-check] 结构错误: ${errors}, 提交前提醒: ${warnings}"
 
-if [[ "${errors}" -ne 0 ]]; then
+if (( errors > 0 )); then
   exit 1
 fi
-
-if [[ "${strict}" == "true" && "${warnings}" -ne 0 ]]; then
+if [[ "${STRICT}" == "true" && "${warnings}" -gt 0 ]]; then
   echo "[task1-check] --strict 模式下 warning 也视为未完成。" >&2
   exit 1
 fi
-
-exit 0

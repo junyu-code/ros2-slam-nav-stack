@@ -8,6 +8,7 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     params_file = LaunchConfiguration('params_file')
+    use_sim_time = LaunchConfiguration('use_sim_time')
     publish_zero_on_fault = LaunchConfiguration('publish_zero_on_fault')
 
     default_params = PathJoinSubstitution([
@@ -18,6 +19,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('params_file', default_value=default_params),
+        DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('publish_zero_on_fault', default_value='false'),
         Node(
             package='localization_guard',
@@ -27,6 +29,7 @@ def generate_launch_description():
             parameters=[
                 params_file,
                 {
+                    'use_sim_time': ParameterValue(use_sim_time, value_type=bool),
                     'publish_zero_on_fault': ParameterValue(
                         publish_zero_on_fault,
                         value_type=bool,

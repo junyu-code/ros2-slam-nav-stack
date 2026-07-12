@@ -6,7 +6,6 @@ WORKSPACE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${WORKSPACE_DIR}"
 
 RECORD_FILE="tasks/task1/EXPERIMENT_RECORD.md"
-GENERATED_MD="tasks/task1/STATIC_TRIALS_TABLE.md"
 GENERATED_TEX="tasks/task1/report_latex/generated_static_trials.tex"
 QUIET=false
 
@@ -16,13 +15,8 @@ usage() {
   ./run.sh task1-sync-report [--quiet]
 
 说明：
-  从 tasks/task1/EXPERIMENT_RECORD.md 中读取 10 次静态避障实验表，
-  生成报告侧可复用的 Markdown 表格和 LaTeX 表格片段。
-  该命令不启动 Gazebo、RViz、Nav2，也不会编造实验结果；未填写的字段会继续显示为“待填”。
-
-生成文件：
-  tasks/task1/STATIC_TRIALS_TABLE.md
-  tasks/task1/report_latex/generated_static_trials.tex
+  从 EXPERIMENT_RECORD.md 读取静态避障表，只生成报告引用的 LaTeX 片段。
+  实验事实始终只在 EXPERIMENT_RECORD.md 中人工维护。
 EOF
 }
 
@@ -45,27 +39,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 log() {
-  if [[ "${QUIET}" != "true" ]]; then
-    echo "[task1-sync] $*"
-  fi
-}
-
-install_if_changed() {
-  local src="$1"
-  local dst="$2"
-  if [[ -f "${dst}" ]] && cmp -s "${src}" "${dst}"; then
-    rm -f "${src}"
-    # 实验记录的非表格区域也可能被维护；内容相同但源文件更新时刷新 mtime，表示已同步检查。
-    if [[ "${RECORD_FILE}" -nt "${dst}" ]]; then
-      touch "${dst}"
-      log "内容未变化，已刷新同步时间: ${dst}"
-    else
-      log "内容未变化，保留原文件时间: ${dst}"
-    fi
-  else
-    mv "${src}" "${dst}"
-    log "已更新: ${dst}"
-  fi
+  [[ "${QUIET}" == "true" ]] || echo "[task1-sync] $*"
 }
 
 trim() {
@@ -78,51 +52,33 @@ trim() {
 normalize_cell() {
   local value
   value="$(trim "$1")"
-  if [[ -z "${value}" ]]; then
-    value="待填"
-  fi
+  [[ -n "${value}" ]] || value="待填"
   printf '%s' "${value}"
 }
 
 latex_escape() {
-  printf '%s' "$1" \
-    | sed \
-      -e 's/\\/\\textbackslash{}/g' \
-      -e 's/[&%$#_]/\\&/g' \
-      -e 's/{/\\{/g' \
-      -e 's/}/\\}/g'
+  printf '%s' "$1" | sed -e 's/\\/\\textbackslash{}/g' -e 's/[&%$#_]/\\&/g' -e 's/{/\\{/g' -e 's/}/\\}/g'
 }
 
 is_positive() {
   local value="$1"
-  [[ "${value}" == *"是"* || "${value}" == *"成功"* || "${value}" == *"通过"* || "${value}" == *"到达"* || "${value}" == *"yes"* || "${value}" == *"Yes"* || "${value}" == *"true"* || "${value}" == "1" ]]
+  [[ "${value}" == *"是"* || "${value}" == *"成功"* || "${value}" == *"通过"* ||
+     "${value}" == *"yes"* || "${value}" == *"Yes"* || "${value}" == "1" ]]
 }
 
 if [[ ! -f "${RECORD_FILE}" ]]; then
-  echo "[task1-sync] 缺少实验记录文件: ${RECORD_FILE}" >&2
+  echo "[task1-sync] 缺少实验记录: ${RECORD_FILE}" >&2
   exit 1
 fi
 
-mkdir -p "$(dirname "${GENERATED_MD}")" "$(dirname "${GENERATED_TEX}")"
-
-tmp_md="$(mktemp)"
+mkdir -p "$(dirname "${GENERATED_TEX}")"
 tmp_tex="$(mktemp)"
-trap 'rm -f "${tmp_md}" "${tmp_tex}"' EXIT
-
-cat >"${tmp_md}" <<'EOF'
-# 静态避障实验表
-
-> 本文件由 `./run.sh task1-sync-report` 自动生成，数据来源为 `tasks/task1/EXPERIMENT_RECORD.md`。
-> 如需修改实验数据，请优先修改实验记录原表，再重新运行同步命令。
-
-| 编号 | 起点 | 目标点 | 主要经过障碍 | 是否到达 | 是否碰撞 | 是否成功 | 备注 |
-|---|---|---|---|---|---|---|---|
-EOF
+trap 'rm -f "${tmp_tex}"' EXIT
 
 cat >"${tmp_tex}" <<'EOF'
 % 本文件由 ./run.sh task1-sync-report 自动生成。
 % 数据来源：tasks/task1/EXPERIMENT_RECORD.md
-% 如需修改实验数据，请优先修改实验记录原表，再重新运行同步命令。
+% 请勿直接修改本文件。
 EOF
 
 in_table=false
@@ -134,30 +90,19 @@ while IFS= read -r line; do
     in_table=true
     continue
   fi
-
-  if [[ "${in_table}" != "true" ]]; then
-    continue
-  fi
-
+  [[ "${in_table}" == "true" ]] || continue
   if [[ "${line}" != "|"* ]]; then
-    if (( rows > 0 )); then
-      break
-    fi
+    (( rows == 0 )) || break
     continue
   fi
-
-  if [[ "${line}" == *"---"* ]]; then
-    continue
-  fi
+  [[ "${line}" == *"---"* ]] && continue
 
   row="${line#|}"
   row="${row%|}"
   IFS='|' read -r c_num c_start c_goal c_obstacle c_arrived c_collision c_success c_shot c_note c_extra <<<"${row}"
 
   num="$(trim "${c_num:-}")"
-  if [[ ! "${num}" =~ ^[0-9]+$ ]]; then
-    continue
-  fi
+  [[ "${num}" =~ ^[0-9]+$ ]] || continue
 
   start="$(normalize_cell "${c_start:-}")"
   goal="$(normalize_cell "${c_goal:-}")"
@@ -165,55 +110,39 @@ while IFS= read -r line; do
   arrived="$(normalize_cell "${c_arrived:-}")"
   collision="$(normalize_cell "${c_collision:-}")"
   success="$(normalize_cell "${c_success:-}")"
-  note="$(normalize_cell "${c_note:-}")"
 
   rows=$((rows + 1))
   if is_positive "${success}" && ! is_positive "${collision}"; then
     success_count=$((success_count + 1))
   fi
 
-  printf '| %s | %s | %s | %s | %s | %s | %s | %s |\n' \
-    "${num}" "${start}" "${goal}" "${obstacle}" "${arrived}" "${collision}" "${success}" "${note}" >>"${tmp_md}"
-
-  printf '  %s & %s & %s & %s & %s & %s & %s \\\\\n' \
-    "$(latex_escape "${num}")" \
-    "$(latex_escape "${start}")" \
-    "$(latex_escape "${goal}")" \
-    "$(latex_escape "${obstacle}")" \
-    "$(latex_escape "${arrived}")" \
-    "$(latex_escape "${collision}")" \
-    "$(latex_escape "${success}")" >>"${tmp_tex}"
-done < "${RECORD_FILE}"
+  cells=(
+    "$(latex_escape "${num}")"
+    "$(latex_escape "${start}")"
+    "$(latex_escape "${goal}")"
+    "$(latex_escape "${obstacle}")"
+    "$(latex_escape "${arrived}")"
+    "$(latex_escape "${collision}")"
+    "$(latex_escape "${success}")"
+  )
+  printf '  %s & %s & %s & %s & %s & %s & %s \\\\\n' "${cells[@]}" >>"${tmp_tex}"
+done <"${RECORD_FILE}"
 
 if (( rows == 0 )); then
-  echo "[task1-sync] 未解析到静态避障实验表，请检查 ${RECORD_FILE}" >&2
+  echo "[task1-sync] 未解析到静态避障实验表" >&2
   exit 1
 fi
 
-{
-  echo
-  echo "成功率草稿："
-  echo
-  echo '```text'
-  echo "成功次数：${success_count}"
-  echo "总次数：${rows}"
-  if (( rows > 0 )); then
-    echo "成功率：$((success_count * 100 / rows))%"
-  else
-    echo "成功率：0%"
-  fi
-  echo '```'
-  echo
-  echo "说明：最终成功率以人工确认后的“是否成功/是否碰撞”字段为准。"
-} >>"${tmp_md}"
-
 printf '  \\bottomrule\n' >>"${tmp_tex}"
-install_if_changed "${tmp_md}" "${GENERATED_MD}"
-install_if_changed "${tmp_tex}" "${GENERATED_TEX}"
+if [[ -f "${GENERATED_TEX}" ]] && cmp -s "${tmp_tex}" "${GENERATED_TEX}"; then
+  log "内容未变化: ${GENERATED_TEX}"
+else
+  mv "${tmp_tex}" "${GENERATED_TEX}"
+  log "已更新: ${GENERATED_TEX}"
+fi
 trap - EXIT
 
-log "解析到静态避障实验 ${rows} 行，当前成功次数 ${success_count}。"
-
+log "解析到 ${rows} 行，当前阶段性成功 ${success_count} 次。"
 if (( rows < 10 )); then
-  echo "[task1-sync] WARN: 静态避障实验少于 10 行，最终提交前需要补齐。" >&2
+  echo "[task1-sync] WARN: 静态避障实验少于 10 行。" >&2
 fi

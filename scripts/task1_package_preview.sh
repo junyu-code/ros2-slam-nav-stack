@@ -73,14 +73,13 @@ INCLUDE_PATHS=(
   scripts
   src
   README.md
-  PROJECT_PROCESS.md
   tasks/task1
 )
 
 should_skip() {
   local path="$1"
   case "${path}" in
-    build/*|install/*|log/*|.git/*|.vscode/*|dist/*)
+    build/*|install/*|log/*|artifacts/*|.git/*|.vscode/*|dist/*)
       return 0
       ;;
     datasets/*|models/*|checkpoints/*|runs/*|wandb/*)
@@ -158,7 +157,7 @@ if (( total_bytes > WARN_PACKAGE_BYTES )); then
 fi
 echo "[task1-package] 包含根路径:"
 printf '  %s\n' "${INCLUDE_PATHS[@]}"
-echo "[task1-package] 已排除: build/ install/ log/ .git/ .vscode/ dist/ datasets/ external/ third_party/ vendor/ rosbag/点云/模型权重/LaTeX 辅助文件"
+echo "[task1-package] 已排除: build/ install/ log/ artifacts/ .git/ .vscode/ dist/ datasets/ external/ third_party/ vendor/ rosbag/点云/模型权重/LaTeX 辅助文件"
 
 echo "[task1-package] 将进入压缩包的最大 ${LARGEST_COUNT} 个文件:"
 sort -nr "${tmp_sizes}" | head -n "${LARGEST_COUNT}" | while IFS=$'\t' read -r size file; do

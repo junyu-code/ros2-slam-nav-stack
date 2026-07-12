@@ -4,10 +4,11 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, LogInfo, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from slam_nav_bringup.base_profiles import BUILTIN_PROFILES, resolve_base_profile_file
 
 
 def generate_launch_description():
@@ -27,6 +28,8 @@ def generate_launch_description():
     static_map_to_odom_roll = LaunchConfiguration('static_map_to_odom_roll')
     map_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
+    base_profile = LaunchConfiguration('base_profile')
+    base_profile_file = LaunchConfiguration('base_profile_file')
     fast_lio_config = LaunchConfiguration('fast_lio_config')
     initial_pose_x = LaunchConfiguration('initial_pose_x')
     initial_pose_y = LaunchConfiguration('initial_pose_y')
@@ -70,6 +73,8 @@ def generate_launch_description():
             'static_map_to_odom_roll': static_map_to_odom_roll,
             'map': map_file,
             'navigation_params_file': params_file,
+            'base_profile': base_profile,
+            'base_profile_file': base_profile_file,
             'fast_lio_config': fast_lio_config,
             'initial_pose_x': initial_pose_x,
             'initial_pose_y': initial_pose_y,
@@ -94,30 +99,40 @@ def generate_launch_description():
         ),
         condition=IfCondition(enable_localization_guard),
         launch_arguments={
+            'use_sim_time': use_sim_time,
             'publish_zero_on_fault': publish_zero_on_fault,
         }.items(),
     )
 
-    safe_cmd_bridge = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(safe_cmd_bridge_dir, 'launch', 'safe_cmd_bridge.launch.py')
-        ),
-        condition=IfCondition(enable_safe_cmd_bridge),
-        launch_arguments={
-            'input_topic': safe_input_topic,
-            'output_topic': safe_output_topic,
-            'enable_udp_output': safe_enable_udp_output,
-            'enable_fault_stop': safe_enable_fault_stop,
-            'fault_topic': safe_fault_topic,
-            'enable_feedback_watchdog': safe_enable_feedback_watchdog,
-            'feedback_topic': safe_feedback_topic,
-            'udp_host': safe_udp_host,
-            'udp_port': safe_udp_port,
-        }.items(),
-    )
+    def make_safe_cmd_bridge(context):
+        resolved_profile = resolve_base_profile_file(
+            bringup_dir,
+            base_profile.perform(context),
+            base_profile_file.perform(context),
+        )
+        return [
+            LogInfo(msg=f'Using safe command limits from: {resolved_profile}'),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(safe_cmd_bridge_dir, 'launch', 'safe_cmd_bridge.launch.py')
+                ),
+                launch_arguments={
+                    'params_file': str(resolved_profile),
+                    'input_topic': safe_input_topic.perform(context),
+                    'output_topic': safe_output_topic.perform(context),
+                    'enable_udp_output': safe_enable_udp_output.perform(context),
+                    'enable_fault_stop': safe_enable_fault_stop.perform(context),
+                    'fault_topic': safe_fault_topic.perform(context),
+                    'enable_feedback_watchdog': safe_enable_feedback_watchdog.perform(context),
+                    'feedback_topic': safe_feedback_topic.perform(context),
+                    'udp_host': safe_udp_host.perform(context),
+                    'udp_port': safe_udp_port.perform(context),
+                }.items(),
+            ),
+        ]
 
     return LaunchDescription([
-        DeclareLaunchArgument('use_sim_time', default_value='true'),
+        DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('use_composition', default_value='False'),
         DeclareLaunchArgument('container_name', default_value='nav2_container'),
         DeclareLaunchArgument('localization_mode', default_value='amcl', choices=['amcl', 'static']),
@@ -134,6 +149,17 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'params_file',
             default_value=os.path.join(bringup_dir, 'config', 'nav2_params_3d.yaml'),
+        ),
+        DeclareLaunchArgument(
+            'base_profile',
+            default_value='omni',
+            choices=list(BUILTIN_PROFILES),
+            description='Chassis kinematics, footprint, and velocity limit profile.',
+        ),
+        DeclareLaunchArgument(
+            'base_profile_file',
+            default_value='',
+            description='Optional custom chassis profile YAML; overrides base_profile when set.',
         ),
         DeclareLaunchArgument(
             'fast_lio_config',
@@ -170,5 +196,8 @@ def generate_launch_description():
         DeclareLaunchArgument('safe_udp_port', default_value='15000'),
         navigation_3d,
         localization_guard,
-        safe_cmd_bridge,
+        OpaqueFunction(
+            function=make_safe_cmd_bridge,
+            condition=IfCondition(enable_safe_cmd_bridge),
+        ),
     ])

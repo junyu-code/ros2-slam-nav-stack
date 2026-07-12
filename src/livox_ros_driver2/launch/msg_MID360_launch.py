@@ -1,6 +1,8 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 import launch
 
@@ -33,15 +35,30 @@ livox_ros2_params = [
 
 
 def generate_launch_description():
+    user_config_path_arg = LaunchConfiguration('user_config_path')
+    multi_topic_arg = LaunchConfiguration('multi_topic')
+
     livox_driver = Node(
         package='livox_ros_driver2',
         executable='livox_ros_driver2_node',
         name='livox_lidar_publisher',
         output='screen',
-        parameters=livox_ros2_params
+        parameters=[
+            {"xfer_format": xfer_format},
+            {"multi_topic": multi_topic_arg},
+            {"data_src": data_src},
+            {"publish_freq": publish_freq},
+            {"output_data_type": output_type},
+            {"frame_id": frame_id},
+            {"lvx_file_path": lvx_file_path},
+            {"user_config_path": user_config_path_arg},
+            {"cmdline_input_bd_code": cmdline_bd_code}
+        ]
         )
 
     return LaunchDescription([
+        DeclareLaunchArgument('user_config_path', default_value=user_config_path),
+        DeclareLaunchArgument('multi_topic', default_value=str(multi_topic)),
         livox_driver,
         # launch.actions.RegisterEventHandler(
         #     event_handler=launch.event_handlers.OnProcessExit(

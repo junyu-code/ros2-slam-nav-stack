@@ -8,11 +8,14 @@ cd "${WORKSPACE_DIR}"
 STRICT=false
 REPORT_TEX="tasks/task1/report_latex/main.tex"
 REPORT_PDF="tasks/task1/report_latex/main.pdf"
-REPORT_DRAFT="tasks/task1/SLAM_FINAL_REPORT_DRAFT.md"
 FIG_DIR="tasks/task1/report_latex/figures"
 EXPERIMENT_RECORD="tasks/task1/EXPERIMENT_RECORD.md"
-GENERATED_TRIALS_MD="tasks/task1/STATIC_TRIALS_TABLE.md"
 GENERATED_TRIALS_TEX="tasks/task1/report_latex/generated_static_trials.tex"
+EVIDENCE_MANIFEST="tasks/task1/evidence_media/MANIFEST.tsv"
+EVIDENCE_SHA256="tasks/task1/evidence_media/SHA256SUMS"
+EVIDENCE_VIDEO="tasks/task1/evidence_media/task1_rgbd_dynamic_demo_720p.mp4"
+
+source "${SCRIPT_DIR}/task1_state.sh"
 
 usage() {
   cat <<'EOF'
@@ -105,15 +108,34 @@ contains_text() {
 count_matches() {
   local pattern="$1"
   shift
-  grep -RInE "${pattern}" "$@" 2>/dev/null | wc -l | tr -d ' '
+  { grep -RInE "${pattern}" "$@" 2>/dev/null || true; } | wc -l | tr -d ' '
 }
 
 echo "[task1-report] 工作区: ${WORKSPACE_DIR}"
 
+if task1_load_state; then
+  task1_print_state | sed 's/^/[task1-report]   /'
+  while IFS= read -r issue; do
+    [[ -n "${issue}" ]] && warn "${issue}"
+  done < <(task1_state_issues)
+else
+  fail "Task1 状态文件无效"
+fi
+
 check_file "${REPORT_TEX}" "LaTeX 结课报告源文件"
-check_file "${REPORT_DRAFT}" "Markdown 结课报告草稿"
 check_file "${GENERATED_TRIALS_TEX}" "LaTeX 静态避障实验表生成片段"
-check_file "${GENERATED_TRIALS_MD}" "Markdown 静态避障实验表生成片段"
+check_file "${EVIDENCE_MANIFEST}" "媒体证据说明"
+check_file "${EVIDENCE_SHA256}" "媒体证据校验和"
+check_file "${EVIDENCE_VIDEO}" "RGB-D 与动态避障连续演示视频"
+
+if [[ -f "${EVIDENCE_VIDEO}" ]]; then
+  video_size="$(stat -c '%s' "${EVIDENCE_VIDEO}" 2>/dev/null || echo 0)"
+  if (( video_size >= 1048576 )); then
+    ok "连续演示视频大小合理: ${video_size} bytes"
+  else
+    warn "连续演示视频过小，可能不是有效附件: ${EVIDENCE_VIDEO}"
+  fi
+fi
 
 if [[ -f "${REPORT_TEX}" ]]; then
   for item in \
@@ -132,7 +154,6 @@ fi
 
 required_figs=(
   "fig_6_1_gazebo_world.png|Gazebo 静态场地总览"
-  "fig_6_2_robot_model.png|机器人模型和传感器"
   "fig_7_1_mapping_rviz.png|RViz 建图过程"
   "fig_7_2_saved_map.png|保存后的地图"
   "fig_8_1_nav2_map_loaded.png|Nav2 加载地图"
@@ -167,9 +188,23 @@ for item in "${required_figs[@]}"; do
 done
 
 optional_figs=(
+  "fig_7_3_pcd_map.png|PCD 点云地图预览"
+  "fig_7_4_mapping_pose_failure.png|建图位姿失败证据"
   "fig_8_5_backup_recovery.png|后退恢复过程"
+  "fig_8_6_initial_navigation_failure.png|初版导航失败证据"
+  "fig_8_7_amcl_navigation_improved.png|AMCL 导航改进证据"
   "fig_9_2_rgbd_visual_obstacles.png|RGB-D 近场障碍点云"
+  "fig_9_4_rgbd_dynamic_video_frames.png|RGB-D 动态演示视频四时刻画面"
   "fig_9_3_perception_adapter.png|感知接口说明"
+  "fig_9_4_large_arena_overview.png|大场地鲁棒性扩展总览"
+  "fig_9_5_large_arena_relocalization.png|大场地重定位扩展验证"
+  "fig_9_6_relocalization_log.png|AMCL/GICP 重定位诊断日志"
+  "fig_9_7_collision_recovery.png|碰撞扰动后恢复对比"
+  "fig_10_1_real_livox_network.png|实机 MID360 网络与驱动"
+  "fig_10_2_real_d435i_depth.png|实机 D435i RGB-D 数据"
+  "fig_10_3_real_fast_lio_mapping.png|实机 FAST-LIO 点云建图"
+  "fig_10_4_real_cmd_bridge_test.png|实机底盘安全桥测试"
+  "fig_10_5_real_runtime_diagnosis.png|实机运行诊断结果"
 )
 
 for item in "${optional_figs[@]}"; do
@@ -180,14 +215,14 @@ for item in "${optional_figs[@]}"; do
   fi
 done
 
-placeholder_count="$(count_matches '待填|待补|待替换|【待插图|placeholderfigure' "${REPORT_TEX}" "${REPORT_DRAFT}" "${GENERATED_TRIALS_TEX}" "${GENERATED_TRIALS_MD}")"
+placeholder_count="$(count_matches '待填|待补|待替换|【待插图' "${REPORT_TEX}" "${GENERATED_TRIALS_TEX}")"
 if [[ "${placeholder_count}" == "0" ]]; then
-  ok "报告源文件和 Markdown 草稿中未发现待填/待替换占位"
+  ok "报告源文件中未发现待填/待替换占位"
 else
-  warn "报告源文件或 Markdown 草稿仍有 ${placeholder_count} 处待填/待替换占位"
+  warn "报告源文件仍有 ${placeholder_count} 处待填/待替换占位"
 fi
 
-competition_hits="$(grep -RInE 'RoboMaster|RMUC|哨兵|云台|比赛模式|比赛业务' "${REPORT_TEX}" "${REPORT_DRAFT}" 2>/dev/null || true)"
+competition_hits="$(grep -RInE 'RoboMaster|RMUC|哨兵|云台|比赛模式|比赛业务' "${REPORT_TEX}" 2>/dev/null || true)"
 if [[ -z "${competition_hits}" ]]; then
   ok "报告中未发现明显无关比赛业务字段"
 else
@@ -217,7 +252,7 @@ if [[ -f "${EXPERIMENT_RECORD}" && -f "${GENERATED_TRIALS_TEX}" && "${EXPERIMENT
   warn "实验记录比生成表格新，建议运行 ./run.sh task1-sync-report"
 fi
 
-echo "[task1-report] 缺失必需截图: ${missing_figs}/9"
+echo "[task1-report] 缺失必需截图: ${missing_figs}/${#required_figs[@]}"
 echo "[task1-report] 结构错误: ${errors}, 提交前提醒: ${warnings}"
 
 if [[ "${errors}" -ne 0 ]]; then

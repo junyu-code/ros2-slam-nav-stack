@@ -151,7 +151,7 @@ else
 可选修复方式：
   1. 在 WSL 安装 TeX Live / xelatex；
   2. 在 Windows 安装 TeX Live，并设置 TASK1_XELATEX_EXE；
-  3. 直接参考 tasks/task1/report_latex/README.md 中的 Windows 编译命令。
+  3. 参考 tasks/task1/README.md 中的报告与检查流程。
 EOF
   exit 2
 fi

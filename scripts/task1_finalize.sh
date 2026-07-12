@@ -19,7 +19,7 @@ usage() {
 
 说明：
   task1 最终交付编排入口，不启动 Gazebo、RViz 或 Nav2。
-  默认流程：查看 task1 状态 -> 刷新状态快照 -> 同步实验表到报告 -> 检查静态避障实验记录 -> 编译结课报告 PDF -> 报告审计 -> strict 预检 -> strict 交付检查 -> 预览压缩包。
+  默认流程：查看 task1 状态 -> 保存本地文本快照 -> 同步实验表到报告 -> 检查静态避障实验记录 -> 编译结课报告 PDF -> 报告审计 -> strict 预检 -> strict 交付检查 -> 预览压缩包。
   加 --create 后才会真正创建 zip。
 
 可选参数：
@@ -79,7 +79,7 @@ run_check() {
 step "1/9 查看当前 task1 状态"
 run_check task1_status.sh
 
-step "2/9 刷新 task1 状态快照"
+step "2/9 保存 task1 本地文本快照"
 run_check task1_snapshot.sh
 
 step "3/9 同步静态避障实验表到报告片段"
